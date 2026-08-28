@@ -37,7 +37,7 @@
 ## Install
 
 ```bash
-git clone https://github.com/<you>/rd-shell ~/.config/quickshell/rd-shell
+git clone https://github.com/reniaz/rd-shell ~/.config/quickshell/rd-shell
 qs -c rd-shell
 ```
 
