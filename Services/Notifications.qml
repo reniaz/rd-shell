@@ -88,7 +88,7 @@ Singleton {
             if (!root.panelOpen) root.unseen++;
             // filter first: a replaced notification arrives as the same object, so
             // a blind prepend stacks visual duplicates of one notification
-            if (!root.dnd || root.isHotkey(n)) {
+            if (!root.dnd || root.bypassesDnd(n)) {
                 root.popups = [n, ...root.popups.filter(p => p !== n)];
                 popupTimer.restart();
             }
@@ -120,6 +120,20 @@ Singleton {
     // swallowed. Tagged by scripts/*.sh with -h boolean:x-rd-hotkey:true.
     function isHotkey(n) {
         return !!(n?.hints?.["x-rd-hotkey"]);
+    }
+
+    // Apps whose notifications are shown even under do-not-disturb, matched on
+    // the sending app's own name. DND is turned on against the machine's
+    // chatter; a message from a person and an alarm you set yourself are the two
+    // things you meant to keep hearing through it. Substrings, so a client that
+    // renames itself from "whatsapp" to "whatsapp-client" keeps working.
+    readonly property var dndAllow: ["whatsapp", "reminder"]
+
+    // Hotkey feedback and the apps above: shown under DND, which suppresses the
+    // interruptions and not these.
+    function bypassesDnd(n) {
+        const app = (n?.appName ?? "").toLowerCase();
+        return isHotkey(n) || dndAllow.some(allowed => app.includes(allowed));
     }
 
     function setDnd(v) {

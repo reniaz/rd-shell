@@ -185,6 +185,11 @@ Singleton {
     // own colour: "this is the one the bar is talking about".
     readonly property color mediaActive: popupAccent
 
+    // The volume track behind each player's slider. Same grey every track on
+    // this bar uses, so a slider reads as one of the disk and monitor bars that
+    // happens to be draggable.
+    readonly property color mediaTrack: surfaceHover
+
     // ── calendar ─────────────────────────────────────────────
     // Today wears the main accent as a filled disc, so the one cell that matters
     // is found before the month name has been read. Days from the neighbouring
@@ -197,6 +202,14 @@ Singleton {
     readonly property color calToday: popupAccent
     readonly property color calTodayFg: bg
     readonly property color calOutside: surfaceHover
+
+    // Reminders share the card with the grid, so they wear the calendar's own
+    // text colours; only the alarm glyph and the input outlines are new. The
+    // brighter accent, not the disc's, so a pending alarm is not read as a
+    // second "today" further down the same card.
+    readonly property color calAlarm: accentBright
+    readonly property color calField: surfaceRaised
+    readonly property color calFieldBorder: surfaceHover
 
     // ── disk widget ──────────────────────────────────────────
     // Green rather than one more orange: the pill sits between the keyboard's

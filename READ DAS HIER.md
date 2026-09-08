@@ -142,8 +142,10 @@ Left to right, as laid out in `Bar.qml`:
 then the system readout (CPU / GPU / RAM), which sits beside the media pill
 rather than in the right-hand cluster.
 
-**Centre** — clock. Left-click expands it to `time | date`, right-click hangs the
-month under it.
+**Centre** — clock. Left-click folds in what is next to go off — `16:58 | 12m`
+for a timer, `16:58 | Fri 09:15` for an alarm further out, `16:58 | no timer`
+when nothing is set. Right-click hangs the month under it, with the reminder
+fields under that.
 
 **Right** — Claude pill (usage %), keyboard layout, disk, tray icons, mic,
 volume, network, notification bell, power.
@@ -154,14 +156,14 @@ on click unless noted:
 | Pill | Opens with | Notes |
 |---|---|---|
 | Media | left-click toggles the player the pill is showing, right-click lists every loaded player | each row plays or pauses on click; the sounding ones are outlined |
-| Clock | right-click | the month, with today filled; the arrows page it and the month name returns to this one |
+| Clock | right-click | the month, with today filled; the arrows page it and the month name returns to this one. Under the grid: a line of text plus `HH:MM` sets an alarm on the day you clicked in the grid (today unless you click another), and the `5m / 15m / 30m / 1h` chips set a timer that far from now. Both ring as a notification with a sound, do-not-disturb included, both survive a reload, and both list above the fields with a live countdown and an ✕ to drop them |
 | System readout | left-click | tabs: Processor, Graphics, Memory; can SIGTERM/SIGKILL a process from the process lists |
 | Claude | left-click | tabs: Sessions, Usage, Statistics, Optimize |
 | Disk | left-click | refreshes on open |
 | Mic | left-click toggles mute, right-click opens `pavucontrol -t 4`, scroll adjusts volume |
 | Volume | left-click toggles mute, right-click opens `pavucontrol -t 3`, scroll adjusts volume |
 | Network | right-click only, opens `kcmshell6` to the NetworkManager KCM |
-| Notification bell | left-click opens the notification center, right-click toggles DND |
+| Notification bell | left-click opens the notification center, right-click toggles DND. DND holds back every toast except hotkey feedback and the apps in `dndAllow` (`Services/Notifications.qml`) — WhatsApp, because a message from a person is what you kept listening for, and the reminders you set yourself |
 | Power | left-click | lock / logout / reboot / shutdown via `hyprlock` / `hyprshutdown` |
 
 ## 5. What shells out to what
@@ -206,6 +208,7 @@ with itself about whether 9.4G rounds to 9G.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Every icon is a box | Material Symbols Rounded not installed | re-run `install.sh`, or check `fc-match -f '%{family}' 'Material Symbols Rounded'` |
+| Icons render as their own names — `queue_music`, `volume_down` | another application's cut of Material Symbols Rounded is answering to the family name; the icons are ligatures, so a font without the glyphs prints the name instead of a box | `install.sh` links `assets/fontconfig/99-rd-shell-symbols.conf`, which drops subsets. Compare `fc-match -f '%{file}' 'Material Symbols Rounded'` with `fc-match -f '%{file}' 'Material Symbols Rounded:charset=5f'` — different files means the wrong one wins; add it to that rule |
 | Text looks like the wrong font | caelusevka not installed | re-run `install.sh`; it copies from `assets/fonts/` — if that directory is missing, text falls back to the system sans |
 | Volume shows 0%, no mic pill | started `qs` directly instead of `launch.sh` | kill the shell, start it with `launch.sh`; check `$XDG_RUNTIME_DIR/rd-shell.log` |
 | No notifications at all | swaync / dunst / mako still owns the `org.freedesktop.Notifications` D-Bus name | `install.sh` masks all three with `systemctl --user mask`; check none of them re-enabled itself |
