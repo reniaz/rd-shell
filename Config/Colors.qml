@@ -72,7 +72,7 @@ Singleton {
     // resolves back to the base palette, so re-theming needs no edits here.
     readonly property color claudeColor: "#e87d2c"   // theme --accent-4, deep orange
     readonly property color claudeIcon: claudeColor
-    readonly property color claudeAccent: claudeColor
+    readonly property color claudeAccent: popupAccent
 
     readonly property color claudePanelBg: surface
     readonly property color claudeCardBg: surfaceRaised
@@ -87,7 +87,7 @@ Singleton {
     readonly property color claudeCritical: error
 
     readonly property color claudeTabBar: bg
-    readonly property color claudeTabActive: claudeColor
+    readonly property color claudeTabActive: popupAccent
     readonly property color claudeTabInactive: fgMuted
     readonly property color claudeTrack: surfaceHover
 
@@ -166,6 +166,37 @@ Singleton {
     // they are the same object seen from different icons.
     readonly property color popupBg: surface
     readonly property color popupBorder: surfaceHover
+
+    // ...and one accent across all of them. The pills keep their own colours --
+    // that is how you tell one icon from the next along the bar -- but once a
+    // card is open it is the bar talking, so the disk, Claude, player and
+    // calendar cards all head and highlight in the main accent.
+    readonly property color popupAccent: accent
+
+    // ── media popup ──────────────────────────────────────────
+    // Shares the pill's warm taupe, so the card reads as that icon opened up
+    // rather than as a second widget about sound.
+    readonly property color mediaTitle: fg
+    readonly property color mediaBody: fgDim
+    readonly property color mediaMeta: fgMuted
+    readonly property color mediaCard: surfaceRaised
+
+    // The outline on a player that is actually sounding. Deliberately the pill's
+    // own colour: "this is the one the bar is talking about".
+    readonly property color mediaActive: popupAccent
+
+    // ── calendar ─────────────────────────────────────────────
+    // Today wears the main accent as a filled disc, so the one cell that matters
+    // is found before the month name has been read. Days from the neighbouring
+    // months keep the card's own outline colour -- present enough to fill the
+    // grid, dim enough never to be mistaken for this month.
+    readonly property color calIcon: popupAccent
+    readonly property color calTitle: fg
+    readonly property color calBody: fgDim
+    readonly property color calMeta: fgMuted
+    readonly property color calToday: popupAccent
+    readonly property color calTodayFg: bg
+    readonly property color calOutside: surfaceHover
 
     // ── disk widget ──────────────────────────────────────────
     // Green rather than one more orange: the pill sits between the keyboard's

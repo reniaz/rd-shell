@@ -142,7 +142,8 @@ Left to right, as laid out in `Bar.qml`:
 then the system readout (CPU / GPU / RAM), which sits beside the media pill
 rather than in the right-hand cluster.
 
-**Centre** — clock. Click to expand it to `time | date`.
+**Centre** — clock. Left-click expands it to `time | date`, right-click hangs the
+month under it.
 
 **Right** — Claude pill (usage %), keyboard layout, disk, tray icons, mic,
 volume, network, notification bell, power.
@@ -152,6 +153,8 @@ on click unless noted:
 
 | Pill | Opens with | Notes |
 |---|---|---|
+| Media | left-click toggles the player the pill is showing, right-click lists every loaded player | each row plays or pauses on click; the sounding ones are outlined |
+| Clock | right-click | the month, with today filled; the arrows page it and the month name returns to this one |
 | System readout | left-click | tabs: Processor, Graphics, Memory; can SIGTERM/SIGKILL a process from the process lists |
 | Claude | left-click | tabs: Sessions, Usage, Statistics, Optimize |
 | Disk | left-click | refreshes on open |

@@ -20,7 +20,14 @@ Singleton {
 
     readonly property string label: artist !== "" ? `${artist} — ${title}` : title
 
-    function toggle() {
-        if (player?.canTogglePlaying) player.togglePlaying();
+    // How many are sounding at once, which is the only thing the pill cannot
+    // say: it only ever shows one of them.
+    readonly property int playingCount: players.filter(p => p.isPlaying).length
+
+    // Defaults to the player the pill is showing, so the bar's click is
+    // unchanged; the popup passes the row that was clicked instead.
+    function toggle(target) {
+        const p = target ?? player;
+        if (p?.canTogglePlaying) p.togglePlaying();
     }
 }

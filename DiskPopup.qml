@@ -39,7 +39,7 @@ BarPopup {
 
             Text {
                 text: "hard_drive"
-                color: Colors.diskIcon
+                color: Colors.popupAccent
                 font.family: "Material Symbols Rounded"
                 font.pixelSize: 16
             }
