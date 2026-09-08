@@ -19,6 +19,11 @@ PanelWindow {
     // already window-relative and stays live as the workspace dots beside it
     // change width.
     readonly property real systemAnchorX: leftGroup.x + systemPill.x + systemPill.width / 2
+    readonly property real mediaAnchorX: leftGroup.x + mediaPill.x + mediaPill.width / 2
+
+    // centerGroup is centred in the window rather than laid out from an edge,
+    // but it is still a direct child of it, so its x needs no conversion either.
+    readonly property real clockAnchorX: centerGroup.x + clockPill.x + clockPill.width / 2
 
     RowLayout {
         id: leftGroup
@@ -42,6 +47,12 @@ PanelWindow {
         }
 
         Pill {
+            id: mediaPill
+
+            // Same reasoning as the disk pill's: which bar you right-clicked is
+            // the whole question, and a second monitor's pill has its own answer.
+            property bool open: false
+
             icon: Media.playing ? "pause" : "play_arrow"
             label: Media.label
             iconColor: Colors.mediaIcon
@@ -50,11 +61,20 @@ PanelWindow {
 
             MouseArea {
                 anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
 
-                onClicked: Media.toggle()
+                // Left toggles whatever the pill is showing; right asks which
+                // player it should have been showing.
+                onClicked: mouse => mouse.button === Qt.RightButton
+                    ? mediaPill.open = !mediaPill.open
+                    : Media.toggle()
             }
+
+            // The last player quitting takes this pill off the bar. Forgetting
+            // the open state with it is what stops the card reappearing on its
+            // own when the next player starts.
+            onVisibleChanged: if (!visible) mediaPill.open = false
         }
 
         // One pill, three readings: what the processor, the graphics card and
@@ -88,15 +108,21 @@ PanelWindow {
         Pill {
             id: clockPill
             property bool expanded: false
+            property bool calendarOpen: false
 
             icon: "schedule"
             label: expanded ? `${Time.time} | ${Time.date}` : Time.time
 
             MouseArea {
                 anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
-                onClicked: clockPill.expanded = !clockPill.expanded
+
+                // Left still folds the date into the pill; right hangs the whole
+                // month under it.
+                onClicked: mouse => mouse.button === Qt.RightButton
+                    ? clockPill.calendarOpen = !clockPill.calendarOpen
+                    : clockPill.expanded = !clockPill.expanded
             }
         }
     }
@@ -310,6 +336,32 @@ PanelWindow {
             // and both stay live as the pills either side change width.
             anchorX: rightGroup.x + diskPill.x + diskPill.width / 2
             onDismissed: diskPill.open = false
+        }
+    }
+
+    // Both of these are opened by a right-click on a specific bar, so they follow
+    // the disk popup rather than the keybind-driven overlays: no overlayScreen
+    // gate, and the open state lives on the pill that was clicked.
+    LazyLoader {
+        active: clockPill.calendarOpen
+
+        CalendarPopup {
+            screen: bar.modelData
+            anchorX: bar.clockAnchorX
+            onDismissed: clockPill.calendarOpen = false
+        }
+    }
+
+    // Closed with the pill it hangs from: the last player quitting takes the
+    // pill off the bar, and a card left pointing at a gap is not dismissable by
+    // clicking the icon that opened it.
+    LazyLoader {
+        active: mediaPill.open && Media.available
+
+        MediaPopup {
+            screen: bar.modelData
+            anchorX: bar.mediaAnchorX
+            onDismissed: mediaPill.open = false
         }
     }
 

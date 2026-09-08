@@ -146,6 +146,9 @@ rd-shell/
 ├── shell.qml            # entry point: one Bar per screen, four IPC handlers
 ├── Bar.qml              # the bar itself — pill order, panel loaders
 ├── BarPopup.qml         # shared card/notch/grow/dismiss for every panel
+├── CalendarPopup.qml    # the month, hung under the clock on right-click
+├── DiskPopup.qml        # per-filesystem breakdown, under the disk pill
+├── MediaPopup.qml       # every loaded player, play/pause each one
 ├── Sys*.qml             # system monitor pill and its tabbed panel
 ├── Claude*.qml          # Claude pill panel: sessions, usage, statistics, optimize
 ├── Notification*.qml    # popups, history centre, bell
