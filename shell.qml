@@ -1,86 +1,53 @@
+//@ pragma UseQApplication
 import Quickshell
-import QtQuick
-import QtQuick.Layouts
+import Quickshell.Io
 import qs.Services
 
-PanelWindow {
-    id: bar
+ShellRoot {
+    Variants {
+        model: Quickshell.screens
 
-    anchors { top: true; left: true; right: true }
-    implicitHeight: 40
-    color: "transparent"
-
-    Poller {
-        id: clock
-        command: "date +%H:%M"
-        interval: 30000
+        Bar {}
     }
 
-    Poller {
-        id: vol
-        command: "wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf\"%d\", $2*100}'"
-        interval: 1000
-    }
+    // Bound to Super+M in hyprland.lua: qs ipc -c rd-shell call power toggle
+    IpcHandler {
+        target: "power"
 
-    Poller {
-        id: net
-        command: "nmcli -t -f NAME connection show --active | head -n1"
-        interval: 5000
-    }
-
-    RowLayout {
-        id: centerGroup
-        anchors.centerIn: parent
-        spacing: 8
-
-        Pill {
-            icon: "schedule"
-            label: Time.time
-            property bool timeOnly: true
-
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (parent.timeOnly) {
-                        parent.label = Time.time + " | " + Time.date;
-                    } else {
-                        parent.label = Time.time;
-                    }
-
-                    parent.timeOnly = !parent.timeOnly;
-                }
-            }
+        function toggle(): void {
+            Power.menuOpen = !Power.menuOpen;
         }
     }
 
-    RowLayout {
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.rightMargin: 14
-        spacing: 8
+    // Bound to Super+N in hyprland.lua: qs ipc -c rd-shell call notifications toggle
+    IpcHandler {
+        target: "notifications"
 
-        Pill {
-            icon: Audio.muted == false ? "volume_up" : "volume_off"
-            label: Audio.percent + "%"
-            iconColor: "#ffa478"
-
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                cursorShape: Qt.PointingHandCursor
-
-                onClicked: Audio.toggleMute()
-
-                onWheel: wheel => Audio.setVolume(Audio.volume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05))
-            }
+        function toggle(): void {
+            Notifications.togglePanel();
         }
 
-        Pill {
-            icon: "lan"
-            label: "ETH"
-            iconColor: "#ff6048"
+        // same toggle the panel's bell performs; handy for a keybind
+        function dnd(): void {
+            Notifications.toggleDnd();
+        }
+    }
+
+    // qs ipc -c rd-shell call system toggle
+    IpcHandler {
+        target: "system"
+
+        function toggle(): void {
+            SysMon.togglePanel();
+        }
+    }
+
+    // qs ipc -c rd-shell call claude toggle — unbound by default; the pill opens it too
+    IpcHandler {
+        target: "claude"
+
+        function toggle(): void {
+            ClaudeSession.togglePanel();
         }
     }
 }
