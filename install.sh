@@ -22,6 +22,7 @@ CONFIG=rd-shell
 FONT_DIR="$HOME/.local/share/fonts"
 MSR_FILE='MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf'
 MSR_URL='https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf'
+MSR_CONF=99-rd-shell-symbols.conf
 IRIUN_CONF=/usr/share/pipewire/pipewire.conf.d/iriunaudio.conf
 
 # Fedora 44's dnf is dnf5; fall back to dnf so the script does not just die
@@ -43,6 +44,21 @@ ask() {
     local reply
     read -rp "$(printf '   \033[33m?\033[0m %s [y/N] ' "$1")" reply
     [ "${reply,,}" = y ] || [ "${reply,,}" = yes ]
+}
+
+link() {  # link <target> <link-path>
+    local target=$1 path=$2
+    mkdir -p "$(dirname "$path")"
+    if [ "$(readlink -f "$path" 2>/dev/null)" = "$(readlink -f "$target")" ]; then
+        ok "$path"
+        return
+    fi
+    if [ -e "$path" ] && [ ! -L "$path" ]; then
+        mv "$path" "$path.bak"
+        warn "existing $path moved to $path.bak"
+    fi
+    ln -sfn "$target" "$path"
+    ok "$path -> $target"
 }
 
 # lspci lives in pciutils, which is not guaranteed to be installed; the
@@ -139,6 +155,7 @@ curl:curl:req
 grim:grim:req
 slurp:slurp:req
 wl-copy:wl-clipboard:req
+canberra-gtk-play:libcanberra-gtk3:opt
 brightnessctl:brightnessctl:opt
 playerctl:playerctl:opt
 "
@@ -205,20 +222,48 @@ fi
 
 # --- fonts ------------------------------------------------------------------
 step "Material Symbols Rounded"
+# Applications that use a few of these icons ship their own cut of the font
+# under the same family name. One of those outranking the full font is not a
+# missing-font failure and does not look like one: the icons are ligatures, so
+# Qt falls back to a text font and the bar reads "queue_music" in words. The
+# rule drops subsets, and goes in before anything is matched below.
+link "$REPO/assets/fontconfig/$MSR_CONF" "$HOME/.config/fontconfig/conf.d/$MSR_CONF"
+
+# Installed means a font of that family that can spell an icon name, which is
+# asked for by demanding U+005F alongside it: the full font carries the Latin
+# letters and underscore its ligatures are written with, and a cut of icon
+# glyphs does not. A machine holding nothing but somebody's subset answers the
+# plain lookup and cannot draw one icon on this bar, so the plain lookup is not
+# the question.
 # grep -q closes the pipe early, which trips pipefail; match on the string instead.
-if [ "$(fc-match -f '%{family}' 'Material Symbols Rounded' 2>/dev/null)" = 'Material Symbols Rounded' ]; then
-    ok "font installed"
-elif ask "not found — download it from github.com/google/material-design-icons?"; then
-    mkdir -p "$FONT_DIR"
-    if curl -fL --progress-bar -o "$FONT_DIR/$MSR_FILE" "$MSR_URL"; then
-        fc-cache -f "$FONT_DIR" >/dev/null
-        ok "installed to $FONT_DIR"
+if [ "$(fc-match -f '%{family}' 'Material Symbols Rounded:charset=5f' 2>/dev/null)" != 'Material Symbols Rounded' ]; then
+    if ask "not found — download it from github.com/google/material-design-icons?"; then
+        mkdir -p "$FONT_DIR"
+        if curl -fL --progress-bar -o "$FONT_DIR/$MSR_FILE" "$MSR_URL"; then
+            fc-cache -f "$FONT_DIR" >/dev/null
+            ok "installed to $FONT_DIR"
+        else
+            rm -f "$FONT_DIR/$MSR_FILE"
+            fail "download failed — every icon in the bar will render as its own name"
+        fi
     else
-        rm -f "$FONT_DIR/$MSR_FILE"
-        fail "download failed — every icon in the bar will render as a box"
+        warn "without it every icon in the bar renders as its own name"
     fi
-else
-    warn "without it every icon in the bar renders as a box"
+fi
+
+# Which file answers the plain lookup, now that the full font is known to be
+# there: the rule above only drops the subsets that name themselves one, and any
+# other file claiming this family can still outrank it. Both lookups have to
+# come back with the same file.
+if [ "$(fc-match -f '%{family}' 'Material Symbols Rounded:charset=5f' 2>/dev/null)" = 'Material Symbols Rounded' ]; then
+    msr_plain=$(fc-match -f '%{file}' 'Material Symbols Rounded' 2>/dev/null)
+    msr_full=$(fc-match -f '%{file}' 'Material Symbols Rounded:charset=5f' 2>/dev/null)
+    if [ "$msr_plain" = "$msr_full" ]; then
+        ok "resolves to $msr_plain"
+    else
+        warn "resolves to $msr_plain, which cannot spell the bar's icon names"
+        warn "the full font is $msr_full — add the file above to $MSR_CONF"
+    fi
 fi
 
 step "caelusevka"
@@ -242,20 +287,6 @@ fi
 
 # --- config link ------------------------------------------------------------
 step "Config"
-link() {  # link <target> <link-path>
-    local target=$1 path=$2
-    mkdir -p "$(dirname "$path")"
-    if [ "$(readlink -f "$path" 2>/dev/null)" = "$(readlink -f "$target")" ]; then
-        ok "$path"
-        return
-    fi
-    if [ -e "$path" ] && [ ! -L "$path" ]; then
-        mv "$path" "$path.bak"
-        warn "existing $path moved to $path.bak"
-    fi
-    ln -sfn "$target" "$path"
-    ok "$path -> $target"
-}
 
 link "$REPO" "$HOME/.config/quickshell/$CONFIG"
 link "$REPO/scripts/mic-toggle.sh" "$HOME/.config/hypr/scripts/mic-toggle.sh"

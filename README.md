@@ -22,7 +22,8 @@
 |---|---|
 | **Bar** | workspaces, media, clock, tray, network, audio, mic, keyboard layout, disk |
 | **System** | CPU / GPU / memory pill, per-part detail, process killer |
-| **Notifications** | grouped popups + history center, do-not-disturb |
+| **Notifications** | grouped popups + history center, do-not-disturb that WhatsApp and reminders ring through |
+| **Reminders** | timers and alarms set from the calendar, they ring as notifications |
 | **OSD** | keyboard layout overlay |
 | **Power** | logout / reboot / shutdown / lock menu, over `hyprshutdown` |
 | **Claude** | live session table, lifetime spend, usage charts, cost rules |
@@ -108,6 +109,7 @@ lifetime, which for anything long-running is a number about last week.
 - `pipewire` + `wireplumber`, `NetworkManager`, `jq`, `gawk`, `procps-ng`
 - Two fonts: **Material Symbols Rounded** for every icon, **caelusevka** for every label
 - Optional: `nvidia-settings` (GPU readout), `brightnessctl` (brightness OSD),
+  `libcanberra-gtk3` (the sound a reminder makes; it still notifies without it),
   the Claude Code CLI (the Claude panel is empty without `~/.claude`)
 
 `install.sh` checks and installs all of it — see
@@ -146,7 +148,7 @@ rd-shell/
 ├── shell.qml            # entry point: one Bar per screen, four IPC handlers
 ├── Bar.qml              # the bar itself — pill order, panel loaders
 ├── BarPopup.qml         # shared card/notch/grow/dismiss for every panel
-├── CalendarPopup.qml    # the month, hung under the clock on right-click
+├── CalendarPopup.qml    # the month and its reminders, hung under the clock on right-click
 ├── DiskPopup.qml        # per-filesystem breakdown, under the disk pill
 ├── MediaPopup.qml       # every loaded player, play/pause each one
 ├── Sys*.qml             # system monitor pill and its tabbed panel
@@ -158,6 +160,7 @@ rd-shell/
 ├── Services/            # singletons: Audio, Network, Disk, SysMon, Claude*, …
 ├── scripts/             # the shell scripts the services poll
 ├── assets/fonts/        # caelusevka, bundled because no repo ships it
+├── assets/fontconfig/   # keeps the icon family resolving to the full font
 ├── install.sh           # one-time setup
 └── launch.sh            # autostart entry — brings audio up, then execs qs
 ```

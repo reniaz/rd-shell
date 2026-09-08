@@ -37,6 +37,25 @@ Singleton {
         return m + "m";
     }
 
+    // A moment still to come, as a bar reads it: seconds while there are fewer
+    // than sixty, then minutes, then the clock time it lands on -- a countdown
+    // of eleven hours is read as a time of day anyway, and the day is only worth
+    // printing when it is not this one. `now` is passed in rather than read from
+    // the clock here, so every countdown on screen agrees to the second.
+    function countdown(at, now) {
+        const secs = Math.max(0, Math.round((at - now) / 1000));
+        if (secs < 60) return secs + "s";
+        if (secs < 3600) return Math.ceil(secs / 60) + "m";
+
+        const when = new Date(at);
+        const today = new Date(now);
+        const sameDay = when.getFullYear() === today.getFullYear()
+            && when.getMonth() === today.getMonth()
+            && when.getDate() === today.getDate();
+
+        return Qt.formatDateTime(when, sameDay ? "HH:mm" : "ddd HH:mm");
+    }
+
     // Whole degrees. Tenths from a thermal sensor are noise -- the same silicon
     // reads two degrees apart depending on which core answered.
     function temp(celsius) {

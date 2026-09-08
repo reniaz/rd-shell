@@ -69,6 +69,12 @@ PanelWindow {
                 onClicked: mouse => mouse.button === Qt.RightButton
                     ? mediaPill.open = !mediaPill.open
                     : Media.toggle()
+
+                // Turns down the player the pill is showing rather than the
+                // sink, so quietening a video leaves the music alone. Same
+                // notch the volume pill uses, so the wheel means one thing
+                // along the whole bar.
+                onWheel: wheel => Media.stepVolume(null, wheel.angleDelta.y > 0 ? 0.05 : -0.05)
             }
 
             // The last player quitting takes this pill off the bar. Forgetting
@@ -107,22 +113,27 @@ PanelWindow {
 
         Pill {
             id: clockPill
-            property bool expanded: false
+            property bool showReminder: false
             property bool calendarOpen: false
 
             icon: "schedule"
-            label: expanded ? `${Time.time} | ${Time.date}` : Time.time
+            // What is next to go off, in the place the date used to sit -- a
+            // timer is set to be glanced at, and the date is a right-click away
+            // in the month itself.
+            label: clockPill.showReminder
+                ? `${Time.time} | ${Reminders.next ? Format.countdown(Reminders.next.at, Reminders.now) : "no timer"}`
+                : Time.time
 
             MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
 
-                // Left still folds the date into the pill; right hangs the whole
-                // month under it.
+                // Left folds in what is next; right hangs the whole month under
+                // it, which is where reminders are set.
                 onClicked: mouse => mouse.button === Qt.RightButton
                     ? clockPill.calendarOpen = !clockPill.calendarOpen
-                    : clockPill.expanded = !clockPill.expanded
+                    : clockPill.showReminder = !clockPill.showReminder
             }
         }
     }
