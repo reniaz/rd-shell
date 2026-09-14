@@ -298,7 +298,7 @@ Item {
                 anchors.margins: -4
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: ClaudeSession.focusWindow(root.window)
+                onClicked: Workspaces.focusWindow(root.window)
             }
         }
     }

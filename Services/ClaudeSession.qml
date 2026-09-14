@@ -207,20 +207,6 @@ Singleton {
         return Colors.claudeAccent;
     }
 
-    // Dispatched exactly the way Services/Workspaces.qml dispatches, and for the
-    // same reason: under a Lua config every dispatch is evaluated as Lua source,
-    // so the native `focuswindow address:0x...` is a syntax error there -- Lua
-    // reads `address:0x...` as a method call and rejects it -- whether it is
-    // sent through Hyprland.dispatch or through hyprctl. That was the whole bug:
-    // the button dispatched, Hyprland answered with a Lua parse error, and
-    // nothing moved. hl.dsp.focus also carries the workspace switch, so one call
-    // both raises the window and takes you to it.
-    function focusWindow(address) {
-        if (!address || address === "") return;
-        if (Hyprland.usingLua) Hyprland.dispatch(`hl.dsp.focus({ window = "address:${address}" })`);
-        else Hyprland.dispatch(`focuswindow address:${address}`);
-    }
-
     // Dismisses a finished background job by deleting the directory the status
     // script discovers it through. The row is dropped here as well so the click
     // lands immediately instead of waiting out the 2s poll.

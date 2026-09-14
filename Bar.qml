@@ -61,14 +61,17 @@ PanelWindow {
 
             MouseArea {
                 anchors.fill: parent
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
 
                 // Left toggles whatever the pill is showing; right asks which
-                // player it should have been showing.
-                onClicked: mouse => mouse.button === Qt.RightButton
-                    ? mediaPill.open = !mediaPill.open
-                    : Media.toggle()
+                // player it should have been showing; middle goes to the window
+                // the sound is coming out of.
+                onClicked: mouse => {
+                    if (mouse.button === Qt.RightButton) mediaPill.open = !mediaPill.open;
+                    else if (mouse.button === Qt.MiddleButton) Media.focusWindow();
+                    else Media.toggle();
+                }
 
                 // Turns down the player the pill is showing rather than the
                 // sink, so quietening a video leaves the music alone. Same
@@ -215,6 +218,12 @@ PanelWindow {
         }
 
         Pill {
+            id: micPill
+
+            // Same reasoning as the disk pill's: which bar you right-clicked is
+            // the whole question, and a second monitor's pill has its own answer.
+            property bool open: false
+
             icon: Audio.micMuted ? "mic_off" : "mic"
             label: Audio.micPercent + "%"
             iconColor: Colors.micIcon
@@ -226,14 +235,25 @@ PanelWindow {
                 cursorShape: Qt.PointingHandCursor
 
                 onClicked: mouse => mouse.button === Qt.RightButton
-                    ? Audio.openSettings(4)
+                    ? micPill.open = !micPill.open
                     : Audio.toggleMicMute()
 
                 onWheel: wheel => Audio.setMicVolume(Audio.micVolume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05))
             }
+
+            // The default source disappearing takes this pill off the bar.
+            // Forgetting the open state with it is what stops the card
+            // reappearing on its own when a mic is plugged back in.
+            onVisibleChanged: if (!visible) micPill.open = false
         }
 
         Pill {
+            id: volumePill
+
+            // Same reasoning as the disk pill's: which bar you right-clicked is
+            // the whole question, and a second monitor's pill has its own answer.
+            property bool open: false
+
             icon: Audio.muted == false ? "volume_up" : "volume_off"
             label: Audio.percent + "%"
             iconColor: Colors.volumeIcon
@@ -244,7 +264,7 @@ PanelWindow {
                 cursorShape: Qt.PointingHandCursor
 
                 onClicked: mouse => mouse.button === Qt.RightButton
-                    ? Audio.openSettings(3)
+                    ? volumePill.open = !volumePill.open
                     : Audio.toggleMute()
 
                 onWheel: wheel => Audio.setVolume(Audio.volume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05))
@@ -373,6 +393,34 @@ PanelWindow {
             screen: bar.modelData
             anchorX: bar.mediaAnchorX
             onDismissed: mediaPill.open = false
+        }
+    }
+
+    // Same pill, same reasoning as the disk popup above: rightGroup sits
+    // directly in the window, so its x plus the pill's is already
+    // window-relative and stays live as the pills either side change width.
+    LazyLoader {
+        active: volumePill.open
+
+        AudioPopup {
+            screen: bar.modelData
+            anchorX: rightGroup.x + volumePill.x + volumePill.width / 2
+            onDismissed: volumePill.open = false
+        }
+    }
+
+    // Closed with the pill it hangs from, same as the media popup above: the
+    // default source disappearing takes the pill off the bar, and a card
+    // left pointing at a gap is not dismissable by clicking the icon that
+    // opened it.
+    LazyLoader {
+        active: micPill.open && Audio.micReady
+
+        AudioPopup {
+            capture: true
+            screen: bar.modelData
+            anchorX: rightGroup.x + micPill.x + micPill.width / 2
+            onDismissed: micPill.open = false
         }
     }
 

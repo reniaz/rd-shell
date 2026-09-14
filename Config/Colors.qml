@@ -190,6 +190,18 @@ Singleton {
     // happens to be draggable.
     readonly property color mediaTrack: surfaceHover
 
+    // ── audio popup ──────────────────────────────────────────
+    // The volume and mic pills keep their own green and red so a glance along
+    // the bar still tells muted from live, but the cards they open speak in
+    // the main accent like every other popup -- once it's open it's the bar
+    // talking, not the pill.
+    readonly property color audioTitle: fg
+    readonly property color audioBody: fgDim
+    readonly property color audioMeta: fgMuted
+    readonly property color audioCard: surfaceRaised
+    readonly property color audioTrack: surfaceHover
+    readonly property color audioActive: popupAccent   // the device currently in use
+
     // ── calendar ─────────────────────────────────────────────
     // Today wears the main accent as a filled disc, so the one cell that matters
     // is found before the month name has been read. Days from the neighbouring

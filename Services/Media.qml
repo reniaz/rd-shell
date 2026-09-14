@@ -1,7 +1,7 @@
 pragma Singleton
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Services.Mpris
-import Quickshell.Services.Pipewire
 
 Singleton {
     id: root
@@ -31,11 +31,9 @@ Singleton {
     // 84%, and plenty of players never implement the bus property at all.
     // Turning one of these down leaves the sink -- and so every other player --
     // where it was, which is the whole point of asking here rather than at the
-    // volume pill.
-    readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.isSink)
-
-    // Volume is only readable and writable on a bound node.
-    PwObjectTracker { objects: root.streams }
+    // volume pill. Audio owns PipeWire and its tracker now; Media only matches
+    // MPRIS players to the streams Audio already binds.
+    readonly property var streams: Audio.sinkStreams
 
     // The stream carrying a player's sound, or null while it has none: PipeWire
     // drops an application's stream once it stops feeding the graph. Matched by
@@ -47,17 +45,57 @@ Singleton {
         const p = target ?? player;
         if (!p) return null;
 
-        const wanted = [
-            slug(p.identity),
-            slug(p.desktopEntry?.split(".").pop()),
-            slug(p.dbusName?.replace("org.mpris.MediaPlayer2.", "").split(".")[0])
-        ].filter(n => n.length >= 3);
+        const wanted = namesFor(p);
 
         return streams.find(s => [
             s.name,
             s.properties["application.name"],
             s.properties["application.process.binary"]
         ].map(slug).some(k => k.length >= 3 && wanted.some(n => k.includes(n) || n.includes(k)))) ?? null;
+    }
+
+    // Every name a player may be known by away from the bus: what it calls
+    // itself, the desktop entry it points at, and the head of its bus name.
+    // Both the stream carrying its sound and the window it plays out of are
+    // found by these, so they are written down once.
+    function namesFor(p) {
+        return [
+            slug(p.identity),
+            slug(p.desktopEntry?.split(".").pop()),
+            slug(p.dbusName?.replace("org.mpris.MediaPlayer2.", "").split(".")[0])
+        ].filter(n => n.length >= 3);
+    }
+
+    // The window the sound is coming out of, or null while there is none: mpd
+    // and playerctld answer MPRIS without ever owning one.
+    //
+    // Matched by app id and by the same names as the stream, because that is
+    // what the two sides share. A pid would be exact, but neither side offers
+    // one: Hyprland's toplevels carry an empty lastIpcObject until something
+    // asks for a refresh, and PipeWire leaves application.process.id unset on
+    // plenty of streams, Spotify's included.
+    function windowFor(target) {
+        const p = target ?? player;
+        if (!p) return null;
+
+        const wanted = namesFor(p);
+        const candidates = Hyprland.toplevels.values.filter(w => {
+            const id = slug(w.wayland?.appId);
+            return id.length >= 3 && wanted.some(n => id.includes(n) || n.includes(id));
+        });
+
+        // One browser, four windows: the one whose title carries the track is
+        // the one playing it.
+        const track = slug(p.trackTitle);
+        return (track.length >= 3 ? candidates.find(w => slug(w.title).includes(track)) : null)
+            ?? candidates[0] ?? null;
+    }
+
+    // Middle click, wherever a player is shown on the bar: raise what is making
+    // the sound and go to it. A player with no window leaves the click doing
+    // nothing rather than moving you somewhere unrelated.
+    function focusWindow(target) {
+        Workspaces.focusWindow(windowFor(target)?.address ?? "");
     }
 
     function volumeOf(target) {

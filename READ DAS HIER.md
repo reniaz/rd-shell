@@ -113,6 +113,7 @@ What each bind is for:
 | `Ctrl+Shift+M` / `XF86AudioMicMute` | Mute/unmute mic via `mic-toggle.sh`, locked+repeating so it works while held or on a laptop's dedicated key |
 | `Ctrl+Shift+Space` | Cycle keyboard layout — this is what the keyboard pill and its OSD react to |
 | `Ctrl+Alt+Up` | Area screenshot via `screenshot.sh`, copies to clipboard |
+| `Super + H` | Keybind cheat sheet via `keybinds.sh` — rofi, themed like the launcher, built from `hyprctl binds` |
 
 **Super+C is not bound on this machine**, even though older docs in this repo
 claim it opens the Claude panel. The Claude and system panels have no bind of
@@ -155,7 +156,7 @@ on click unless noted:
 
 | Pill | Opens with | Notes |
 |---|---|---|
-| Media | left-click toggles the player the pill is showing, right-click lists every loaded player | each row plays or pauses on click; the sounding ones are outlined |
+| Media | left-click toggles the player the pill is showing, middle-click goes to the window its sound is coming out of, right-click lists every loaded player | each row plays or pauses on click and goes to that player's window on middle-click, closing the card behind it; the sounding ones are outlined. The window is found by pid where PipeWire names one and by window class otherwise, so a player with no window of its own (mpd, playerctld) leaves the middle click doing nothing |
 | Clock | right-click | the month, with today filled; the arrows page it and the month name returns to this one. Under the grid: a line of text plus `HH:MM` sets an alarm on the day you clicked in the grid (today unless you click another), and the `5m / 15m / 30m / 1h` chips set a timer that far from now. Both ring as a notification with a sound, do-not-disturb included, both survive a reload, and both list above the fields with a live countdown and an ✕ to drop them |
 | System readout | left-click | tabs: Processor, Graphics, Memory; can SIGTERM/SIGKILL a process from the process lists |
 | Claude | left-click | tabs: Sessions, Usage, Statistics, Optimize |
@@ -187,6 +188,7 @@ Other scripts, bound from Hyprland rather than polled:
 |---|---|
 | `scripts/mic-toggle.sh` | mic pill click, `Ctrl+Shift+M`, `XF86AudioMicMute` |
 | `scripts/screenshot.sh` | `Ctrl+Alt+Up` (area capture, copies to clipboard) |
+| `scripts/keybinds.sh` | `Super+H` (rofi cheat sheet of every Hyprland bind; needs `rofi` and `jq`) |
 
 Everything above needs its command on `PATH`; `install.sh` checks each one and
 tells you which package provides it. `hyprctl` is used by the workspace dots,
@@ -223,6 +225,7 @@ with itself about whether 9.4G rounds to 9G.
 ~/.config/quickshell/rd-shell         -> this repo
 ~/.config/hypr/scripts/mic-toggle.sh  -> scripts/mic-toggle.sh
 ~/.config/hypr/scripts/screenshot.sh  -> scripts/screenshot.sh
+~/.config/hypr/scripts/keybinds.sh    -> scripts/keybinds.sh
 $XDG_RUNTIME_DIR/rd-shell.log         -- shell's own log
 ~/.cache/qs-bar/                      -- claude-global.sh's per-file transcript cache
 ```

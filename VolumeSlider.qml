@@ -1,0 +1,89 @@
+import QtQuick
+import QtQuick.Layouts
+import qs.Config
+
+// One drag-and-wheel volume row. Extracted out of the media card so the
+// output, input and per-app sliders all move volume the same way -- one
+// place to get the grab area and the wheel notch right, not three.
+RowLayout {
+    id: root
+
+    property real value: 0            // 0..1
+    property bool muted: false
+    property string icon: "volume_down"      // glyph when not muted
+    property string mutedIcon: "volume_off"
+    property color accent: Colors.popupAccent
+    property bool showPercent: true
+
+    signal moved(real value)          // drag/press: absolute 0..1
+    signal toggled()                  // mute glyph clicked
+    signal stepped(real delta)        // wheel: +0.05 / -0.05, already signed
+
+    spacing: 8
+
+    Text {
+        text: root.muted ? root.mutedIcon : root.icon
+        color: root.muted ? Colors.audioMeta : root.accent
+        font.family: "Material Symbols Rounded"
+        font.pixelSize: 15
+
+        MouseArea {
+            anchors.fill: parent
+            anchors.margins: -4
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.toggled()
+            onWheel: wheel => root.stepped(wheel.angleDelta.y > 0 ? 0.05 : -0.05)
+        }
+    }
+
+    Rectangle {
+        id: track
+
+        Layout.fillWidth: true
+        implicitHeight: 6
+        radius: height / 2
+        color: Colors.audioTrack
+
+        Rectangle {
+            width: Math.round(track.width * root.value)
+            height: parent.height
+            radius: parent.radius
+            color: root.muted ? Colors.audioMeta : root.accent
+
+            Behavior on color { ColorAnimation { duration: 120 } }
+        }
+
+        // Grown vertically only: a six pixel target is not one, and widening
+        // it would put the grab point somewhere other than under the cursor.
+        MouseArea {
+            anchors.fill: parent
+            anchors.topMargin: -8
+            anchors.bottomMargin: -8
+            cursorShape: Qt.PointingHandCursor
+            onPressed: mouse => root.moved(mouse.x / width)
+            onPositionChanged: mouse => {
+                if (pressed) root.moved(mouse.x / width);
+            }
+            onWheel: wheel => root.stepped(wheel.angleDelta.y > 0 ? 0.05 : -0.05)
+        }
+    }
+
+    Text {
+        Layout.preferredWidth: 32
+        visible: root.showPercent
+        text: Math.round(root.value * 100) + "%"
+        color: root.muted ? Colors.audioMeta : Colors.audioBody
+        font.family: "caelusevka"
+        font.pixelSize: 12
+        horizontalAlignment: Text.AlignRight
+
+        // The number is small but still worth a wheel target: without this
+        // the notch only lands on the icon or the track, leaving a dead
+        // strip on the one row that has no slack width to spare.
+        MouseArea {
+            anchors.fill: parent
+            anchors.margins: -4
+            onWheel: wheel => root.stepped(wheel.angleDelta.y > 0 ? 0.05 : -0.05)
+        }
+    }
+}
