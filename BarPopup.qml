@@ -25,7 +25,11 @@ PanelWindow {
 
     // Held open by whoever owns the popup's state. Deliberately not the loader's
     // own lifetime: dropping this plays the card back into the icon, and the
-    // window has to outlive that animation to be seen doing it.
+    // window has to outlive that animation to be seen doing it. PopupLoader is
+    // what buys it that time and what writes this on the way down, so every
+    // popup in the bar is loaded through one -- see PopupLoader.qml. True by
+    // default because the window is built before its loader can reach it, and
+    // the card must be grown, not collapsed, on the frame it first appears.
     property bool open: true
 
     property string namespace: "qs-popup"
@@ -38,6 +42,18 @@ PanelWindow {
     property bool _entered: false
     readonly property bool _shown: root._entered && root.open
 
+    // Raised once the card has stopped arriving, and used for nothing but arming
+    // the position and height animations below. A timer rather than a signal
+    // because there is no one moment to listen for: the geometry comes from the
+    // compositor and from a layout pass, and neither says when it is finished.
+    property bool _settled: false
+
+    Timer {
+        interval: 220
+        running: true
+        onTriggered: root._settled = true
+    }
+
     anchors { left: true; right: true; top: true; bottom: true }
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
@@ -46,6 +62,17 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
     WlrLayershell.namespace: root.namespace
     color: "transparent"
+
+    // The window is the whole screen and sits on the overlay layer, so for as
+    // long as it exists it is also what every click on that screen lands on.
+    // That is exactly right while the card is open -- clicking off it is how you
+    // dismiss it -- and exactly wrong for the fifth of a second it now spends
+    // leaving: a click meant for whatever the card was covering must not be
+    // eaten by something already on its way out. An empty region hands those
+    // milliseconds back; a null mask is the default, the whole surface.
+    mask: root.open ? null : closedMask
+
+    Region { id: closedMask }
 
     // Declared before the card, so it sits underneath and only ever sees the
     // clicks that missed it. This also covers the pill itself: the popup is on
@@ -66,6 +93,21 @@ PanelWindow {
         // in the bar's right-hand group, so a card centred on one would other-
         // wise hang off the side of the screen.
         x: Math.round(Math.max(14, Math.min(root.width - width - 14, root.anchorX - width / 2)))
+
+        // The pills either side of the anchor change width as they live -- the
+        // clock's countdown reflows once a second, a media title scrolls in --
+        // and every one of those moves the anchor this card is centred on. Left
+        // unanimated, an open card and its notch teleport sideways while you are
+        // reading them. Short enough to keep the card feeling stuck to its pill,
+        // and armed on the same gate as the height below: the screen width this
+        // is clamped against is zero until the compositor configures the layer
+        // surface, so an ungated card would slide in from the left edge on every
+        // single open.
+        Behavior on x {
+            enabled: root._settled
+            NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+        }
+
         // The bar is 40 tall; the rest is the gap the pills already float in.
         y: 46
 
@@ -81,9 +123,20 @@ PanelWindow {
 
         // Popups that size to their content change height while open -- a tab
         // switch, a notification arriving. Animated so the card is seen to fold
-        // rather than to jump. Behaviors do not run during creation, so this
-        // costs the opening frame nothing.
-        Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+        // rather than to jump.
+        //
+        // Armed late, and not merely left to QML's rule that a Behavior does not
+        // run during creation. A popup's real height is not known at creation: a
+        // window anchored to the screen is told its size by the compositor a
+        // round trip later, and a layout does not measure itself until it has
+        // been through a pass. Both land after creation, when the Behavior is
+        // already live, so without the gate every card appeared at the 80px
+        // floor above and was then seen to unfold to its true size -- a resize
+        // that was never a change of mind, only the card learning what it was.
+        Behavior on height {
+            enabled: root._settled
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
 
         radius: 18
         color: Colors.popupBg

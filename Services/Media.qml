@@ -6,7 +6,13 @@ import Quickshell.Services.Mpris
 Singleton {
     id: root
 
+    // playerctld is left out: it is a proxy, not a player. It answers the bus
+    // with whatever the last active player said -- Spotify's identity, desktop
+    // entry and track, all of it -- so leaving it in listed every real player
+    // twice and counted it twice. Told apart by bus name because that is the
+    // only thing it does not copy.
     readonly property var players: Mpris.players.values
+        .filter(p => !(p.dbusName ?? "").startsWith("org.mpris.MediaPlayer2.playerctld"))
 
     // Whatever is playing wins; otherwise fall back to a paused player that
     // still has a track loaded.
@@ -115,6 +121,38 @@ Singleton {
     function toggleMute(target) {
         const audio = streamFor(target)?.audio;
         if (audio) audio.muted = !audio.muted;
+    }
+
+    // ── transport ────────────────────────────────────────────
+    // Everything a player offers past play and pause. Each one is asked for
+    // only where the player says it has it, so nothing is sent down the bus
+    // that the far end will refuse: Spotify answers all four, mpv on a single
+    // file answers none.
+    function next(target) {
+        const p = target ?? player;
+        if (p?.canGoNext) p.next();
+    }
+
+    function previous(target) {
+        const p = target ?? player;
+        if (p?.canGoPrevious) p.previous();
+    }
+
+    function toggleShuffle(target) {
+        const p = target ?? player;
+        if (p?.shuffleSupported) p.shuffle = !p.shuffle;
+    }
+
+    // Off, then the whole list, then the one track. The order every player with
+    // a repeat button already cycles in, so a click lands where it is expected
+    // to rather than where MPRIS happens to list the states.
+    function cycleLoop(target) {
+        const p = target ?? player;
+        if (!p?.loopSupported) return;
+
+        p.loopState = p.loopState === MprisLoopState.None ? MprisLoopState.Playlist
+            : p.loopState === MprisLoopState.Playlist ? MprisLoopState.Track
+            : MprisLoopState.None;
     }
 
     function slug(text) {

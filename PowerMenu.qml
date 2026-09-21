@@ -15,7 +15,16 @@ PanelWindow {
     property string stage: "choose"
     property int index: 0
     property var pending: null
-    property bool shown: false
+
+    // Written by the PopupLoader that owns this window, which holds it alive
+    // long enough for the dissolve below to be seen -- see PopupLoader.qml.
+    // True by default because the window exists before its loader can reach it.
+    property bool open: true
+
+    // Raised once the window exists, so the first frame drawn is the undimmed
+    // one and the menu is seen to come in rather than arriving already there.
+    property bool _entered: false
+    readonly property bool shown: root._entered && root.open
 
     readonly property var options: stage === "choose"
         ? Power.actions
@@ -24,11 +33,25 @@ PanelWindow {
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    // Exclusive while the menu is up: it is driven with the arrow keys and
+    // Enter, and a keystroke meant for it landing in whatever is behind it would
+    // be worse than one lost here. Given back the instant it starts leaving --
+    // the grab is the whole keyboard, and holding it through an animation nobody
+    // can type into swallows a fifth of a second of input after every dismissal.
+    WlrLayershell.keyboardFocus: root.open
+        ? WlrKeyboardFocus.Exclusive
+        : WlrKeyboardFocus.None
     WlrLayershell.namespace: "qs-power"
     color: "transparent"
 
-    Component.onCompleted: shown = true
+    // Same reasoning as BarPopup's: the window covers the screen and outlives
+    // its own fade now, and a click aimed at what the menu was covering must not
+    // be eaten by a menu already on its way out.
+    mask: root.open ? null : closedMask
+
+    Region { id: closedMask }
+
+    Component.onCompleted: root._entered = true
 
     function activate(i) {
         root.index = i;

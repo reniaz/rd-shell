@@ -13,7 +13,12 @@ PanelWindow {
     screen: modelData
     anchors { top: true; left: true; right: true }
     implicitHeight: 40
-    color: "transparent"
+    // One surface edge to edge, not a transparent strip with islands floating
+    // in it. The colour comes from the wallpaper by way of pywal, so changing
+    // the picture changes the bar with it.
+    color: Colors.barBg
+
+    Behavior on color { ColorAnimation { duration: 200 } }
 
     // leftGroup sits directly in the window, so its x plus the pill's is
     // already window-relative and stays live as the workspace dots beside it
@@ -24,6 +29,13 @@ PanelWindow {
     // centerGroup is centred in the window rather than laid out from an edge,
     // but it is still a direct child of it, so its x needs no conversion either.
     readonly property real clockAnchorX: centerGroup.x + clockPill.x + clockPill.width / 2
+
+    // rightGroup is laid out from the far edge and is likewise a direct child,
+    // so the same sum holds. Named here rather than written out at the loader,
+    // the way the disk and volume popups still do it, because the network pill
+    // has pills on both sides of it that come and go -- the tray appearing and
+    // the mic being unplugged each move it, and this keeps that in one place.
+    readonly property real networkAnchorX: rightGroup.x + networkPill.x + networkPill.width / 2
 
     RowLayout {
         id: leftGroup
@@ -272,16 +284,29 @@ PanelWindow {
         }
 
         Pill {
+            id: networkPill
+
+            // Same reasoning as the disk pill's: which bar you clicked is the
+            // whole question, and a second monitor's pill has its own answer.
+            property bool open: false
+
             icon: Network.wired ? "lan" : Network.connected ? "wifi" : "wifi_off"
             label: Network.wired ? "ETH" : Network.connected ? Network.name : "Offline"
             iconColor: Colors.networkIcon
 
             MouseArea {
                 anchors.fill: parent
-                acceptedButtons: Qt.RightButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
 
-                onClicked: Network.openSettings()
+                // Left hangs the throughput card under the pill -- what the
+                // link is actually carrying, which is the question the pill's
+                // own name and icon cannot answer. Right keeps what this pill
+                // has always done and hands the connection to NetworkManager's
+                // settings page.
+                onClicked: mouse => mouse.button === Qt.RightButton
+                    ? Network.openSettings()
+                    : networkPill.open = !networkPill.open
             }
         }
 
@@ -324,8 +349,17 @@ PanelWindow {
         ?? Quickshell.screens[0]?.name
         ?? ""
 
-    LazyLoader {
-        active: Power.menuOpen && bar.modelData.name === bar.overlayScreen
+    // Every overlay below is held by a PopupLoader rather than a bare LazyLoader,
+    // and the difference is the whole of the exit animation: a LazyLoader wired
+    // straight to an open flag destroys its window on the frame that flag drops,
+    // so the card never gets to play itself back into the icon it came out of.
+    // PopupLoader keeps the window for one animation's worth of time after the
+    // flag goes, and writes the flag into the window on the way down so it knows
+    // to leave. Which of the two kinds of open state it is handed -- a Pill's,
+    // or a service's -- it does not care; see PopupLoader.qml.
+
+    PopupLoader {
+        open: Power.menuOpen && bar.modelData.name === bar.overlayScreen
 
         PowerMenu {
             screen: bar.modelData
@@ -333,9 +367,24 @@ PanelWindow {
         }
     }
 
-    LazyLoader {
-        active: (Notifications.panelOpen || Notifications.panelClosing)
-            && bar.modelData.name === bar.overlayScreen
+    // The same one-screen rule as the power menu: the switcher takes the keyboard
+    // exclusively, so two of them would fight over it, and a strip of wallpapers
+    // is only wanted on the screen you are looking at. It closes itself through
+    // the service rather than a dismissed signal, because applying a wallpaper
+    // has to shut it too and only Wallpapers knows when that happened.
+    PopupLoader {
+        open: Wallpapers.panelOpen && bar.modelData.name === bar.overlayScreen
+
+        WallpaperSwitcher {
+            screen: bar.modelData
+        }
+    }
+
+    // Held open by the service and not by this loader alone, because Escape, the
+    // bell and the IPC handler can all shut this panel and only one of them is
+    // that window.
+    PopupLoader {
+        open: Notifications.panelOpen && bar.modelData.name === bar.overlayScreen
 
         NotificationPanel {
             screen: bar.modelData
@@ -347,8 +396,8 @@ PanelWindow {
     // Not gated on overlayScreen the way the keybind-driven overlays are: this
     // one is opened by a click on a specific bar, so it belongs to that screen
     // whether or not the pointer left the focused one.
-    LazyLoader {
-        active: SysMon.panelOpen && bar.modelData.name === bar.overlayScreen
+    PopupLoader {
+        open: SysMon.panelOpen && bar.modelData.name === bar.overlayScreen
 
         SysPopup {
             screen: bar.modelData
@@ -357,8 +406,8 @@ PanelWindow {
         }
     }
 
-    LazyLoader {
-        active: diskPill.open
+    PopupLoader {
+        open: diskPill.open
 
         DiskPopup {
             screen: bar.modelData
@@ -373,8 +422,8 @@ PanelWindow {
     // Both of these are opened by a right-click on a specific bar, so they follow
     // the disk popup rather than the keybind-driven overlays: no overlayScreen
     // gate, and the open state lives on the pill that was clicked.
-    LazyLoader {
-        active: clockPill.calendarOpen
+    PopupLoader {
+        open: clockPill.calendarOpen
 
         CalendarPopup {
             screen: bar.modelData
@@ -385,9 +434,11 @@ PanelWindow {
 
     // Closed with the pill it hangs from: the last player quitting takes the
     // pill off the bar, and a card left pointing at a gap is not dismissable by
-    // clicking the icon that opened it.
-    LazyLoader {
-        active: mediaPill.open && Media.available
+    // clicking the icon that opened it. A player merely reloading no longer
+    // costs the card its window -- the loader's hold outlasts the blink, and
+    // the card is handed back instead of being built again.
+    PopupLoader {
+        open: mediaPill.open && Media.available
 
         MediaPopup {
             screen: bar.modelData
@@ -399,8 +450,8 @@ PanelWindow {
     // Same pill, same reasoning as the disk popup above: rightGroup sits
     // directly in the window, so its x plus the pill's is already
     // window-relative and stays live as the pills either side change width.
-    LazyLoader {
-        active: volumePill.open
+    PopupLoader {
+        open: volumePill.open
 
         AudioPopup {
             screen: bar.modelData
@@ -413,8 +464,8 @@ PanelWindow {
     // default source disappearing takes the pill off the bar, and a card
     // left pointing at a gap is not dismissable by clicking the icon that
     // opened it.
-    LazyLoader {
-        active: micPill.open && Audio.micReady
+    PopupLoader {
+        open: micPill.open && Audio.micReady
 
         AudioPopup {
             capture: true
@@ -424,25 +475,44 @@ PanelWindow {
         }
     }
 
-    LazyLoader {
-        active: KeyboardLayout.osdVisible && bar.modelData.name === bar.overlayScreen
+    // What the link is actually carrying, which is the one thing the pill's own
+    // name and icon cannot say. Opened by a click on a specific bar, so it is
+    // ungated like the disk and calendar cards rather than following the focused
+    // monitor.
+    PopupLoader {
+        open: networkPill.open
+
+        NetworkPopup {
+            screen: bar.modelData
+            anchorX: bar.networkAnchorX
+            onDismissed: networkPill.open = false
+        }
+    }
+
+    PopupLoader {
+        open: KeyboardLayout.osdVisible && bar.modelData.name === bar.overlayScreen
 
         KeyboardLayoutOsd { screen: bar.modelData }
     }
 
-    LazyLoader {
-        active: Notifications.popups.length > 0 && bar.modelData.name === bar.overlayScreen
+    // The whole stack is retired at once by Notifications' own popup timer, so
+    // this goes from several toasts to none in a single change. The loader holds
+    // the window through the slide that takes them back off the right edge.
+    PopupLoader {
+        open: Notifications.popups.length > 0 && bar.modelData.name === bar.overlayScreen
 
         NotificationPopups { screen: bar.modelData }
     }
 
-    LazyLoader {
-        active: (ClaudeSession.panelOpen || ClaudeSession.panelClosing)
-            && bar.modelData.name === bar.overlayScreen
+    // Held open by the service and not by this loader alone, because Escape, the
+    // pill, the panel's own close button and the IPC handler can all shut it and
+    // only one of them is that window.
+    PopupLoader {
+        open: ClaudeSession.panelOpen && bar.modelData.name === bar.overlayScreen
 
         ClaudePanel {
             screen: bar.modelData
-            // Same reasoning as the disk popup below: rightGroup sits directly
+            // Same reasoning as the disk popup above: rightGroup sits directly
             // in the window, so its x plus the pill's is already window-relative
             // and stays live as the pills either side change width.
             anchorX: rightGroup.x + claudePill.x + claudePill.width / 2

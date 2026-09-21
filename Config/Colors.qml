@@ -14,8 +14,18 @@ Singleton {
     readonly property color accentLight: "#f8ccab"  // theme --accent-1
     readonly property color accentDeep: "#d76e1d"   // theme --accent-5
 
+    // ── bar ──────────────────────────────────────────────────
+    // Nothing at all: the bar is a transparent strip and what shows through it
+    // is the wallpaper itself. This used to be the wallpaper's dominant tone,
+    // sampled per image so the bar matched it closely enough to disappear --
+    // showing the real thing is both simpler and exact. Config/Wal.qml and
+    // scripts/wallpaper-tone.sh still hold that machinery and still work; they
+    // are just no longer referenced, and a QML singleton nobody reads is never
+    // instantiated, so they cost nothing sitting there.
+    readonly property color barBg: "transparent"
+
     // ── surfaces ─────────────────────────────────────────────
-    readonly property color bg: "#000000"          // pill background
+    readonly property color bg: "#000000"          // popup buttons, pill icons
     readonly property color surface: "#1b1d1c"     // theme --bg-4
     readonly property color surfaceRaised: "#222623" // theme --bg-3
     readonly property color surfaceHover: "#38423b"  // theme --bg-1
@@ -244,6 +254,21 @@ Singleton {
     function usage(percent, base) {
         return percent >= 90 ? error : percent >= 75 ? accent : base;
     }
+
+    // ── network popup ────────────────────────────────────────
+    // The pill keeps its deep orange out on the bar and the card heads in the
+    // shared popup accent like every other one; what is new here is that the
+    // card draws two series at once, and down has to be told from up before
+    // either label has been read. So they are split warm against cool: download
+    // takes the bright accent, since it is the number that actually moves and it
+    // keeps the card in the pill's own family, and upload the coolest token in
+    // the palette, which no other popup spends on a series.
+    readonly property color networkTitle: fg
+    readonly property color networkBody: fgDim
+    readonly property color networkMeta: fgMuted
+    readonly property color networkTrack: surfaceHover
+    readonly property color networkDown: accentBright
+    readonly property color networkUp: templateColor8
 
     readonly property color dotActive: accent
     readonly property color dotOccupied: "#8a6a58"

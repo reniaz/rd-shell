@@ -43,8 +43,9 @@ Singleton {
         printErrors: false
 
         // The file is read asynchronously, so this is where a saved list
-        // actually arrives.
-        onLoaded: root.list = root._parse(store.text())
+        // actually arrives -- and where it arrives again after every write,
+        // since a file we have just written counts as loaded.
+        onLoaded: root._adopt(store.text())
     }
 
     // Distinguishes two reminders set for the same minute, so removing one from
@@ -80,14 +81,35 @@ Singleton {
         Quickshell.execDetached(["canberra-gtk-play", "-i", "alarm-clock-elapsed"]);
     }
 
+    // Only a list we could actually read is allowed to replace the one being
+    // held, and only when it differs from it.
+    //
+    // Two things come through onLoaded that must not land. One is the file we
+    // have just written being reported back: the chips in the calendar are a
+    // Repeater over `list`, and handing it a fresh array identity rebuilds every
+    // one of them -- so saving a reminder would destroy the chip in the middle
+    // of the animation that was introducing it. The other is an unreadable or
+    // half-written file, which used to resolve to an empty list; that emptied
+    // the calendar, and the next save then wrote the emptiness to disk and lost
+    // timers the user really had set.
+    function _adopt(text) {
+        const parsed = _parse(text);
+        if (parsed === null) return;
+        if (JSON.stringify(parsed) === JSON.stringify(root.list)) return;
+
+        root.list = parsed;
+    }
+
     function _parse(text) {
         try {
             const saved = JSON.parse(text);
-            return Array.isArray(saved) ? _sorted(saved) : [];
+            // null rather than an empty list, so the caller can tell "the file
+            // says there are no reminders" from "the file made no sense". The
+            // first is worth adopting; the second is worth ignoring until
+            // something writes over it.
+            return Array.isArray(saved) ? _sorted(saved) : null;
         } catch (e) {
-            // A file we cannot read is a file we are about to replace: reminders
-            // are not worth refusing to start over.
-            return [];
+            return null;
         }
     }
 

@@ -99,7 +99,12 @@ Item {
             spacing: root.barSpacing
 
             Repeater {
-                model: root.model ?? []
+                // The count, with each cell reading its own record back out of
+                // the model. Handed the array itself, a Repeater discards every
+                // delegate the moment that array is replaced -- which the
+                // refresh does wholesale -- and the bars would be rebuilt at
+                // their new heights instead of travelling to them.
+                model: root.count
 
                 // A RowLayout of Items rather than a Row of Rectangles: each
                 // cell takes its width from the layout, and the bar inside
@@ -107,12 +112,22 @@ Item {
                 Item {
                     id: cell
 
-                    required property var modelData
                     required property int index
 
-                    readonly property real fraction: root.peak > 0
-                        ? root.numberOf(cell.modelData) / root.peak
+                    // The share of the peak is the thing that moves, so it is
+                    // the thing that is eased; the height below simply follows
+                    // it. A Behavior on that height would also fire on the
+                    // height the layout gives this cell, which arrives on the
+                    // first polish pass -- after the delegate is complete and
+                    // its Behaviors are live -- and every bar would grow up out
+                    // of the floor each time the panel was opened.
+                    property real fraction: root.peak > 0
+                        ? root.valueAt(cell.index) / root.peak
                         : 0
+
+                    Behavior on fraction {
+                        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                    }
 
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -136,9 +151,6 @@ Item {
                         // promised for as long as it is on screen.
                         opacity: root.hoverIndex < 0 || root.hoverIndex === cell.index ? 1 : 0.4
 
-                        Behavior on height {
-                            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
-                        }
                         Behavior on opacity { NumberAnimation { duration: 120 } }
                         Behavior on color { ColorAnimation { duration: 120 } }
                     }
@@ -147,7 +159,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom: bar.top
                         anchors.bottomMargin: 2
-                        text: root.formatted(root.numberOf(cell.modelData))
+                        text: root.formatted(root.valueAt(cell.index))
                         color: Colors.claudeMeta
                         font.family: "caelusevka"
                         font.pixelSize: 13
@@ -182,17 +194,19 @@ Item {
             visible: root.labelKey !== ""
 
             Repeater {
-                model: root.labelKey !== "" ? (root.model ?? []) : []
+                // Counted for the same reason the bars are, and off the same
+                // number, so the ticks can never be one behind the row above
+                // them mid-refresh.
+                model: root.labelKey !== "" ? root.count : 0
 
                 Text {
                     id: tick
 
-                    required property var modelData
                     required property int index
 
                     Layout.fillWidth: true
                     Layout.preferredHeight: 15
-                    text: root.labelOf(tick.modelData)
+                    text: root.labelAt(tick.index)
                     color: root.hoverIndex === tick.index ? Colors.claudeBody : Colors.claudeMeta
                     font.family: "caelusevka"
                     font.pixelSize: 13

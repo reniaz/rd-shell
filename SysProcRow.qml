@@ -11,14 +11,22 @@ import qs.Services
 Rectangle {
     id: root
 
-    required property var proc
+    // One required property per role rather than the whole row object, the same
+    // way ClaudeSessionRow reads the other reconciled model in this shell: the
+    // delegate machinery fills a required property from the role of the same
+    // name, so a process whose figure moved updates that one property instead of
+    // arriving as a replacement row.
+    required property int pid
+    required property string name
+
     property string value
 
     // The row under the pointer when the confirmation opened is not necessarily
-    // the row still there when it is answered, so the pid is pinned at the
-    // moment of asking and the question withdrawn if the row changes under it.
+    // the row still there when it is answered, so the question is withdrawn if
+    // the row changes under it. SysMon's reconciler moves a row rather than
+    // overwriting it, so a pid should never change under a delegate at all --
+    // this is what makes that a guarantee rather than a hope.
     property bool confirming: false
-    readonly property int pid: root.proc?.pid ?? 0
 
     onPidChanged: root.confirming = false
 
@@ -38,7 +46,7 @@ Rectangle {
         spacing: 7
 
         Text {
-            text: root.proc?.name ?? ""
+            text: root.name
             color: Colors.sysTitle
             font.family: "caelusevka"
             font.pixelSize: 13

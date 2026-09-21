@@ -22,6 +22,7 @@
 |---|---|
 | **Bar** | workspaces, media, clock, tray, network, audio, mic, keyboard layout, disk |
 | **System** | CPU / GPU / memory pill, per-part detail, process killer |
+| **Network** | throughput card under the pill: live down/up speed, bytes in and out, a sparkline of the last minute |
 | **Notifications** | grouped popups + history center, do-not-disturb that WhatsApp and reminders ring through |
 | **Reminders** | timers and alarms set from the calendar, they ring as notifications |
 | **OSD** | keyboard layout overlay |
@@ -31,7 +32,8 @@
 
 ## Claude panel
 
-<kbd>Super</kbd> + <kbd>C</kbd> hangs a panel under the bar's Claude pill, with four tabs.
+Clicking the bar's Claude pill hangs a panel under it, with four tabs. There is no
+key for it by default — see [Keybinds](#keybinds) if you want one.
 
 **Sessions** — every live `claude` process on the machine: what it is doing right
 now, what it is blocked on, its context fill, the plan it is following and the
@@ -47,6 +49,14 @@ broken down by project and by model, with the plan's rate limits underneath.
 model mix, where the tokens actually go, the hours and weekdays you work, which
 tools get used, and the sessions that cost the most.
 
+**Optimize** — the token-budget rules that make all of the above smaller, each one
+a line in `settings.json` or in `CLAUDE.md`, applied and reverted from the panel.
+It reads the two files rather than remembering what it wrote, so a rule you undid
+by hand shows as undone.
+
+Every tab keeps its last reading when the panel closes, so reopening paints the
+numbers you left rather than sweeping up from zero while the next scan runs.
+
 The four data sources behind them are shell scripts, so nothing here starts a
 `claude` process to ask a question:
 
@@ -54,7 +64,7 @@ The four data sources behind them are shell scripts, so nothing here starts a
 |---|---|---|
 | `scripts/claude-status.sh` | `~/.claude` state files | ~40ms, polled every 2s |
 | `scripts/claude-session.sh` | one whole transcript | ~0.2s, only while a row is open |
-| `scripts/claude-global.sh` | every transcript ever written | ~3.4s cold, ~0.1s warm |
+| `scripts/claude-global.sh` | every transcript ever written | seconds cold, ~0.4s warm; once at startup, then every 2 min while the panel is open |
 | `scripts/claude-usage.sh` | the `/usage` endpoint | one request per minute |
 
 `claude-global.sh` caches its parse per file on `(mtime, size)` in
@@ -99,6 +109,22 @@ the previous sample rather than from a second reading taken inside the script,
 so a poll costs one pass over `/proc` and no sleep. `top` and not `ps` for the
 process lists: `ps` reports a process's CPU share averaged over its whole
 lifetime, which for anything long-running is a number about last week.
+
+## Network
+
+The pill says whether you are online and on which connection. Left-clicking it
+hangs a card under it that says whether anything is actually moving: download and
+upload speed, the byte counters the kernel has been adding up since the interface
+came up, and a sparkline of the last minute with the download filled and the
+upload drawn over it. Right-click still opens the NetworkManager KCM.
+
+NetworkManager knows the name a connection was given; it does not know a rate, so
+the throughput is read straight from `/sys/class/net/<device>/statistics/` — two
+counters, sampled a second apart, the speed being the difference. Sampling only
+runs while the card is open, and the first sample after opening publishes no rate
+at all, because one counter has nothing to be subtracted from. The history
+outlives the card, so closing it pauses the graph and reopening continues the same
+line instead of drawing a new one from nothing.
 
 ## Requirements
 
@@ -148,9 +174,11 @@ rd-shell/
 ├── shell.qml            # entry point: one Bar per screen, four IPC handlers
 ├── Bar.qml              # the bar itself — pill order, panel loaders
 ├── BarPopup.qml         # shared card/notch/grow/dismiss for every panel
+├── PopupLoader.qml      # holds a popup's window open long enough to play its exit
 ├── CalendarPopup.qml    # the month and its reminders, hung under the clock on right-click
 ├── DiskPopup.qml        # per-filesystem breakdown, under the disk pill
 ├── MediaPopup.qml       # every loaded player, play/pause each one
+├── NetworkPopup.qml     # down/up speed, bytes in and out, under the network pill
 ├── Sys*.qml             # system monitor pill and its tabbed panel
 ├── Claude*.qml          # Claude pill panel: sessions, usage, statistics, optimize
 ├── Notification*.qml    # popups, history centre, bell
@@ -190,6 +218,7 @@ and ready to name as new widgets need them.
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> | Toggle microphone |
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Space</kbd> | Next keyboard layout — what the layout OSD reacts to |
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>↑</kbd> | Screenshot a region |
+| <kbd>Super</kbd> + <kbd>H</kbd> | Keybind cheat sheet — rofi, built from `hyprctl binds` |
 
 The Claude and system panels have no bind of their own; they open from their pills, or
 from `qs ipc -c rd-shell call claude toggle` / `... call system toggle` if you want to

@@ -45,17 +45,33 @@ Singleton {
         root.sessionId = "";
     }
 
+    // The last payload for a row that is no longer open, kept deliberately.
+    // ClaudeSessionRow folds its drawer shut over 200ms and keeps the content
+    // loaded for exactly that long, on purpose -- so blanking `_data` the
+    // instant the row collapses would empty every figure inside a drawer the
+    // user can still see closing, which reads as the numbers falling out of it
+    // rather than as the drawer sliding away. Consumers already gate on
+    // `data.sessionId`, so a payload left standing for the row that is closing
+    // is invisible to every other row, and the next accepted scan replaces it.
+    function payloadFor(id) {
+        return root._cache[id] ?? null;
+    }
+
     onSessionIdChanged: {
         root._pending = "";
         query.running = false;
+        root._loading = false;
 
-        if (root.sessionId === "") {
-            root._data = null;
-            root._loading = false;
-            return;
-        }
+        // Nothing expanded: stop the polling, leave the reading standing.
+        if (root.sessionId === "") return;
 
-        root._data = root._cache[root.sessionId] ?? null;
+        // A row we have looked at before paints immediately and refreshes
+        // underneath; one we have not leaves the previous row's payload in
+        // place, where it belongs to a drawer that is still folding shut and is
+        // ignored by the one folding open.
+        const cached = root._cache[root.sessionId];
+        if (cached) root._data = cached;
+
         root._launch();
     }
 
@@ -85,6 +101,18 @@ Singleton {
         return true;
     }
 
+    // The scan script always exits 0 and always prints one complete object, so
+    // a transcript it could not find, or a missing jq, arrives as a valid
+    // payload of zeroes carrying the right session id. That is indistinguishable
+    // from a good answer by shape alone, and accepting one would drain every
+    // economics figure in an open drawer to zero until the next scan landed.
+    // It is only believable while we have nothing else for that row.
+    function _blank(p) {
+        return (p.economics?.turns ?? 0) === 0
+            && (p.activity ?? []).length === 0
+            && (p.subagents ?? []).length === 0;
+    }
+
     function _accept(text) {
         const forId = root._pending;
         root._pending = "";
@@ -99,6 +127,7 @@ Singleton {
             // The script echoes the id back precisely so a reply can be matched
             // rather than trusted.
             if (!next || next.sessionId !== forId) return;
+            if (root._cache[forId] && root._blank(next)) return;
 
             root._cache[forId] = next;
             if (root._changed(forId, next)) root._data = next;

@@ -3,3 +3,7 @@ Archive.zip
 
 # Per-machine Claude Code project settings
 .claude/
+
+# Timestamped backups left by the wallpaper and lock scripts
+*.bak
+*.bak-*

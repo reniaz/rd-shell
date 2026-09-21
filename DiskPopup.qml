@@ -14,12 +14,14 @@ BarPopup {
     popupHeight: body.implicitHeight + 28
 
     // While the popup is up, the numbers in it are the only thing on screen, so
-    // they are read at the rate they are watched. The loader destroys this
-    // window on close, which takes the timer with it -- the service falls back
-    // to its own ten-second cadence for the pill.
+    // they are read at the rate they are watched. Gated on `open` rather than on
+    // the window's lifetime: the loader now holds the window for the length of
+    // the closing animation, and a card on its way out has no reader to serve.
+    // Once it is gone the service falls back to its own ten-second cadence for
+    // the pill.
     Timer {
         interval: 2000
-        running: true
+        running: root.open
         repeat: true
         onTriggered: Disk.refresh()
     }
@@ -69,18 +71,40 @@ BarPopup {
             color: Colors.popupBorder
         }
 
+        // Counted rather than handed the array itself. df's result is republished
+        // as a whole new array on every read, and a Repeater given that destroys
+        // and rebuilds every row -- which throws away the very continuity the
+        // easing below is for. A count changes only when a filesystem is actually
+        // mounted or unmounted, so the rows now survive a refresh and move.
         Repeater {
-            model: Disk.filesystems
+            model: Disk.filesystems.length
 
             ColumnLayout {
                 id: row
 
-                required property var modelData
+                required property int index
+
+                // Undefined for the one binding pass between a filesystem going
+                // away and the count catching up, so every read of it is guarded.
+                readonly property var fs: Disk.filesystems[row.index]
 
                 // The device is deliberately not printed: mount points are what a
                 // partition is called when you use it, and /dev/dm-0 says nothing
                 // that / and /home do not.
-                readonly property color usage: Colors.usage(row.modelData.percent, Colors.diskColor)
+                readonly property color usage: Colors.usage(row.fs?.percent ?? 0, Colors.diskColor)
+
+                // Animated here, on the reading, and not on the width of the bar
+                // drawn from it: a Behavior on that width would also catch the
+                // width the layout hands the track on its first polish pass, which
+                // lands after this component is complete and its Behaviors are
+                // live. Every bar would read that as a change and sweep up out of
+                // nothing, so a popup rebuilt on each open would show the disks
+                // filling rather than the disks as they stand.
+                property real fraction: Math.min(1, (row.fs?.percent ?? 0) / 100)
+
+                Behavior on fraction {
+                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                }
 
                 Layout.fillWidth: true
                 spacing: 5
@@ -91,7 +115,7 @@ BarPopup {
 
                     Text {
                         Layout.fillWidth: true
-                        text: row.modelData.mounts.join("  ·  ")
+                        text: (row.fs?.mounts ?? []).join("  ·  ")
                         color: Colors.diskTitle
                         font.family: "caelusevka"
                         font.pixelSize: 14
@@ -99,7 +123,7 @@ BarPopup {
                     }
 
                     Text {
-                        text: row.modelData.percent + "%"
+                        text: (row.fs?.percent ?? 0) + "%"
                         color: row.usage
                         font.family: "caelusevka"
                         font.pixelSize: 14
@@ -112,15 +136,16 @@ BarPopup {
                     radius: 3
                     color: Colors.diskTrack
 
-                    // Animated so a refresh under the reader's eyes reads as the
-                    // disk filling rather than as the popup redrawing.
+                    // Follows the track exactly and instantly: the easing that
+                    // makes a refresh read as the disk filling rather than as the
+                    // popup redrawing lives on `fraction` above.
                     Rectangle {
-                        width: Math.round(parent.width * Math.min(1, row.modelData.percent / 100))
+                        width: Math.round(parent.width * row.fraction)
                         height: parent.height
                         radius: parent.radius
                         color: row.usage
 
-                        Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Behavior on color { ColorAnimation { duration: 120 } }
                     }
                 }
 
@@ -129,7 +154,7 @@ BarPopup {
                     spacing: 8
 
                     Text {
-                        text: Format.human(row.modelData.used) + " / " + Format.human(row.modelData.size)
+                        text: Format.human(row.fs?.used ?? 0) + " / " + Format.human(row.fs?.size ?? 0)
                         color: Colors.diskBody
                         font.family: "caelusevka"
                         font.pixelSize: 13
@@ -138,7 +163,7 @@ BarPopup {
                     Item { Layout.fillWidth: true }
 
                     Text {
-                        text: Format.human(row.modelData.avail) + " free"
+                        text: Format.human(row.fs?.avail ?? 0) + " free"
                         color: Colors.diskMeta
                         font.family: "caelusevka"
                         font.pixelSize: 13

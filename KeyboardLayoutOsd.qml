@@ -11,6 +11,15 @@ import qs.Services
 PanelWindow {
     id: root
 
+    // Written by the PopupLoader that owns this window, which keeps it alive
+    // past the moment KeyboardLayout.osdVisible drops -- see PopupLoader.qml.
+    // True by default because the window exists before its loader can reach it.
+    property bool open: true
+
+    // Raised once the window exists, so the fade below has a collapsed first
+    // frame to start from.
+    property bool _entered: false
+
     // Deliberately no anchors. A layer surface left unanchored on both axes is
     // centred by the compositor, so the window is exactly the card and sits in
     // the middle without this having to know the screen's size.
@@ -42,11 +51,18 @@ PanelWindow {
         border.width: 1
         border.color: Colors.accent
 
-        // Driven off the service rather than the loader's lifetime: the window
-        // is torn down the instant osdVisible drops, so a fade-out bound to it
-        // would never be seen. The fade-in is the whole animation there is.
-        opacity: 0
-        Component.onCompleted: opacity = 1
+        // The OSD now leaves the way it arrived. This used to be a one-shot
+        // assignment, because the window was torn down the instant osdVisible
+        // dropped and a fade-out bound to it would never have been seen; the
+        // loader holds it open long enough for the second half to play, so the
+        // opacity can go back to being a binding on the state.
+        //
+        // Cycling the layout again while the OSD is still up only restarts the
+        // service's hold timer -- osdVisible never drops, so this window is not
+        // rebuilt and the fade is not replayed under a reader who is mid-glance.
+        opacity: (root._entered && root.open) ? 1 : 0
+
+        Component.onCompleted: root._entered = true
 
         Behavior on opacity { NumberAnimation { duration: 140 } }
 

@@ -21,30 +21,38 @@ BarPopup {
     // As short as the open tab needs and no taller than the screen allows. 60
     // is the 46 the card hangs at plus the same 14 gap the bar's pills float
     // in. BarPopup animates the change, so switching tabs is seen to fold.
-    popupHeight: Math.min(root.height - 60, 28 + head.implicitHeight + 10 + root.pageHeight)
+    //
+    // The screen cap only applies once there is a screen height to cap against.
+    // A layer surface is told its size a round trip after it is created, so for
+    // the first frames `root.height` is zero, and an unguarded Math.min against
+    // it asks for a card sixty pixels tall -- which is how the popup came to
+    // open at BarPopup's floor and then grow into itself.
+    popupHeight: root.height > 0
+        ? Math.min(root.height - 60, root.wantedHeight)
+        : root.wantedHeight
+
+    readonly property real wantedHeight: 28 + head.implicitHeight + 10 + root.pageHeight
 
     // The height the open tab would like. Deliberately not the StackLayout's
     // own implicit height, which is the tallest of all three pages.
     readonly property real pageHeight: [cpuPage, gpuPage, memPage][root.tab].naturalHeight
 
-    // Held open by the service, so the pill, Escape and the IPC handler can all
-    // shut the same panel.
-    open: SysMon.panelOpen
-
     // While the panel is up these numbers are the only thing on screen, so they
-    // are read at the rate they are watched. The loader destroys this window on
-    // close, which takes the timers with it: the pill falls back to its own
-    // two-second cadence and process sampling stops entirely.
+    // are read at the rate they are watched. Stopped on `open` rather than left
+    // to the window's lifetime: the window now outlives its own exit animation,
+    // and there is no reason to keep sampling a card the reader has already
+    // dismissed. Once it is gone the pill falls back to its own two-second
+    // cadence and process sampling stops entirely.
     Timer {
         interval: 1500
-        running: true
+        running: root.open
         repeat: true
         onTriggered: SysMon.refresh()
     }
 
     Timer {
         interval: 3000
-        running: true
+        running: root.open
         repeat: true
         onTriggered: SysMon.refreshProcesses()
     }

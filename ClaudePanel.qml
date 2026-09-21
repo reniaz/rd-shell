@@ -25,17 +25,40 @@ BarPopup {
     // the notch and the bottom of the screen. 60 is the 46 the card hangs at
     // plus the same 14 gap the bar's pills float in. BarPopup animates the
     // change, so switching from Statistics to Sessions is seen to fold up.
-    popupHeight: Math.min(root.height - 60, 36 + head.implicitHeight + 12 + root.pageHeight)
+    //
+    // The screen cap only applies once there is a screen height to cap against.
+    // A layer surface is told its size a round trip after it is created, so for
+    // the first frames `root.height` is zero, and an unguarded Math.min against
+    // it asks for a card sixty pixels tall -- which is how the panel came to
+    // open at BarPopup's floor and then unfold into itself.
+    popupHeight: root.height > 0
+        ? Math.min(root.height - 60, root.wantedHeight)
+        : root.wantedHeight
+
+    readonly property real wantedHeight: 36 + head.implicitHeight + 12 + root.pageHeight
 
     // The height the open tab would like. Deliberately not the StackLayout's
     // own implicit height, which is the tallest of all four pages: that would
     // hold the panel at Statistics height while Sessions shows three rows.
     readonly property real pageHeight: [sessionsPage, usagePage, statsPage, optimizePage][root.tab].naturalHeight
 
-    // The service holds the open state rather than the loader, because Escape,
-    // the pill, the close button and the IPC handler can all shut this panel and
-    // only one of them is this window.
-    open: ClaudeSession.panelOpen
+    // The two account limits, in the shape the header's meters read them in.
+    // Held as a property so that the Repeater below can be given a fixed count
+    // and index into this, rather than being handed the array itself -- see the
+    // comment there for why that distinction is the difference between a meter
+    // that eases and a meter that is rebuilt.
+    readonly property var limits: [
+        {
+            label: "5h",
+            pct: ClaudeSession.limits?.fiveHour ?? 0,
+            resets: ClaudeSession.limits?.fiveHourResets ?? ""
+        },
+        {
+            label: "7d",
+            pct: ClaudeSession.limits?.sevenDay ?? 0,
+            resets: ClaudeSession.limits?.sevenDayResets ?? ""
+        }
+    ]
 
     Component.onCompleted: {
         // The lifetime scan runs on a two-minute timer of its own, which is the
@@ -142,24 +165,22 @@ BarPopup {
                 spacing: 14
                 visible: ClaudeSession.limits !== null
 
+                // A count and not the array itself. An array literal is a new
+                // array every time anything in it is re-read, and a Repeater
+                // handed a new model throws its delegates away and builds them
+                // again -- so both meters were reconstructed on every refresh
+                // and could only ever snap to the new figure. Two columns that
+                // stay alive and re-read `root.limits` through their index get
+                // a change their meter can ease into instead.
                 Repeater {
-                    model: [
-                        {
-                            label: "5h",
-                            pct: ClaudeSession.limits?.fiveHour ?? 0,
-                            resets: ClaudeSession.limits?.fiveHourResets ?? ""
-                        },
-                        {
-                            label: "7d",
-                            pct: ClaudeSession.limits?.sevenDay ?? 0,
-                            resets: ClaudeSession.limits?.sevenDayResets ?? ""
-                        }
-                    ]
+                    model: 2
 
                     ColumnLayout {
                         id: headMeter
 
-                        required property var modelData
+                        required property int index
+
+                        readonly property var limit: root.limits[headMeter.index]
 
                         Layout.fillWidth: true
                         // Only one of the two limits usually carries a reset
@@ -178,9 +199,9 @@ BarPopup {
                         // question is actually asked in at 100%.
                         Text {
                             Layout.fillWidth: true
-                            text: "resets " + ClaudeSession.clockAt(headMeter.modelData.resets)
-                                + " · in " + ClaudeSession.until(headMeter.modelData.resets)
-                            visible: headMeter.modelData.resets !== ""
+                            text: "resets " + ClaudeSession.clockAt(headMeter.limit.resets)
+                                + " · in " + ClaudeSession.until(headMeter.limit.resets)
+                            visible: headMeter.limit.resets !== ""
                             color: Colors.claudeMeta
                             font.family: "caelusevka"
                             font.pixelSize: 12
@@ -192,7 +213,7 @@ BarPopup {
                             spacing: 6
 
                             Text {
-                                text: headMeter.modelData.label
+                                text: headMeter.limit.label
                                 color: Colors.claudeMeta
                                 font.family: "caelusevka"
                                 font.pixelSize: 13
@@ -201,8 +222,8 @@ BarPopup {
                             ClaudeMeter {
                                 Layout.fillWidth: true
                                 thickness: 4
-                                fraction: headMeter.modelData.pct / 100
-                                percent: headMeter.modelData.pct
+                                fraction: headMeter.limit.pct / 100
+                                percent: headMeter.limit.pct
                             }
                         }
                     }

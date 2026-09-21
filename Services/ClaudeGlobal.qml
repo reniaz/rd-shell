@@ -56,6 +56,18 @@ Singleton {
         try {
             const next = JSON.parse(text);
             if (!next || !next.totals) return;
+
+            // The script's contract is that it always exits 0 and always prints
+            // one complete object, which is right for a poller -- but it means
+            // a missing jq, an unreadable projects directory or a jq pass that
+            // aborted all arrive here as a perfectly valid payload of zeroes.
+            // Publishing that would walk every total, bar and donut down to
+            // nothing and back up again on the next good scan, and a reader
+            // would take it for "the account was reset" rather than for "one
+            // refresh failed". A scan that claims no sessions at all is only
+            // believed while there is nothing better already on screen.
+            if (root._data !== null && (next.totals.sessions ?? 0) === 0) return;
+
             root._sig = text;
             root._data = next;
         } catch (e) {
@@ -71,14 +83,31 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: root._accept(this.text)
         }
+
+        // _busy is the only thing keeping two scans of a 200MB corpus from
+        // overlapping, and the collector clears it when stdout closes. A run
+        // that ends without that ever happening -- killed, or a script that is
+        // not on disk -- would latch it true and quietly retire the refresh
+        // timer for the rest of the session, leaving the panel frozen on
+        // whatever it last read. Clearing it here too costs nothing on the
+        // ordinary path, where it is already false by the time we arrive.
+        onExited: root._busy = false
     }
 
     // Two minutes: the numbers here are cumulative and a single turn moves the
     // total by cents, so there is nothing to gain from asking more often -- and
     // the refresh is only cheap while the cache is warm.
+    //
+    // Only while the panel is up, though. The expensive scan is the first one,
+    // and that runs at startup above, so the per-file cache is warm long before
+    // anyone opens the window; from then on the last payload simply stays
+    // standing, which is what lets a reopened panel paint its charts fully
+    // formed instead of sweeping up from zero. The panel also refreshes once on
+    // open. Polling a closed panel would only spend half a second of jq every
+    // two minutes to arrive at numbers nobody is looking at.
     Timer {
         interval: 120000
-        running: true
+        running: ClaudeSession.panelOpen
         repeat: true
         onTriggered: root.refresh()
     }

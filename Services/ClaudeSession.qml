@@ -12,10 +12,11 @@ Singleton {
     // handler all read one source of truth (same shape as Services/Notifications.qml).
     property bool panelOpen: false
 
-    // Held true while the panel slides back out, so the LazyLoader does not rip
-    // the window away mid-animation. closePanel() sets it BEFORE clearing
-    // panelOpen, so the loader never sees both false at once.
-    property bool panelClosing: false
+    // This used to be paired with a `panelClosing` flag and a release timer, so
+    // that the LazyLoader did not rip the window away mid-animation. Six other
+    // popups needed the same thing and had none, so the grace period moved to
+    // PopupLoader.qml, where every popup in the bar gets it from one place. The
+    // service is back to saying only whether the panel is wanted.
 
     // Last good parse, held one section per property. Reassigning a var property
     // with a fresh object always signals a change, which resets every ListView
@@ -464,26 +465,11 @@ Singleton {
     }
 
     function openPanel() {
-        releaseTimer.stop();
-        panelClosing = false;
         panelOpen = true;
     }
 
     function closePanel() {
-        if (!panelOpen) return;
-        panelClosing = true;
         panelOpen = false;
-        releaseTimer.restart();
-    }
-
-    // Releases the panel window once the slide-out has had time to finish.
-    // Deliberately NOT driven by the animation's onFinished: inside a Behavior
-    // that signal does not fire reliably, and when it is missed the layer
-    // surface stays alive and silently eats clicks down the right of the screen.
-    Timer {
-        id: releaseTimer
-        interval: 260
-        onTriggered: root.panelClosing = false
     }
 
     function togglePanel() {

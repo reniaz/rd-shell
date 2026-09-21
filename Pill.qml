@@ -2,6 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 import qs.Config
 
+// One segment of the bar. It used to draw itself as a rounded island, which is
+// where the name comes from; the bar is one solid surface now, so a segment
+// draws nothing of its own and is only the spacing and the two texts.
 Rectangle {
     id: root
 
@@ -11,10 +14,9 @@ Rectangle {
     property int maxLabelWidth: 400
     property alias content: row.data
 
-    implicitWidth: row.implicitWidth + 22
+    implicitWidth: row.implicitWidth + 18
     implicitHeight: 32
-    radius: height / 2
-    color: Colors.bg
+    color: "transparent"
 
     RowLayout {
         id: row

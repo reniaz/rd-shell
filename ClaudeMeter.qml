@@ -18,6 +18,16 @@ RowLayout {
     property color fill: ClaudeSession.levelColor(root.percent)
     property int thickness: 6
 
+    // On the reading rather than on the fill's width below. The track is sized
+    // by the layout, and a layout hands out geometry on its first polish pass --
+    // after this component is complete, and so after its Behaviors have started
+    // watching. A Behavior on the width would take that first pass for a change
+    // and run the bar up from nothing every time the panel is built, which is
+    // what made a reopened panel look like a session starting over.
+    Behavior on fraction {
+        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+    }
+
     spacing: 8
 
     Rectangle {
@@ -34,9 +44,6 @@ RowLayout {
             radius: parent.radius
             color: root.fill
 
-            Behavior on width {
-                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
-            }
             Behavior on color { ColorAnimation { duration: 120 } }
         }
     }

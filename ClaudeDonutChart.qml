@@ -23,24 +23,19 @@ Item {
                                                 root.labelKey, root.slices)
     readonly property real total: Series.total(root.rows)
 
-    // Canvas cannot be animated by a Behavior, so the sweep is driven by an
-    // explicit 0..1 that the paint multiplies into every angle. It runs once,
-    // on creation, which is the only moment the ring is new to the eye.
-    property real progress: 0
+    // Canvas cannot be animated by a Behavior, so every angle is multiplied by
+    // an explicit 0..1 scale instead. It used to be swept 0 -> 1 from
+    // Component.onCompleted, on the reasoning that creation is the one moment
+    // the ring is new to the eye -- but the panel is destroyed when it closes,
+    // so creation is *every* open, and the ring drew itself up out of nothing
+    // each time on the most animated surface in the shell. Worse, the sweep ran
+    // 520ms inside a card that finishes arriving in 170, so the card was done
+    // while its contents were still being drawn. The scale is kept, held at 1,
+    // because the paint has to scale from somewhere and the figures are the same
+    // figures whether the ring is new to this window or not.
+    property real progress: 1
 
     implicitHeight: 132
-
-    Component.onCompleted: sweep.start()
-
-    NumberAnimation {
-        id: sweep
-        target: root
-        property: "progress"
-        from: 0
-        to: 1
-        duration: 520
-        easing.type: Easing.OutCubic
-    }
 
     // The palette is a property of a singleton, so it is read into the paint
     // through a binding the Canvas can depend on. Repainting on rows, size and

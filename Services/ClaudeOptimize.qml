@@ -39,7 +39,13 @@ Singleton {
     function applyAll() { root._run("apply-all", ""); }
 
     function _run(verb, id) {
-        if (root._busy) return;
+        // query.running as well as _busy: the status read below starts with the
+        // shell and does not go through here, so for its first fraction of a
+        // second _busy is false while a process is very much alive. `command`
+        // only takes effect at the next launch, so assigning it under that run
+        // would quietly discard the verb and let the status reply clear _busy
+        // as though the write had happened.
+        if (root._busy || query.running) return;
 
         root._busy = true;
         root._error = "";
@@ -73,6 +79,15 @@ Singleton {
         try {
             const next = JSON.parse(text);
             if (!next || !Array.isArray(next.rules)) return;
+
+            // Same trap as its siblings: the script always prints one complete
+            // object, so a machine without jq answers with an empty rule list
+            // rather than with an error. Taking that at face value would empty
+            // a tab that was showing a dozen rules a moment ago, and the counter
+            // above it would count down to "0 of 0" on the way. A rule set only
+            // becomes empty when we never had one.
+            if (root._data !== null && next.rules.length === 0) return;
+
             root._sig = text;
             root._data = next;
             if ((next.error ?? "") !== "") root._error = next.error;

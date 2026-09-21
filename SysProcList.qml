@@ -11,7 +11,7 @@ SysCard {
 
     property bool memory: false
 
-    readonly property var processes: root.memory ? SysMon.topMem : SysMon.topCpu
+    readonly property ListModel processes: root.memory ? SysMon.topMem : SysMon.topCpu
 
     title: root.memory ? "Top by memory" : "Top by processor"
 
@@ -27,12 +27,19 @@ SysCard {
             model: root.processes
 
             SysProcRow {
-                required property var modelData
+                id: procRow
 
-                proc: modelData
+                // The two roles this list adds to the ones the row itself takes.
+                // Only one of them is ever shown -- which one is the difference
+                // between the two tabs -- but both are declared, because a role
+                // left undeclared on a delegate with required properties is not
+                // reachable from it at all.
+                required property real cpu
+                required property real rss
+
                 value: root.memory
-                    ? Format.human(modelData.rss)
-                    : modelData.cpu.toFixed(1) + "%"
+                    ? Format.human(procRow.rss)
+                    : procRow.cpu.toFixed(1) + "%"
             }
         }
 
@@ -41,7 +48,10 @@ SysCard {
             color: Colors.sysMeta
             font.family: "caelusevka"
             font.pixelSize: 12
-            visible: root.processes.length === 0
+            // count, not length: a ListModel is not an array. It also stays
+            // filled between openings now, so this line is only ever seen on the
+            // first open of a session rather than on every one.
+            visible: root.processes.count === 0
             Layout.leftMargin: 9
             Layout.topMargin: 2
             Layout.bottomMargin: 2

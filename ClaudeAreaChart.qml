@@ -55,23 +55,16 @@ Item {
         return root.moneyFormat ? ClaudeSession.money(v) : ClaudeSession.compact(v);
     }
 
-    // Canvas takes no Behavior, so the curve grows by scaling every plotted
-    // height through this instead. See ClaudeDonutChart for the same device.
-    property real progress: 0
+    // Canvas takes no Behavior, so every plotted height is scaled through this
+    // instead. It was swept 0 -> 1 on creation to introduce the curve, which was
+    // fair while creation happened once; the panel is destroyed on close, so it
+    // happened on every open, and a chart of finished history that draws itself
+    // up from the axis says the history is being made now. Held at 1: the curve
+    // is simply there, the way the figures beside it are. Same in
+    // ClaudeDonutChart, and for the same reason.
+    property real progress: 1
 
     implicitHeight: 96
-
-    Component.onCompleted: grow.start()
-
-    NumberAnimation {
-        id: grow
-        target: root
-        property: "progress"
-        from: 0
-        to: 1
-        duration: 520
-        easing.type: Easing.OutCubic
-    }
 
     onPointsChanged: area.requestPaint()
     onProgressChanged: area.requestPaint()
@@ -165,7 +158,11 @@ Item {
                 spacing: 0
 
                 Repeater {
-                    model: root.model ?? []
+                    // A count rather than the array: replacing the array
+                    // rebuilds every delegate, and a hit area rebuilt under the
+                    // pointer never sends the `entered` that keeps the caption
+                    // on the sample being read.
+                    model: root.count
 
                     MouseArea {
                         id: hit

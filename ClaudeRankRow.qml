@@ -23,6 +23,15 @@ ColumnLayout {
     property color fill: Colors.claudeAccent
     property int thickness: 4
 
+    // The share is what moves, so the share is what is animated. Put on the
+    // bar's width instead, this would also fire on the width the layout gives
+    // the track -- which arrives on the first polish pass, after the row is
+    // complete and its Behaviors are live -- and every ranking would grow out
+    // of nothing each time the panel was opened.
+    Behavior on fraction {
+        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+    }
+
     Layout.fillWidth: true
     spacing: 3
 
@@ -75,9 +84,6 @@ ColumnLayout {
             radius: parent.radius
             color: root.fill
 
-            Behavior on width {
-                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
-            }
             Behavior on color { ColorAnimation { duration: 120 } }
         }
     }

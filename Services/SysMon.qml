@@ -65,8 +65,16 @@ Singleton {
     // ── processes ────────────────────────────────────────────
     // Only read while the popup is open: the sampler runs top twice half a
     // second apart, which is a fifth of a second of a core each time.
-    property var topCpu: []
-    property var topMem: []
+    //
+    // Models rather than arrays, and reconciled rather than replaced. A fresh
+    // array every three seconds is a fresh model, and a view handed a new model
+    // throws its rows away and builds them again -- which drops the highlight
+    // under the pointer and withdraws a kill confirmation opened on a process
+    // the sample did not even change. Matching on pid and writing the figures
+    // in place keeps a row the same row for as long as the process is running,
+    // and keeps the list on screen across a close and re-open of the popup.
+    readonly property ListModel topCpu: ListModel {}
+    readonly property ListModel topMem: ListModel {}
 
     // Temperatures worth a colour change. AMD reports Tctl, which runs some ten
     // degrees above the die under load and is what the fan curve is built on,
@@ -168,10 +176,54 @@ Singleton {
     function _parseProcesses(text) {
         try {
             const d = JSON.parse(text);
-            root.topCpu = d.cpu;
-            root.topMem = d.mem;
+            root._reconcile(root.topCpu, d.cpu);
+            root._reconcile(root.topMem, d.mem);
         } catch (e) {
         }
+    }
+
+    // Writes `rows` into `model` without disturbing what is already in it.
+    // Walked from the top down: the process that belongs at each place is
+    // either already somewhere below it -- in which case it is moved up and its
+    // figures rewritten -- or it is new and gets inserted. Anything still past
+    // the end of the new list was not in this sample and has gone.
+    //
+    // setProperty rewrites one role of one row, and move() carries a row's
+    // delegate with it, so a process that merely climbed the ranking keeps its
+    // view, its hover and any question open on it. That also makes a row's pid
+    // constant for as long as the row exists, which is stronger than the guard
+    // SysProcRow pins it with and leaves that guard with nothing to do.
+    //
+    // The same shape as ClaudeSession's reconciler, for the same reason, and
+    // subject to the same rule: every role is a scalar, because setProperty
+    // silently does nothing when the new value changes type.
+    function _reconcile(model, rows) {
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            let at = -1;
+
+            for (let j = i; j < model.count; j++) {
+                if (model.get(j).pid === row.pid) {
+                    at = j;
+                    break;
+                }
+            }
+
+            if (at < 0) {
+                model.insert(i, row);
+                continue;
+            }
+
+            if (at !== i) model.move(at, i, 1);
+
+            const have = model.get(i);
+            for (const key in row) {
+                if (have[key] !== row[key]) model.setProperty(i, key, row[key]);
+            }
+        }
+
+        if (model.count > rows.length)
+            model.remove(rows.length, model.count - rows.length);
     }
 
     property var _prevCpu: null

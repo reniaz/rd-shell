@@ -163,7 +163,7 @@ on click unless noted:
 | Disk | left-click | refreshes on open |
 | Mic | left-click toggles mute, right-click opens `pavucontrol -t 4`, scroll adjusts volume |
 | Volume | left-click toggles mute, right-click opens `pavucontrol -t 3`, scroll adjusts volume |
-| Network | right-click only, opens `kcmshell6` to the NetworkManager KCM |
+| Network | left-click hangs the throughput card under it — download and upload speed, the kernel's byte counters for the link, and a sparkline of the last minute with download filled and upload drawn over it. Right-click still opens `kcmshell6` to the NetworkManager KCM. The card samples `/sys/class/net/<device>/statistics/` once a second while it is open and not at all while it is shut, so the graph pauses on close and continues on reopen rather than restarting; the very first sample after opening shows `--` for a moment, because a counter needs a predecessor before it is a speed |
 | Notification bell | left-click opens the notification center, right-click toggles DND. DND holds back every toast except hotkey feedback and the apps in `dndAllow` (`Services/Notifications.qml`) — WhatsApp, because a message from a person is what you kept listening for, and the reminders you set yourself |
 | Power | left-click | lock / logout / reboot / shutdown via `hyprlock` / `hyprshutdown` |
 
@@ -177,7 +177,7 @@ that read state on disk:
 |---|---|---|
 | `scripts/claude-status.sh` | `~/.claude` state files | ~40ms, polled every 2s |
 | `scripts/claude-session.sh` | one whole transcript | ~0.2s, only while a row is open |
-| `scripts/claude-global.sh` | every transcript ever written | ~3.4s cold, ~0.1s warm (cached per file on `(mtime, size)` in `~/.cache/qs-bar/`) |
+| `scripts/claude-global.sh` | every transcript ever written | seconds cold, ~0.4s warm (cached per file on `(mtime, size)` in `~/.cache/qs-bar/`); runs once at startup so the cache is warm, then every 2 min for as long as the Claude panel is open |
 | `scripts/claude-usage.sh` | the `/usage` endpoint | one request per minute |
 | `scripts/sysmon.sh` | `/proc`, hwmon, `nvidia-settings` | ~80ms, polled every 2s |
 | `scripts/sysmon-procs.sh` | two `top` passes 0.2s apart | ~0.5s, only while the panel is open |
@@ -193,7 +193,9 @@ Other scripts, bound from Hyprland rather than polled:
 Everything above needs its command on `PATH`; `install.sh` checks each one and
 tells you which package provides it. `hyprctl` is used by the workspace dots,
 `KeyboardLayout.qml` and `claude-status.sh` (to find the focused window);
-`nmcli` and `kcmshell6` by the network pill; `wpctl` by the mic script and
+`nmcli` and `kcmshell6` by the network pill, and `cat` by its throughput card,
+which reads the kernel's byte counters under `/sys/class/net/` rather than asking
+NetworkManager for a rate it does not have; `wpctl` by the mic script and
 Hyprland's own volume binds; `jq` and `gawk` by every `claude-*.sh`; `top` and
 `free` by the process lists; `curl` by `claude-usage.sh`; `grim`/`slurp`/
 `wl-copy` by the screenshot script.
@@ -217,6 +219,8 @@ with itself about whether 9.4G rounds to 9G.
 | No audio anywhere, PipeWire keeps failing | Iriun's PipeWire drop-in aborts the whole PipeWire context on some machines | `install.sh` patches `/usr/share/pipewire/pipewire.conf.d/iriunaudio.conf` if present — only relevant if you have Iriun installed |
 | Claude panel is empty | no Claude CLI, or nothing in `~/.claude` | install `claude` yourself; `install.sh` deliberately does not do this for you |
 | GPU-busy figure is blank | no `nvidia-smi` on this machine (needs `cuda-devel`, not installed by default) | expected, not a bug — VRAM/temp/fan still come from `nvidia-settings` |
+| Network card reads `--` for a second after opening | a byte counter is not a speed until there is an earlier one to subtract; the same happens after switching interface | expected — it fills in on the next sample, and the totals beside it are true immediately |
+| Network graph has a flat gap, or the card was shut for a while | nothing is sampled while the card is closed, so the history is the last sixty *readings*, not the last sixty seconds — which is why it is drawn without a time axis | expected; a sample whose predecessor is more than three seconds old is thrown away rather than drawn as a long average |
 | Edited a QML file, nothing changed | Quickshell only reloads on a real content change, and you're still running the old process | restart with `launch.sh` — it kills the previous instance with `pgrep -fx "qs -c rd-shell"`, anchored to the whole command line so an editor that merely has the string open survives |
 
 ## 8. Where state lives, and how to remove this

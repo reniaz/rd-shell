@@ -29,13 +29,23 @@ Item {
     property int planDone: 0
     property int planOpen: 0
 
-    // The singleton already drops replies for the wrong session, but a drawer
-    // that is sliding shut outlives its own expansion by a frame or two, and
-    // painting the next row's numbers into it would be worse than leaving it
-    // blank.
+    // `ClaudeDetail.data` holds one row's payload at a time, and the singleton
+    // already drops replies for the wrong session -- so the live reading is
+    // taken from it only while it is this row's. The moment the user opens a
+    // second row it becomes that row's, and this one is still on screen for the
+    // 200ms its drawer takes to fold: reading `data` unconditionally would paint
+    // the neighbour's numbers into it, and refusing to read anything at all
+    // would empty it, which looks like the figures falling out of a drawer
+    // rather than a drawer sliding shut. The service keeps the last payload per
+    // row for exactly this, so a row that is no longer the open one falls back
+    // to its own.
+    //
+    // Both halves are needed: `data` is what is reassigned when a scan lands and
+    // is therefore what makes this binding re-evaluate, while `payloadFor` is
+    // the value that survives the row losing its turn.
     readonly property var d: (ClaudeDetail.data && ClaudeDetail.data.sessionId === root.sessionId)
         ? ClaudeDetail.data
-        : null
+        : ClaudeDetail.payloadFor(root.sessionId)
 
     readonly property var subs: root.d ? (root.d.subagents ?? []) : []
     readonly property var acts: root.d ? (root.d.activity ?? []) : []

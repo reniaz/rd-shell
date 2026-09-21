@@ -25,6 +25,16 @@ Singleton {
         return (unit === 0 || value >= 10 ? value.toFixed(0) : value.toFixed(1)) + units[unit];
     }
 
+    // A speed, counted in the same powers of 1024 `human` counts in. The world
+    // is split on this -- a link is sold in decimal megabits and a file manager
+    // copies in binary megabytes -- and the bar follows the disk popup sitting
+    // two pills along rather than the box the router came in. "--" while there
+    // is no reading yet, the same as `temp`: a rate of zero would be a claim
+    // that nothing is moving.
+    function rate(bytesPerSecond) {
+        return bytesPerSecond >= 0 ? human(bytesPerSecond) + "/s" : "--";
+    }
+
     // Two units at most, largest first: an uptime is read for its order of
     // magnitude, and "1d 11h 20m 3s" says nothing "1d 11h" does not.
     function duration(seconds) {

@@ -4,6 +4,16 @@ import Quickshell.Io
 import qs.Services
 
 ShellRoot {
+    // Above the Bar variants so the background-layer wallpaper surface is
+    // created first on every screen -- order here has no bearing on the
+    // compositor's actual layer stacking (WlrLayershell.layer does that), it
+    // just means Wallpaper never has to race Bar's own startup.
+    Variants {
+        model: Quickshell.screens
+
+        Wallpaper {}
+    }
+
     Variants {
         model: Quickshell.screens
 
@@ -48,6 +58,17 @@ ShellRoot {
 
         function toggle(): void {
             ClaudeSession.togglePanel();
+        }
+    }
+
+    // Bound to CTRL+ALT+F in hyprland.lua: qs ipc -c rd-shell call wallpaper toggle.
+    // There is no pill for this one -- the switcher covers the screen and is only
+    // ever wanted on purpose, so the keybind is the whole of its way in.
+    IpcHandler {
+        target: "wallpaper"
+
+        function toggle(): void {
+            Wallpapers.togglePanel();
         }
     }
 }

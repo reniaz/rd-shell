@@ -15,13 +15,18 @@ BarPopup {
     // As short as the history is, up to everything between the notch and the
     // bottom of the screen. 36 is the card's own margins and 12 the gap under
     // the header; an empty centre is the header and nothing else.
-    popupHeight: Math.min(root.height - 60,
-        36 + head.implicitHeight + (Notifications.count > 0 ? 12 + groups.contentHeight : 0))
+    //
+    // The screen cap only applies once there is a screen height to cap against.
+    // A layer surface is told its size a round trip after it is created, so for
+    // the first frames `root.height` is zero, and an unguarded Math.min against
+    // it asks for a card sixty pixels tall -- which is how the panel came to
+    // open at BarPopup's floor and then unfold into itself.
+    popupHeight: root.height > 0
+        ? Math.min(root.height - 60, root.wantedHeight)
+        : root.wantedHeight
 
-    // The service holds the open state rather than the loader, because Escape,
-    // the bell and the IPC handler can all shut this panel and only one of them
-    // is this window.
-    open: Notifications.panelOpen
+    readonly property real wantedHeight: 36 + head.implicitHeight
+        + (Notifications.count > 0 ? 12 + groups.contentHeight : 0)
 
     ColumnLayout {
         anchors.fill: parent
