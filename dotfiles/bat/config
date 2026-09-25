@@ -1,0 +1,4 @@
+# Rendered theme name from dotfiles/matugen/templates/bat.tmTheme, compiled
+# into bat's cache by matugen's post_hook (`bat cache --build`) on every
+# wallpaper switch.
+--theme="matugen"

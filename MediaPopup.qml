@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Effects
 import Quickshell.Services.Mpris
 import qs.Config
 import qs.Services
@@ -14,124 +13,6 @@ BarPopup {
     namespace: "qs-media"
     popupWidth: 320
     popupHeight: body.implicitHeight + 28
-
-    // A transport control: the bare glyph this bar uses for a button, with a
-    // hit area wider than the letter it draws. Colour is the whole readout --
-    // lit while what it names is on, greyed while the player cannot answer it
-    // yet, as Spotify does with previous at the head of a queue.
-    component TransportButton: Text {
-        id: button
-
-        property bool active: false
-        property bool available: true
-
-        signal triggered()
-
-        color: button.active ? Colors.mediaActive
-            : point.hovered ? Colors.mediaTitle
-            : Colors.mediaMeta
-        opacity: button.available ? 1 : 0.35
-        font.family: Caelus.symbolFamily
-        font.pixelSize: 17
-
-        Behavior on color { ColorAnimation { duration: Motion.fast } }
-
-        MouseArea {
-            id: press
-
-            anchors.fill: parent
-            anchors.margins: -4
-            // Trimmed back to 0 on the bottom: this row sits directly above
-            // the per-player VolumeSlider, whose track grab area (topMargin
-            // -8 in VolumeSlider.qml) already reaches up past its own
-            // visual top. Leaving this margin at -4 too left a ~1px band
-            // where both MouseAreas were hit-testable, and the slider wins
-            // it (declared later), turning a click meant for a button into
-            // an absolute volume jump.
-            anchors.bottomMargin: 0
-            cursorShape: Qt.PointingHandCursor
-            // Stays enabled even when the glyph is dim: an `enabled: false`
-            // MouseArea does not consume the press at all, so it would fall
-            // through to the row-wide `hover` MouseArea behind it and
-            // toggle play/pause instead of doing nothing.
-            onClicked: {
-                if (button.available)
-                    button.triggered();
-            }
-        }
-
-        // The glyph's own hover state comes from a handler rather than from
-        // `hoverEnabled` on the MouseArea above. A hovering MouseArea is the
-        // end of the line for a hover event: the row-wide MouseArea painted
-        // beneath this one would lose `containsMouse` the moment the cursor
-        // touched a glyph, so the whole card animated out of its hover fill
-        // and back again four times as you crossed the transport strip.
-        // HoverHandler reports the same thing without swallowing it.
-        HoverHandler {
-            id: point
-        }
-    }
-
-    // Circular album art with a graceful miss: no track, no art, or a decode
-    // that fails all fall back to the same glyph the row would otherwise show
-    // bare, rather than a blank or black circle standing in for a picture
-    // that never arrived. The circular clip is a mask, not `clip: true` on a
-    // rounded Rectangle -- clipping only ever follows an item's bounding box
-    // in Qt Quick, never its radius, so a masked MultiEffect is what Wallpaper
-    // .qml reaches for too, for its own (differently-shaped) reveal mask.
-    component CircularArt: Item {
-        id: art
-
-        property url source
-        property string fallbackGlyph: "music_note"
-        property color glyphColor: Colors.mediaMeta
-
-        readonly property bool ready: artImage.status === Image.Ready
-
-        // Read only as a texture by the effect below. Opacity 0, not
-        // `visible: false`: an invisible item stops producing a texture
-        // entirely, the same reasoning Wallpaper.qml's revealShape spells
-        // out for its own mask source.
-        Image {
-            id: artImage
-
-            anchors.fill: parent
-            source: art.source
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            cache: true
-            opacity: 0
-        }
-
-        Item {
-            id: circleMask
-
-            anchors.fill: parent
-            opacity: 0
-            layer.enabled: true
-
-            Rectangle { anchors.fill: parent; radius: width / 2; color: "white" }
-        }
-
-        MultiEffect {
-            anchors.fill: parent
-            source: artImage
-            visible: art.ready
-            maskEnabled: true
-            maskSource: circleMask
-            maskThresholdMin: 0.5
-            maskSpreadAtMin: 0.04
-        }
-
-        Text {
-            anchors.centerIn: parent
-            visible: !art.ready
-            text: art.fallbackGlyph
-            color: art.glyphColor
-            font.family: Caelus.symbolFamily
-            font.pixelSize: Caelus.sizeTitle
-        }
-    }
 
     ColumnLayout {
         id: body
@@ -305,7 +186,7 @@ BarPopup {
                             }
                         }
 
-                        CircularArt {
+                        MediaArt {
                             anchors.centerIn: parent
                             width: Cava.available ? 22 : artSlot.compactSize
                             height: width
@@ -354,34 +235,43 @@ BarPopup {
                             spacing: Caelus.spaceWide
                             visible: entry.hasTransport
 
-                            TransportButton {
+                            // Bottom hit margin trimmed to 0 on all four:
+                            // this row sits directly above the VolumeSlider
+                            // below, and the default -4 left a ~1px band
+                            // where both MouseAreas were hit-testable -- see
+                            // MediaButton.qml for the full reasoning.
+                            MediaButton {
                                 text: "shuffle"
                                 visible: entry.modelData.shuffleSupported
                                 active: entry.modelData.shuffle
+                                bottomHitMargin: 0
                                 onTriggered: Media.toggleShuffle(entry.modelData)
                             }
 
-                            TransportButton {
+                            MediaButton {
                                 text: "skip_previous"
                                 visible: entry.skippable
                                 available: entry.modelData.canGoPrevious
+                                bottomHitMargin: 0
                                 onTriggered: Media.previous(entry.modelData)
                             }
 
-                            TransportButton {
+                            MediaButton {
                                 text: "skip_next"
                                 visible: entry.skippable
                                 available: entry.modelData.canGoNext
+                                bottomHitMargin: 0
                                 onTriggered: Media.next(entry.modelData)
                             }
 
                             // One glyph for both kinds of repeat: the bar under
                             // the arrows is what says the whole list, the 1 in
                             // the middle what says this track.
-                            TransportButton {
+                            MediaButton {
                                 text: entry.modelData.loopState === MprisLoopState.Track ? "repeat_one" : "repeat"
                                 visible: entry.modelData.loopSupported
                                 active: entry.modelData.loopState !== MprisLoopState.None
+                                bottomHitMargin: 0
                                 onTriggered: Media.cycleLoop(entry.modelData)
                             }
                         }

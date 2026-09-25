@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A cheat sheet of every Hyprland bind, in rofi, themed like the launcher.
+# Decodes `hyprctl binds` into the rows KeybindOverview.qml (SUPER+K) shows.
 #
 # The list comes from `hyprctl binds`, not from parsing hyprland.lua, so it is
 # whatever Hyprland is actually running right now — including the binds the
@@ -7,24 +7,14 @@
 # dispatcher name and argument say nothing useful, so each bind carries a
 # `description` in hyprland.lua and that is what is shown here.
 #
-#   keybinds.sh          the rofi sheet (SUPER+H)
-#   keybinds.sh --tsv    just the rows, "<combo>\t<action>\t<ref>" -- what the
-#                        bar's own overview (KeybindOverview.qml, SUPER+K)
-#                        reads, so both lists decode `hyprctl binds` in this
-#                        one place. <ref> is the bind's Lua callback (see
-#                        `ref` below), empty for a bind the overview cannot run
+#   keybinds.sh --tsv    the rows, "<combo>\t<action>\t<ref>" -- what
+#                        Services/Keybinds.qml reads. <ref> is the bind's Lua
+#                        callback (see `ref` below), empty for a bind the
+#                        overview cannot run.
 set -euo pipefail
 
-MODE=${1:-}
-PIDFILE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rofi-keybinds.pid"
-
-# Second press closes the sheet instead of stacking another copy on top of it.
-# rofi removes the file on a clean exit; a killed one leaves it behind, so the
-# pid is only believed when it still belongs to a rofi.
-if [ "$MODE" != --tsv ] && [ -s "$PIDFILE" ] && [ "$(cat "/proc/$(cat "$PIDFILE")/comm" 2>/dev/null)" = "rofi" ]; then
-    kill "$(cat "$PIDFILE")" 2>/dev/null || true
-    exit 0
-fi
+# No modes left to switch on -- `--tsv` is accepted (and ignored) only so
+# Services/Keybinds.qml's `["sh", ..., "--tsv"]` call needs no update.
 
 rows=$(hyprctl -j binds | jq -r '
     def bit($b): ((.modmask / $b) | floor) % 2 == 1;
@@ -40,10 +30,10 @@ rows=$(hyprctl -j binds | jq -r '
               elif . == "mouse:274"  then "MMB"
               elif . == "mouse_down" then "Scroll down"
               elif . == "mouse_up"   then "Scroll up"
-              elif . == "left"  then "\u2190"
-              elif . == "right" then "\u2192"
-              elif . == "up"    then "\u2191"
-              elif . == "down"  then "\u2193"
+              elif . == "left"  then "←"
+              elif . == "right" then "→"
+              elif . == "up"    then "↑"
+              elif . == "down"  then "↓"
               # XF86AudioRaiseVolume reads as "Audio Raise Volume".
               elif startswith("XF86") then (ltrimstr("XF86") | gsub("(?<a>[a-z])(?<b>[A-Z])"; "\(.a) \(.b)"))
               else . end
@@ -59,22 +49,4 @@ rows=$(hyprctl -j binds | jq -r '
     .[] | [ ((mods + [keyname]) | join(" + ")), action, ref ] | @tsv
 ')
 
-if [ "$MODE" = --tsv ]; then
-    printf '%s\n' "$rows"
-    exit 0
-fi
-
-# Both columns are padded to the widest bind, which lines up because caelusevka
-# is monospaced. Pango markup means the text has to be escaped first.
-printf '%s\n' "$rows" | awk -F'\t' '
-    function esc(s) { gsub(/&/, "\\&amp;", s); gsub(/</, "\\&lt;", s); gsub(/>/, "\\&gt;", s); return s }
-    { key[NR] = $1; act[NR] = $2; if (length($1) > w) w = length($1) }
-    END {
-        for (i = 1; i <= NR; i++)
-            printf "<span foreground=\"#b86e38\">%-*s</span>  %s\n", w, esc(key[i]), esc(act[i])
-    }' |
-    rofi -dmenu -i -markup-rows -no-custom \
-         -p "keybinds" \
-         -mesg "$(printf '%s\n' "$rows" | wc -l) binds — type to filter" \
-         -theme "$HOME/.config/rofi/keybinds.rasi" \
-         -pid "$PIDFILE" >/dev/null || true
+printf '%s\n' "$rows"

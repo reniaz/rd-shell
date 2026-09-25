@@ -21,23 +21,24 @@ is the whole rice: the bar, the Hyprland config it was built against
 wallpaper colours (`dotfiles/`), the author's wallpapers, and one installer
 (`install.sh`) for a fresh box.
 
-**Stack at a glance:** Hyprland · Quickshell · matugen · ghostty · rofi ·
+**Stack at a glance:** Hyprland · Quickshell · matugen · ghostty ·
 hyprlauncher · fetchit · btop · cava · nvim · yazi · vesktop · spicetify.
 
 GitHub: [reniaz/rd-shell](https://github.com/reniaz/rd-shell)
 
 ## Features
 
-**Bar** — workspace dots, media pill with cava, CPU/GPU/RAM readout, clock
+**Bar** — workspace dots, media pill with cava (the cava feed, here and on
+every other visualizer, is Spotify's audio only), CPU/GPU/RAM readout, clock
 with reminders, Claude pill, keyboard layout, disk, tray, mic, volume,
 network, notification bell, power. Every panel hangs from its pill through
 a shared popup component.
 
 **Launcher & overview** — a QML-native app launcher (`Super+Space`,
-search-as-you-type, not rofi) plus `hyprlauncher` (`Super+R`) as a second,
+search-as-you-type) plus `hyprlauncher` (`Super+R`) as a second,
 independent launcher. `Super+K` opens a searchable overview of every
 Hyprland bind inside the bar — type to filter, `Enter` or a click runs the
-selected one. `Super+H` opens the same bind list as a rofi sheet instead.
+selected one.
 
 **Wallpaper switcher & dynamic colour** — `Ctrl+Alt+F` opens a fullscreen
 coverflow over `~/Pictures/wall`; picking one re-renders matugen, and the
@@ -80,6 +81,18 @@ starts a `claude` process to answer a question.
 **Edge bar / DDC** — a hover-revealed strip on a monitor's outer edge,
 caelestia-inspired, carrying per-monitor brightness/contrast over DDC/CI for
 desktop displays with no backlight device, via `ddcutil`.
+
+**Desktop widgets** — a giant clock in the top-right corner and, under it,
+a now-playing card for Spotify only (Firefox or any other player never makes
+it appear), drawn on their own layer below every window and above the
+wallpaper — what you see on an empty workspace or through the gaps between
+tiles. Idle, the card is just a cava bar visualizer with no background;
+hover it and the see-through card grows out of it with an accent border:
+art ringed by a radial visualizer, a scrolling title, the artist with any
+featured artists, a seekable progress bar, shuffle / previous / play-pause /
+next / loop, and a volume control that grows across that row and scrubs
+from wherever you grab it. On by default; toggle it off from the settings
+popup (`✦` pill).
 
 **Power** — logout / reboot / shutdown / lock, over `hyprshutdown`.
 
@@ -146,7 +159,6 @@ exec-once = ~/.config/quickshell/rd-shell/launch.sh
 | `Super+B` | Browser (firefox) |
 | `Super+Space` | App launcher (shell-native) |
 | `Super+R` | Launcher (hyprlauncher) |
-| `Super+H` | Keybind cheat sheet (rofi) |
 | `Super+K` | Keybind overview (search, in-bar) |
 | `Ctrl+Alt+F` | Wallpaper switcher |
 | `` Super+` `` | Workspace overview (hyprexpo) |
@@ -217,6 +229,19 @@ Dynamic mode runs on matugen through `Config/Wal.qml`: every switch renders
 follows without a restart. If matugen is missing or hasn't rendered yet, the
 switch stays inert and the caelus palette holds.
 
+### The rest of the desktop
+
+matugen doesn't stop at the bar — the same wallpaper switch retints GTK, Qt,
+icons, cursor and `bat`:
+
+| | What | Live? |
+|---|---|---|
+| GTK/GNOME apps | adw-gtk3-dark + matugen colours, via `~/.config/gtk-{3,4}.0/gtk.css` importing `~/.cache/rd-shell/gtk-colors.css` (libadwaita accent included) | next launch only — GTK doesn't watch `gtk.css` |
+| Qt/KDE apps | matugen KDE colour scheme, applied with `plasma-apply-colorscheme` (alternates the `Matugen`/`Matugen2` name so it always registers as a change) | live |
+| Icons | Papirus-Dark, installed user-level; folder colour follows the accent via `scripts/papirus-accent.sh` | next icon lookup |
+| Cursor | Bibata-Original-Classic, size 36 — Hyprland, GTK and Qt all share it | live in Hyprland |
+| `bat` | matugen-rendered `.tmTheme`, cache rebuilt with `bat cache --build` after each render | next invocation |
+
 ### Firefox
 
 The wallpaper reaches Firefox too. `firefox/userChrome.css` themes the
@@ -271,7 +296,7 @@ rd-shell/
 ├── assets/fonts/        # caelusevka (bundled) + its OFL licence
 ├── assets/fontconfig/   # keeps the icon family resolving to the full font
 ├── hypr/                # the author's Hyprland config, mirrored 1:1
-├── dotfiles/             # matugen + app templates (btop, cava, yazi, nvim, …)
+├── dotfiles/             # matugen + app templates (btop, cava, yazi, nvim, bat, …)
 ├── firefox/             # userChrome/userContent CSS + Sidebery/Stylus pastes
 ├── wallpapers/          # the author's own additions to LainOS-wallpapers
 ├── install.sh           # one-time setup
@@ -284,16 +309,18 @@ rd-shell/
   configs by directory name, so this exact path matters)
 - `hypr/{hyprland.lua,hyprland-gui.lua,hypridle.conf,hyprlock.conf}` →
   `~/.config/hypr/`, individually — not the whole directory, which also
-  holds HyprMod's state and generated lock colours
-- `hypr/dotfiles/ghostty` → `~/.config/ghostty`, `hypr/dotfiles/rofi` →
-  `~/.config/rofi` — whole-directory symlinks, since that's where those two
-  configs sit on the source machine
-- `scripts/{keybinds,mic-toggle,screenshot}.sh` → `~/.config/hypr/scripts/`,
-  the path Hyprland calls them by; the repo owns the real files
+  holds HyprMod's state and generated lock colours. `hyprland-gui.lua` is
+  HyprMod-generated and loaded last, so it overrides `hyprland.lua`
+  (rounding 4/power 2, cursor theme/size)
+- `hypr/dotfiles/ghostty` → `~/.config/ghostty` — a whole-directory symlink,
+  since that's where the config sits on the source machine
+- `scripts/{keybinds,mic-toggle,screenshot,papirus-accent}.sh` →
+  `~/.config/hypr/scripts/` or called in place by matugen; the repo owns the
+  real files
 - every file under `dotfiles/` → the matching `~/.config/<app>` path —
   matugen's config plus per-app templates (btop, cava, yazi, nvim, vesktop,
-  spicetify, fetchit). matugen aborts its whole run if any `input_path` it
-  lists is missing, so all of them ship even for apps you don't have
+  spicetify, fetchit, bat). matugen aborts its whole run if any `input_path`
+  it lists is missing, so all of them ship even for apps you don't have
 
 Never committed: matugen's rendered *output* (`~/.config/btop/themes`,
 `cava/config`, `nvim/colors/matugen.lua`, etc.) — regenerated on first render.
@@ -320,10 +347,15 @@ Never committed: matugen's rendered *output* (`~/.config/btop/themes`,
 ```
 ~/.config/quickshell/rd-shell         -> this repo
 ~/.config/hypr/scripts/*.sh           -> scripts/{keybinds,mic-toggle,screenshot}.sh
-~/.config/ghostty, ~/.config/rofi     -> hypr/dotfiles/{ghostty,rofi}
+~/.config/ghostty                     -> hypr/dotfiles/ghostty
+~/.config/bat/                        -- config + rendered matugen theme/cache
 $XDG_RUNTIME_DIR/rd-shell.log         -- shell's own log
 ~/.cache/qs-bar/                      -- claude-global.sh's transcript cache
-~/.cache/rd-shell/                    -- rendered matugen colours, incl. firefox-colors.css
+~/.cache/rd-shell/                    -- rendered matugen colours, incl. firefox-colors.css, gtk-colors.css
+~/.local/share/color-schemes/Matugen*.colors -- rendered KDE scheme (alternates Matugen/Matugen2)
+~/.local/share/icons/Papirus*         -- user-level icon theme install
+~/.local/bin/papirus-folders          -- folder-colour CLI scripts/papirus-accent.sh drives
+~/.local/share/themes/adw-gtk3*       -- user-level GTK theme
 <firefox profile>/chrome/rd-shell, matugen.css
                                        -> firefox/, the cache file above
 <firefox profile>/chrome/userChrome.css, userContent.css

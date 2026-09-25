@@ -138,3 +138,91 @@ output_path = '~/.config/nvim/colors/matugen.lua'
 [templates.firefox]
 input_path = '~/.config/matugen/templates/firefox-colors.css'
 output_path = '~/.cache/rd-shell/firefox-colors.css'
+
+# bat theme. bat has no file-watch/reload -- each invocation is a fresh
+# process that reads the compiled theme cache, so the only "live update"
+# needed is recompiling that cache after the .tmTheme changes. Fast
+# (~0.3s measured), never fails loudly (redirected + || true), and touches
+# no running app.
+[templates.bat]
+input_path = '~/.config/matugen/templates/bat.tmTheme'
+output_path = '~/.config/bat/themes/matugen.tmTheme'
+post_hook = 'bat cache --build >/dev/null 2>&1 || true'
+
+# Qt/KDE apps (Dolphin, Ark, kdialog, any file-open dialog in an app run
+# with QT_QPA_PLATFORMTHEME=kde) read colours from the *active* KDE colour
+# scheme in kdeglobals, not from a file matugen can just overwrite in place --
+# a plain file write leaves every already-running KDE app showing stale
+# colours. plasma-apply-colorscheme is the only thing that both rewrites
+# kdeglobals AND notifies running apps over D-Bus, but it refuses to
+# "apply" a scheme name that is already the active one (verified: re-running
+# `plasma-apply-colorscheme Matugen` twice in a row prints "is already set
+# as the theme" and changes nothing the second time). So this entry renders
+# to a fixed file (Matugen.colors), and the post_hook copies that fresh
+# render to a second file (Matugen2.colors) and applies whichever of the two
+# NAMES is not currently active -- content is always fresh either way, only
+# the name alternates, which is what makes plasma-apply-colorscheme treat
+# every wallpaper switch as a real change. Verified live 2026-09-25: applied
+# Matugen -> refused re-apply of Matugen -> applied Matugen2 -> flipped back
+# to Matugen, kdeglobals' [General] ColorScheme following each apply, and a
+# freshly launched kdialog window picked up the new dark palette immediately
+# with no restart.
+[templates.kde]
+input_path = '~/.config/matugen/templates/kde-colors.colors'
+output_path = '~/.local/share/color-schemes/Matugen.colors'
+post_hook = 'cp -f ~/.local/share/color-schemes/Matugen.colors ~/.local/share/color-schemes/Matugen2.colors 2>/dev/null || true; c=$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null); if [ "$c" = "Matugen" ]; then plasma-apply-colorscheme Matugen2 >/dev/null 2>&1 || true; else plasma-apply-colorscheme Matugen >/dev/null 2>&1 || true; fi'
+
+# Papirus-Dark folder colour, tracking the wallpaper accent. Nothing reads
+# the rendered file itself (see the template's own header) -- its only job
+# is to give matugen something to render so the post_hook fires.
+#
+# The post_hook re-derives the primary hex from $CACHE/matugen.json itself
+# (same file wallpaper-apply.sh's apply_border/apply_lock already read)
+# rather than parse this output back out, maps it to the nearest
+# papirus-folders colour by hue+saturation, and no-ops when that colour
+# hasn't changed since the last run (state kept in
+# ~/.cache/rd-shell/papirus-accent-color). When it does change, the actual
+# `papirus-folders -C` call -- and the gtk-update-icon-cache rebuild that
+# comes with it, measured at several seconds -- is fired with `setsid -f`,
+# detached, so this post_hook itself returns in ~15ms and never delays the
+# $STATE write later in wallpaper-apply.sh that triggers the wallpaper swap
+# animation.
+#
+# Verified 2026-09-25: ran scripts/papirus-accent.sh directly against the
+# live ~/.cache/rd-shell/matugen.json (primary #c2c1ff) -- Papirus-Dark's
+# resolved places/folder.svg symlink target moved from folder-blue.svg to
+# folder-indigo.svg, and a second run was a no-op (same target, ~15ms,
+# nothing invoked). Also rendered the template through a scratch matugen
+# config (never the real one) and confirmed the emitted hex matches
+# matugen.json's `primary` field exactly for the current wallpaper.
+[templates.papirus-accent]
+input_path = '~/.config/matugen/templates/papirus-accent.txt'
+output_path = '~/.cache/rd-shell/papirus-accent.txt'
+post_hook = '~/.config/quickshell/rd-shell/scripts/papirus-accent.sh >/dev/null 2>&1 || true'
+
+# GTK3/GTK4/libadwaita colours (xdg-desktop-portal-gtk's file picker,
+# pavucontrol, any other non-Qt app). ~/.config/gtk-3.0/gtk.css and
+# ~/.config/gtk-4.0/gtk.css each carry a permanent
+# `@import url("file://$HOME/.cache/rd-shell/gtk-colors.css");` after their
+# existing `@import 'colors.css';` (KDE's Breeze defines, left alone -- adw-gtk3
+# doesn't use them, and gtk-theme-name is now adw-gtk3-dark, not Breeze), so
+# nothing needs re-linking here -- only the cache file needs re-rendering.
+# Neither GTK3 nor GTK4 watches gtk.css for changes: a running app only picks
+# up a new render on its next launch, not live. No post_hook -- there is
+# nothing safe to signal (unlike btop's SIGUSR2 or ghostty's D-Bus action,
+# GTK apps have no reload-css call, and blindly killing/restarting every GTK
+# app on a wallpaper switch is exactly the "never restart apps the user is
+# using" rule this file must not violate).
+#
+# Verified live (2026-09-25): rendered this template as
+# ~/.cache/rd-shell/gtk-colors.css, launched a plain GTK3 window
+# (adw-gtk3-dark) and an Adw.ApplicationWindow (GTK4/libadwaita) -- both
+# picked up window_bg_color, view_bg_color etc. from this file. libadwaita
+# >= 1.6 (1.9.3 here) takes its accent from the gsettings accent-color
+# preset, not from @accent_bg_color -- but it also reads CSS variables, and
+# the template's :root block (--accent-bg-color and friends) sits in the
+# user stylesheet, above that preset. Verified: a forced accent there turned
+# a libadwaita suggested-action button with accent-color still 'blue'.
+[templates.gtk]
+input_path = '~/.config/matugen/templates/gtk-colors.css'
+output_path = '~/.cache/rd-shell/gtk-colors.css'

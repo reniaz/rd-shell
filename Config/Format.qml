@@ -71,4 +71,20 @@ Singleton {
     function temp(celsius) {
         return celsius >= 0 ? Math.round(celsius) + "°" : "--";
     }
+
+    // A track position, the one place on the bar a duration is read second
+    // by second rather than skimmed for its order of magnitude -- so this
+    // is the one duration formatter here that does not collapse to the
+    // largest unit. m:ss below an hour, h:mm:ss past it: nothing this shell
+    // plays back runs anywhere near that long, but a stream with no real
+    // length reported would otherwise print a nonsense hour count instead
+    // of just growing another digit.
+    function time(seconds) {
+        const s = Math.max(0, Math.floor(seconds));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor(s % 3600 / 60);
+        const sec = String(s % 60).padStart(2, "0");
+
+        return h > 0 ? h + ":" + String(m).padStart(2, "0") + ":" + sec : m + ":" + sec;
+    }
 }

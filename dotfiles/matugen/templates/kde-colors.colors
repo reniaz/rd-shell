@@ -1,0 +1,153 @@
+# Rendered by matugen on every wallpaper switch into
+# ~/.local/share/color-schemes/Matugen.colors, then applied to the live KDE
+# session by `plasma-apply-colorscheme Matugen` (see the [templates.kde]
+# post_hook in ~/.config/matugen/config.toml). plasma-apply-colorscheme both
+# rewrites ~/.config/kdeglobals with these sections and notifies every running
+# Qt/KDE app over D-Bus (Dolphin, Ark, kdialog, KDE file-open dialogs in any
+# app using QT_QPA_PLATFORMTHEME=kde) -- no restart needed.
+#
+# Section/key layout copied from /usr/share/color-schemes/BreezeDark.colors so
+# every app-visible slot Breeze fills is also filled here; only the values
+# change. Role mapping, light-on-dark surface ladder (mode is always dark,
+# Caelus.qml):
+#   View (lists/text areas)   -> surface_container_low / surface_container
+#   Window (general chrome)   -> surface / surface_container_low
+#   Button                    -> surface_container / surface_container_high
+#   Selection (highlighted)   -> primary / primary_container, text on_primary
+#   Tooltip                   -> surface_container_high / surface_container_highest
+#   Complementary (flyouts, e.g. Dolphin's places panel background) -> surface_container_lowest
+#   Header (toolbars/path bars) -> surface_container, dimmer when [Inactive]
+#   WM (titlebar)              -> surface_container_high active, surface_container_low inactive
+# Foreground ladder: ForegroundNormal/Active = on_surface / primary,
+# ForegroundInactive = on_surface_variant. Link/Visited/Negative/Neutral/
+# Positive reuse the same six fixed ANSI-style custom colors every other
+# template in this repo uses (config.custom_colors: blue/magenta/red/yellow/
+# green), so KDE's link-blue, visited-purple, error-red, warning-orange and
+# success-green track the wallpaper the same way btop's and ghostty's do,
+# without ever going monochrome against a single-hue Material palette.
+
+[Colors:Button]
+BackgroundAlternate={{colors.surface_container_high.default.red}},{{colors.surface_container_high.default.green}},{{colors.surface_container_high.default.blue}}
+BackgroundNormal={{colors.surface_container.default.red}},{{colors.surface_container.default.green}},{{colors.surface_container.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundInactive={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+[Colors:Complementary]
+BackgroundAlternate={{colors.surface_container_low.default.red}},{{colors.surface_container_low.default.green}},{{colors.surface_container_low.default.blue}}
+BackgroundNormal={{colors.surface_container_lowest.default.red}},{{colors.surface_container_lowest.default.green}},{{colors.surface_container_lowest.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundInactive={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+[Colors:Header]
+BackgroundAlternate={{colors.surface_container_high.default.red}},{{colors.surface_container_high.default.green}},{{colors.surface_container_high.default.blue}}
+BackgroundNormal={{colors.surface_container.default.red}},{{colors.surface_container.default.green}},{{colors.surface_container.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundInactive={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+[Colors:Header][Inactive]
+BackgroundAlternate={{colors.surface_container.default.red}},{{colors.surface_container.default.green}},{{colors.surface_container.default.blue}}
+BackgroundNormal={{colors.surface_container_low.default.red}},{{colors.surface_container_low.default.green}},{{colors.surface_container_low.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundInactive={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+[Colors:Selection]
+BackgroundAlternate={{colors.primary_container.default.red}},{{colors.primary_container.default.green}},{{colors.primary_container.default.blue}}
+BackgroundNormal={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.on_primary.default.red}},{{colors.on_primary.default.green}},{{colors.on_primary.default.blue}}
+ForegroundInactive={{colors.on_primary_container.default.red}},{{colors.on_primary_container.default.green}},{{colors.on_primary_container.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_primary.default.red}},{{colors.on_primary.default.green}},{{colors.on_primary.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+[Colors:Tooltip]
+BackgroundAlternate={{colors.surface_container_highest.default.red}},{{colors.surface_container_highest.default.green}},{{colors.surface_container_highest.default.blue}}
+BackgroundNormal={{colors.surface_container_high.default.red}},{{colors.surface_container_high.default.green}},{{colors.surface_container_high.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundInactive={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+[Colors:View]
+BackgroundAlternate={{colors.surface_container.default.red}},{{colors.surface_container.default.green}},{{colors.surface_container.default.blue}}
+BackgroundNormal={{colors.surface_container_low.default.red}},{{colors.surface_container_low.default.green}},{{colors.surface_container_low.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundInactive={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+[Colors:Window]
+BackgroundAlternate={{colors.surface_container_low.default.red}},{{colors.surface_container_low.default.green}},{{colors.surface_container_low.default.blue}}
+BackgroundNormal={{colors.surface.default.red}},{{colors.surface.default.green}},{{colors.surface.default.blue}}
+DecorationFocus={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+DecorationHover={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundActive={{colors.primary.default.red}},{{colors.primary.default.green}},{{colors.primary.default.blue}}
+ForegroundInactive={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+ForegroundLink={{colors.blue.default.red}},{{colors.blue.default.green}},{{colors.blue.default.blue}}
+ForegroundNegative={{colors.red.default.red}},{{colors.red.default.green}},{{colors.red.default.blue}}
+ForegroundNeutral={{colors.yellow.default.red}},{{colors.yellow.default.green}},{{colors.yellow.default.blue}}
+ForegroundNormal={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+ForegroundPositive={{colors.green.default.red}},{{colors.green.default.green}},{{colors.green.default.blue}}
+ForegroundVisited={{colors.magenta.default.red}},{{colors.magenta.default.green}},{{colors.magenta.default.blue}}
+
+# Name/ColorScheme go under [General] in the app-visible copy, but
+# plasma-apply-colorscheme derives that pair from the filename it was given
+# (Matugen.colors -> ColorScheme=Matugen) and writes it itself, so it is left
+# out here on purpose -- a fixed Name/ColorScheme baked into the template
+# would be overwritten on every apply anyway.
+
+[WM]
+activeBackground={{colors.surface_container_high.default.red}},{{colors.surface_container_high.default.green}},{{colors.surface_container_high.default.blue}}
+activeBlend={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+activeForeground={{colors.on_surface.default.red}},{{colors.on_surface.default.green}},{{colors.on_surface.default.blue}}
+inactiveBackground={{colors.surface_container_low.default.red}},{{colors.surface_container_low.default.green}},{{colors.surface_container_low.default.blue}}
+inactiveBlend={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}
+inactiveForeground={{colors.on_surface_variant.default.red}},{{colors.on_surface_variant.default.green}},{{colors.on_surface_variant.default.blue}}

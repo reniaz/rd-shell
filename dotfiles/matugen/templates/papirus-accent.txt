@@ -1,0 +1,12 @@
+# Rendered by matugen on every wallpaper switch (see the bar's
+# scripts/wallpaper-apply.sh and the [templates.papirus-accent] entry in
+# ~/.config/matugen/config.toml) into ~/.cache/rd-shell/papirus-accent.txt.
+#
+# Nothing reads this file. Its only job is to give matugen something to
+# render so its post_hook fires: post_hook = 'scripts/papirus-accent.sh',
+# which recolours Papirus-Dark's folder icons to the nearest papirus-folders
+# colour for the current accent. That script re-derives the primary hex from
+# $CACHE/matugen.json itself (the file scripts/wallpaper-apply.sh's
+# apply_border/apply_lock already read) rather than parse this file back out,
+# so this hex is here for a human comparing the two, not for the script.
+{{colors.primary.default.hex}}

@@ -40,8 +40,7 @@ local menu        = "hyprlauncher"
 local browser     = "firefox"
 -- The shell's own launcher, not rofi. `qs ipc` talks to the running
 -- instance, so this costs no process spawn and the window is styled by the
--- same tokens as the bar. rofi is still installed and still what SUPER+H
--- uses to list these binds.
+-- same tokens as the bar.
 local app_launcher = "qs ipc -c rd-shell call launcher toggle"
 
 
@@ -88,14 +87,17 @@ end)
 
 -- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/
 
+-- The theme too, not just the size: `hyprctl setcursor` below only covers
+-- Hyprland's own surfaces, and GTK/Qt apps otherwise draw breeze_cursors.
+hl.env("XCURSOR_THEME", "Bibata-Original-Classic")
 hl.env("XCURSOR_SIZE", "36")
 hl.env("HYPRCURSOR_SIZE", "36")
 
 hl.env("LIBVA_DRIVER_NAME", "nvidia")
 hl.env("QT_QPA_PLATFORMTHEME", "kde")
--- rofi's launcher (SUPER+SPACE) shells out via /usr/bin/rofi-sensible-terminal,
--- which tries $TERMINAL first and otherwise falls through a hardcoded list
--- that finds kitty before ghostty -- which is what has been opening kitty.
+-- Anything that looks for a terminal via $TERMINAL first and otherwise falls
+-- through a hardcoded list finds kitty before ghostty, which is what used to
+-- open kitty from the old rofi launcher.
 hl.env("TERMINAL", "/usr/bin/ghostty")
 
 -----------------------
@@ -143,9 +145,29 @@ hl.config({
         layout = "dwindle",
     },
 
+    -- Grouped windows (tabbed with a group bar) in the palette rather than
+    -- Hyprland's yellow defaults. Static caelus values here, the same ones as
+    -- the borders above; scripts/wallpaper-apply.sh swaps both for the
+    -- matugen colours on every wallpaper switch, in the same eval.
+    group = {
+        col = {
+            border_active   = { colors = {"rgb(b86e38)"}, angle = 45 },
+            border_inactive = "rgba(595959aa)",
+        },
+        groupbar = {
+            col = {
+                active   = "rgb(b86e38)",
+                inactive = "rgba(595959aa)",
+            },
+        },
+    },
+
     decoration = {
-        rounding       = 0,
-        rounding_power = 0,
+        -- A 4px radius with a plain circular arc (power 2 is a circle, 4 a
+        -- squircle): just enough to soften the corners against the bar's
+        -- rounded islands without turning tiles into cards.
+        rounding       = 4,
+        rounding_power = 2,
 
         -- Forced on every window, whether or not the app has a transparency
         -- setting of its own -- which also means it makes the *contents*
@@ -396,8 +418,8 @@ local mainMod = "SUPER" -- Sets "Windows" key as main modifier
 
 -- Example binds, see https://wiki.hypr.land/Configuring/Basics/Binds/ for more
 --
--- Every bind carries a description. SUPER+H lists them in rofi, and it reads
--- them out of `hyprctl binds` — where a Lua bind's dispatcher is the opaque
+-- Every bind carries a description. SUPER+K lists them (the shell's keybind
+-- overview), and it reads them out of `hyprctl binds` — where a Lua bind's dispatcher is the opaque
 -- "__lua", so the description is the only thing that can say what it does.
 hl.bind(mainMod .. " + Q", hl.dsp.exec_cmd(terminal), { description = "Terminal (ghostty)" })
 local closeWindowBind = hl.bind(mainMod .. " + W", hl.dsp.window.close(), { description = "Close window" })
@@ -426,7 +448,6 @@ hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(browser), { description = "Browser (f
 hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd(app_launcher), { description = "App launcher" })
 -- This cheat sheet. The script reads the descriptions above back out of
 -- `hyprctl binds`, so a new bind shows up in it as soon as it is described.
-hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("~/.config/hypr/scripts/keybinds.sh"), { description = "Show this keybind list" })
 -- The same list inside the bar, with a search field (KeybindOverview.qml).
 hl.bind(mainMod .. " + K", hl.dsp.exec_cmd("qs ipc -c rd-shell call keybinds toggle"), { description = "Keybind overview (search)" })
 -- The system monitor popup, on the key every other desktop opens its task
@@ -736,6 +757,11 @@ hl.layer_rule({
     blur         = true,
     ignore_alpha = 0.2,
 })
+
+-- The desktop layer (giant clock + now-playing card, DesktopWidgets.qml,
+-- namespace qs-desktop) deliberately gets NO blur rule: the card is meant to
+-- be see-through, and a blurred backdrop turns its low-alpha body into a
+-- solid-looking frosted slab that hides the wallpaper it sits on.
 
 -- Layer rules also return a handle.
 -- local overlayLayerRule = hl.layer_rule({

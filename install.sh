@@ -187,6 +187,8 @@ firefox:firefox:opt
 tuned-adm:tuned:opt
 nmcli:NetworkManager:req
 kcmshell6:kf6-kcmutils:req
+plasma-apply-colorscheme:plasma-workspace:req
+kreadconfig6:kf6-kconfig:req
 pavucontrol:pavucontrol:req
 wpctl:wireplumber:req
 notify-send:libnotify:req
@@ -196,18 +198,19 @@ python3:python3:req
 free:procps-ng:req
 df:coreutils:req
 curl:curl:req
+wget:wget2-wget:opt
 git:git:req
 grim:grim:req
 slurp:slurp:req
 wl-copy:wl-clipboard:req
 ghostty:ghostty:req
-rofi:rofi:req
 nvim:neovim:opt
 yazi:yazi:opt
 matugen:matugen:req
 magick:ImageMagick:req
 btop:btop:opt
 cava:cava:opt
+bat:bat:opt
 pw-link:pipewire-utils:opt
 ddcutil:ddcutil:opt
 xdg-open:xdg-utils:opt
@@ -236,10 +239,17 @@ done
 # xdg-desktop-portal-hyprland backs screen sharing and the file pickers;
 # polkit-kde is the authentication agent that anything asking for root pops
 # up; plasma-integration backs QT_QPA_PLATFORMTHEME=kde in hyprland.lua,
-# without which Qt applications ignore the system theme; breeze-cursor-theme
-# is the XCURSOR_THEME hyprland-gui.lua sets as a base before the real
-# cursor theme (below) takes over.
-for pkg in xdg-desktop-portal-hyprland polkit-kde plasma-integration breeze-cursor-theme; do
+# without which Qt applications ignore the system theme (it also pulls in
+# breeze-cursor-theme itself, which is why that one is not listed here too
+# -- hyprland-gui.lua's XCURSOR_THEME is Bibata from the start, never
+# breeze, so nothing needs it directly; the fallback cursor a missing
+# Bibata leaves behind, further down, still comes from it). adw-gtk3-theme
+# is the libadwaita port of Adwaita for GTK3, used by the GTK theme step
+# below for its adw-gtk3 and adw-gtk3-dark GtkTheme (verified: `dnf info
+# adw-gtk3-theme` resolves to 6.4-3.fc44 from the Fedora repo, no COPR
+# needed -- upstream is a few point releases ahead at v6.5, close enough
+# that chasing GitHub releases here isn't worth the extra failure mode).
+for pkg in xdg-desktop-portal-hyprland polkit-kde plasma-integration adw-gtk3-theme; do
     if rpm -q "$pkg" >/dev/null 2>&1; then
         ok "$pkg"
     else
@@ -457,6 +467,65 @@ else
     warn "without it the cursor falls back to breeze_cursors"
 fi
 
+# --- icon theme (Papirus) ----------------------------------------------
+# Stock Breeze -> Papirus. No Fedora package for either piece, so both come
+# from their own upstream repos, same pattern as the Bibata cursor block
+# above (both use $ICON_DIR, defined with the rest of this script's
+# variables at the top). Run here, before the first colour
+# render below, so that render's [templates.papirus] post_hook
+# (scripts/papirus-accent.sh) finds Papirus-Dark and papirus-folders already
+# in place instead of no-oping on a theme that is not there yet.
+#
+# Installed user-level (DESTDIR=$ICON_DIR) rather than the project's own
+# default (DESTDIR=/usr/share/icons, system-wide, root-owned) -- and that
+# choice is deliberate even though a system-wide install is arguably more
+# "standard". papirus-folders (below) needs write access to the theme
+# directory to flip which folder-<color>.svg a symlink points at; against a
+# root-owned /usr/share/icons that means sudo, and scripts/papirus-accent.sh
+# runs unattended from a matugen post_hook on every wallpaper switch, where
+# there is no terminal to prompt at and a stalled sudo would just hang the
+# switch. A user-level install keeps every piece of this feature -- theme,
+# tool, and the script driving it -- sudo-free end to end. Idempotent: only
+# Papirus-Dark is checked for and only Papirus-Dark is fetched
+# (EXTRA_THEMES), since that's the only variant scripts/papirus-accent.sh
+# ever names with -t. The install.sh this curls in turn shells out to wget
+# for the actual per-file fetches (curl above only gets that script itself)
+# -- wget2-wget in the Dependencies step above covers it; without it this
+# step fails cleanly and the icon theme just stays Breeze, same as any
+# other network fetch here.
+step "Icon theme (Papirus)"
+if [ -d "$ICON_DIR/Papirus-Dark" ]; then
+    ok "Papirus-Dark"
+elif ask "install Papirus-Dark from github.com/PapirusDevelopmentTeam/papirus-icon-theme (user-level, no sudo)?"; then
+    if curl -fsSL https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-icon-theme/master/install.sh \
+        | env DESTDIR="$ICON_DIR" EXTRA_THEMES="Papirus-Dark" sh; then
+        ok "installed to $ICON_DIR/Papirus-Dark"
+    else
+        fail "download/install failed — the icon theme stays Breeze"
+    fi
+else
+    warn "without it the icon theme stays Breeze"
+fi
+
+# papirus-folders: the CLI scripts/papirus-accent.sh drives to recolour
+# Papirus-Dark's folders to match the wallpaper accent. No Fedora package;
+# it's one self-contained bash script (>=4.0, which Fedora's /bin/bash
+# always is) from its own repo. Installed straight into ~/.local/bin, the
+# same user bin dir the rest of this installer already assumes is on PATH.
+if [ -x "$HOME/.local/bin/papirus-folders" ]; then
+    ok "papirus-folders"
+elif ask "install papirus-folders from github.com/PapirusDevelopmentTeam/papirus-folders?"; then
+    mkdir -p "$HOME/.local/bin"
+    if curl -fsSL https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-folders/master/papirus-folders \
+        -o "$HOME/.local/bin/papirus-folders" && chmod +x "$HOME/.local/bin/papirus-folders"; then
+        ok "installed to $HOME/.local/bin/papirus-folders"
+    else
+        fail "download failed — folders stay the theme's default colour"
+    fi
+else
+    warn "without it folders stay the theme's default colour"
+fi
+
 # --- config: rd-shell + hypr --------------------------------------------
 step "Config"
 
@@ -471,11 +540,10 @@ for f in hyprland.lua hyprland-gui.lua hypridle.conf hyprlock.conf; do
     [ -f "$REPO/hypr/$f" ] && link "$REPO/hypr/$f" "$HYPR/$f"
 done
 
-# ghostty and rofi are whole-directory symlinks on the machine this was
-# copied from (~/.config/ghostty -> hypr/dotfiles/ghostty), so that is what
-# gets recreated -- not a per-file copy into a real directory.
+# ghostty is a whole-directory symlink on the machine this was copied from
+# (~/.config/ghostty -> hypr/dotfiles/ghostty), so that is what gets
+# recreated -- not a per-file copy into a real directory.
 link "$REPO/hypr/dotfiles/ghostty" "$HOME/.config/ghostty"
-link "$REPO/hypr/dotfiles/rofi" "$HOME/.config/rofi"
 
 # hyprland.lua calls these three by their ~/.config/hypr/scripts path; on the
 # real machine that path is a symlink into this repo's own scripts/, so there
@@ -523,6 +591,100 @@ elif [ -d "$HOME/.config/nvim" ] || command -v nvim >/dev/null 2>&1; then
     warn "no ~/.config/nvim/init.lua — add the two lines above once it exists"
 fi
 
+# --- GTK3/GTK4/libadwaita theming -------------------------------------------
+# adw-gtk3(-dark) + matugen colours, so non-Qt apps (xdg-desktop-portal-gtk's
+# file picker, pavucontrol, ...) stop looking like stock Breeze.
+step "GTK theme"
+for ver in gtk-3.0 gtk-4.0; do
+    dir="$HOME/.config/$ver"
+    mkdir -p "$dir"
+    ini="$dir/settings.ini"
+    [ -f "$ini" ] || printf '[Settings]\n' > "$ini"
+    for kv in \
+        "gtk-theme-name=adw-gtk3-dark" \
+        "gtk-icon-theme-name=Papirus-Dark" \
+        "gtk-cursor-theme-name=$CURSOR_THEME" \
+        "gtk-cursor-theme-size=36"
+    do
+        key=${kv%%=*}
+        if grep -q "^$key=" "$ini" 2>/dev/null; then
+            sed -i "s|^$key=.*|$kv|" "$ini"
+        else
+            sed -i "/^\[Settings\]/a $kv" "$ini"
+        fi
+    done
+    ok "$ini"
+
+    # gtk.css is the one hook GTK gives for user overrides, and on this
+    # desktop it is also the file kde-gtk-config (KDE's GTK sync) fully
+    # regenerates on its own triggers -- observed firing once at kded6
+    # startup. Re-asserting our @import on every run (rather than symlinking
+    # gtk.css wholesale, which would fight that resync outright and drop
+    # KDE's own colors.css) is what makes this step self-healing across a
+    # resync; it just needs install.sh re-run, same as any other drifted
+    # setting. gtk-colors.css itself comes from matugen (see the
+    # [templates.gtk] entry in dotfiles/matugen/config.toml) -- the first
+    # colour render step below writes ~/.cache/rd-shell/gtk-colors.css
+    # before anything reading this @import needs it.
+    css="$dir/gtk.css"
+    marker='@import url("file://'"$HOME"'/.cache/rd-shell/gtk-colors.css");'
+    if [ -f "$css" ] && ! grep -qF "$marker" "$css"; then
+        cp -a "$css" "$css.bak-$(date +%Y%m%d-%H%M%S)"
+        warn "existing $css backed up"
+    fi
+    [ -f "$css" ] || : > "$css"
+    grep -qF "$marker" "$css" || printf '%s\n' "$marker" >> "$css"
+    ok "$css"
+done
+
+gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark'
+gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
+gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_THEME"
+gsettings set org.gnome.desktop.interface cursor-size 36
+gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+ok "gsettings gtk-theme/icon-theme/cursor-theme/cursor-size/color-scheme"
+
+# --- KDE/Qt icon + cursor theme ----------------------------------------
+# Colour scheme itself is applied after the first render below (matugen's
+# own [templates.kde] post_hook, SCRATCH/entries/kde.toml, handles every
+# apply after that); this only sets the two pieces that are not
+# wallpaper-dependent.
+step "KDE icon/cursor theme"
+
+mkdir -p "$HOME/.local/share/color-schemes"
+
+# Icon theme. Papirus-Dark is installed user-level by the step above; this
+# just points kdeglobals at it. No plasma-apply-icontheme binary exists on
+# this system (Plasma 6.7.5) -- kwriteconfig6 --notify is what Plasma's own
+# icon-theme KCM uses under the hood to write this exact key, and its
+# --notify broadcasts the same kdeglobals-changed signal a real KCM apply
+# would, so running KDE apps pick it up without a restart.
+if [ "$(kreadconfig6 --file kdeglobals --group Icons --key Theme 2>/dev/null)" = "Papirus-Dark" ]; then
+    ok "kdeglobals Icons Theme already Papirus-Dark"
+else
+    kwriteconfig6 --file kdeglobals --group Icons --key Theme "Papirus-Dark" --notify \
+        && ok "kdeglobals Icons Theme=Papirus-Dark" \
+        || warn "could not set kdeglobals Icons Theme"
+fi
+
+# Cursor theme + size. plasma-apply-cursortheme is preferred (it notifies
+# running apps), but it snaps --size to the theme's nearest pre-rendered
+# size -- verified: `plasma-apply-cursortheme --size 36
+# Bibata-Original-Classic` printed "requested size '36' is not available,
+# using 32 instead" and left kcminputrc's cursorSize at 32. Hyprland's own
+# XCURSOR_SIZE/HYPRCURSOR_SIZE env (hypr/hyprland.lua) is already 36, so
+# cursorSize is force-written to 36 afterwards with kwriteconfig6 to match --
+# Bibata is scalable, so Qt/GTK apps that read kcminputrc directly render it
+# fine at a size the theme's own picker considers "unavailable".
+if [ "$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme 2>/dev/null)" = "Bibata-Original-Classic" ] \
+    && [ "$(kreadconfig6 --file kcminputrc --group Mouse --key cursorSize 2>/dev/null)" = "36" ]; then
+    ok "kcminputrc cursor already Bibata-Original-Classic @36"
+else
+    plasma-apply-cursortheme --size 36 Bibata-Original-Classic >/dev/null 2>&1
+    kwriteconfig6 --file kcminputrc --group Mouse --key cursorSize 36 --notify
+    ok "kcminputrc cursor set to Bibata-Original-Classic @36"
+fi
+
 # btop.conf is not templated wholesale (it is a real per-machine config with
 # far more in it than the theme line), so this only ever touches the one key
 # that points it at the rendered matugen theme -- editing it in place if the
@@ -557,8 +719,9 @@ if [ -f "$TERM_ENV" ]; then
 else
     mkdir -p "$(dirname "$TERM_ENV")"
     cat > "$TERM_ENV" <<'EOF'
-# Ensure everything that respects $TERMINAL (rofi-sensible-terminal, various
-# scripts/launchers) picks ghostty instead of falling through to kitty.
+# Ensure everything that respects $TERMINAL (various scripts and launchers,
+# e.g. a file manager's "open terminal here") picks ghostty instead of
+# falling through to kitty.
 TERMINAL=/usr/bin/ghostty
 EOF
     ok "created $TERM_ENV"
@@ -731,6 +894,41 @@ else
         || warn "hyprlock-colors.conf not written — hyprlock falls back to its own defaults"
 fi
 
+# --- KDE colour scheme (first apply) ----------------------------------------
+# matugen's own [templates.kde] post_hook (dotfiles/matugen/config.toml)
+# handles every apply after this one, alternating between the Matugen/
+# Matugen2 scheme names because plasma-apply-colorscheme refuses to
+# re-apply whichever name is already active. This only covers the very
+# first one, now that the render above has (or has not) written
+# ~/.local/share/color-schemes/Matugen.colors.
+step "KDE colour scheme"
+if [ -f "$HOME/.local/share/color-schemes/Matugen.colors" ]; then
+    cur=$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null)
+    if [ "$cur" != "Matugen" ] && [ "$cur" != "Matugen2" ]; then
+        plasma-apply-colorscheme Matugen >/dev/null 2>&1 \
+            && ok "applied Matugen colour scheme" \
+            || warn "could not apply Matugen colour scheme"
+    else
+        ok "Matugen colour scheme already active ($cur)"
+    fi
+else
+    warn "no rendered Matugen.colors — run a wallpaper switch once matugen/plasma-workspace are installed"
+fi
+
+# --- bat theme ---------------------------------------------------------------
+# Theme + config come from dotfiles/bat/* via the generic "App dotfiles"
+# link loop above; this only builds bat's cache once so `--theme=matugen`
+# resolves immediately instead of waiting for the next wallpaper switch.
+step "bat theme"
+if ! command -v bat >/dev/null 2>&1; then
+    warn "bat not installed — skipping cache build"
+elif [ -f "$HOME/.config/bat/themes/matugen.tmTheme" ]; then
+    bat cache --build >/dev/null 2>&1 || true
+    ok "bat cache built (matugen theme)"
+else
+    warn "bat theme not rendered yet — run a wallpaper switch to generate it"
+fi
+
 # --- firefox ----------------------------------------------------------------
 # userChrome.css/userContent.css only load from a profile's chrome/ directory,
 # and Firefox only reads that directory at startup -- so, like the render
@@ -881,9 +1079,11 @@ cat <<EOF
                            and pointing /etc/plasmalogin.conf at
                            current.png in there.
 
-   Log out and pick "Hyprland" at the login screen. GTK/Qt light-vs-dark
-   theming is not handled here — run kcmshell6 kcm_style / kcm_colors once
-   instead of copying kdeglobals/gtk-3.0 files between machines.
+   Log out and pick "Hyprland" at the login screen. GTK/Qt colours now
+   follow the wallpaper automatically (the GTK theme and KDE colour scheme
+   steps above, refreshed by matugen on every switch); this installer only
+   wires the dark palette, so switching to light mode is still a manual
+   kcmshell6 kcm_style / kcm_colors change.
 
    See README.md in this repo for the full keybind list (or press Super+K)
    and a tour of the bar.

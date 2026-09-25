@@ -155,7 +155,7 @@ Singleton {
     readonly property bool tracked: Hyprland.monitors.values.length > 0
         && Hyprland.monitors.values.every(m => root.list.some(w => w.monitor === m))
         && root.list.every(w => w.monitor)
-        && Hyprland.toplevels.values.every(t => t.workspace)
+        && Hyprland.toplevels.values.every(t => t.workspace || !t.wayland)
 
     // So the listing is simply asked for again until it stops contradicting
     // itself. Events cover every change once the session is up; this covers
@@ -178,8 +178,18 @@ Singleton {
         }
     }
 
+    // Only windows that still have a Wayland toplevel handle. Quickshell's
+    // refreshToplevels() adds and updates but never drops, so a window whose
+    // closewindow slipped past it (seen with a showcase ghostty on 3) stays
+    // in Hyprland.toplevels on its old workspace forever -- a dot lit for a
+    // window that no longer exists. The handle is gone the moment the
+    // surface is, whatever the IPC listing still says.
+    function _windowsOn(id) {
+        return Hyprland.toplevels.values.filter(t => t.workspace?.id === id && t.wayland);
+    }
+
     function windowCount(id) {
-        return Hyprland.toplevels.values.filter(t => t.workspace?.id === id).length;
+        return root._windowsOn(id).length;
     }
 
     // The lowercased class of one window on the workspace, for the dot to
@@ -197,8 +207,7 @@ Singleton {
     // filter() already returns a fresh array, so sorting it here does not
     // reorder Hyprland's own toplevels.values for anyone else reading it.
     function firstAppClass(id) {
-        const windows = Hyprland.toplevels.values
-            .filter(t => t.workspace?.id === id)
+        const windows = root._windowsOn(id)
             .sort((a, b) => a.address.localeCompare(b.address));
         return (windows[0]?.wayland?.appId ?? "").toLowerCase();
     }

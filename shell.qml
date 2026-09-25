@@ -36,6 +36,17 @@ ShellRoot {
         EdgeBar {}
     }
 
+    // The desktop layer: giant clock + now-playing card, seen on an empty
+    // workspace or through the gaps between tiles. See DesktopWidgets.qml
+    // for the layer it sits on; it hides itself entirely when
+    // Settings.desktopWidgets is off, so this Variants block stays
+    // unconditional the same way BarWindow's does.
+    Variants {
+        model: Quickshell.screens
+
+        DesktopWidgets {}
+    }
+
     // Bound to Super+M in hyprland.lua: qs ipc -c rd-shell call power toggle
     IpcHandler {
         target: "power"

@@ -74,16 +74,26 @@ apply_border() {
             c=$(sed -n 's/.*"secondary":[[:space:]]*"#\([0-9a-fA-F]*\)".*/\1/p' "$MJSON")
             o=$(sed -n 's/.*"outline":[[:space:]]*"#\([0-9a-fA-F]*\)".*/\1/p' "$MJSON")
     
+            # Grouped windows' borders and group bar in the same eval, so a
+            # tab group never shows last wallpaper's colours next to this one's.
             if [ -n "$p" ] && [ -n "$c" ]; then
                 "$HYPRCTL" eval "hl.config({ general = { col = {\
      active_border = { colors = {'rgb($p)','rgb($c)'}, angle = 45 },\
-     inactive_border = 'rgba(${o:-595959}66)' } } })" >/dev/null 2>&1 || true
+     inactive_border = 'rgba(${o:-595959}66)' } },\
+     group = { col = {\
+     border_active = { colors = {'rgb($p)','rgb($c)'}, angle = 45 },\
+     border_inactive = 'rgba(${o:-595959}66)' },\
+     groupbar = { col = { active = 'rgb($p)', inactive = 'rgba(${o:-595959}66)' } } } })" >/dev/null 2>&1 || true
             fi
         else
-            # The literals from hyprland.lua:120-122, verbatim.
+            # The literals from hyprland.lua's general and group blocks, verbatim.
             "$HYPRCTL" eval "hl.config({ general = { col = {\
      active_border = { colors = {'rgb(b86e38)'}, angle = 45 },\
-     inactive_border = 'rgba(595959aa)' } } })" >/dev/null 2>&1 || true
+     inactive_border = 'rgba(595959aa)' } },\
+     group = { col = {\
+     border_active = { colors = {'rgb(b86e38)'}, angle = 45 },\
+     border_inactive = 'rgba(595959aa)' },\
+     groupbar = { col = { active = 'rgb(b86e38)', inactive = 'rgba(595959aa)' } } } })" >/dev/null 2>&1 || true
         fi
     fi
 }

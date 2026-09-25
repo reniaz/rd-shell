@@ -4,10 +4,10 @@ import qs.Config
 import qs.Services
 
 // The live half of roadmap §7.6: a small, hand-picked surface over the
-// settings a person actually reaches for. For now that is none -- the
-// dynamic colour switch was taken off the card, colour simply follows the
-// wallpaper -- so what is left is the header and the power section. The
-// card and the click-outside dismissal both belong to BarPopup, same as
+// settings a person actually reaches for. The dynamic colour switch was
+// taken off the card -- colour simply follows the wallpaper -- so the one
+// toggle left here is the desktop widgets layer, above the power section.
+// The card and the click-outside dismissal both belong to BarPopup, same as
 // every other popup on this bar.
 //
 // Also the one menu behind the bar's `✦` pill: the settings and power
@@ -86,12 +86,46 @@ BarPopup {
             color: Colors.popupBorder
         }
 
+        // The one real toggle left on this card. Same glyph-swap idiom
+        // NotificationPanel.qml's own DND control uses: a Material Symbol
+        // that names the current state, not a separate switch widget.
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Caelus.space
+
+            Text {
+                text: Settings.desktopWidgets ? "toggle_on" : "toggle_off"
+                color: Settings.desktopWidgets ? Colors.popupAccent : Colors.fgMuted
+                font.family: Caelus.symbolFamily
+                font.pixelSize: Caelus.sizeTitle
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Settings.desktopWidgets = !Settings.desktopWidgets
+                }
+            }
+
+            Text {
+                text: "Desktop widgets"
+                color: Colors.fg
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Colors.popupBorder
+        }
+
         // Shutting down and logging out are the only irreversible controls
         // in this shell, so they sit behind the same divider idiom as every
-        // other popup's sections. The dynamic colour toggle that used to sit
-        // above them is off the card for now: dynamic colour is simply on
-        // (Services/Settings.qml defaults it to true), and the setting itself
-        // is still there for the card to grow back a switch for.
+        // other popup's sections.
         PowerMenu {
             Layout.fillWidth: true
         }

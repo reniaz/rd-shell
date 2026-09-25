@@ -7,7 +7,7 @@ import qs.Config
 import qs.Services
 
 // The Quickshell replacement for `rofi -show drun` (SUPER+SPACE in
-// hyprland.lua, bound there as "App launcher (rofi)"). Search-as-you-type
+// hyprland.lua, bound there as "App launcher"). Search-as-you-type
 // over Services/Apps.qml, dismissed the same way every modal in this shell
 // already is: Escape, or a click outside.
 //

@@ -29,6 +29,13 @@ Singleton {
     // where the reader left it instead of always resetting to Processor.
     property alias sysTab: adapter.sysTab
 
+    // Shows or hides DesktopWidgets.qml's whole window (giant clock +
+    // now-playing card). On by default, the same reasoning dynamicColour's
+    // default gets: a machine that has never opened the settings popup
+    // should see the shell as it is meant to look, not a blank desktop layer
+    // nobody asked to be off.
+    property alias desktopWidgets: adapter.desktopWidgets
+
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
     // rather than in some second, hidden location a person would have to be
@@ -104,6 +111,7 @@ Singleton {
 
             property bool dynamicColour: true
             property string sysTab: "cpu"
+            property bool desktopWidgets: true
         }
     }
 }

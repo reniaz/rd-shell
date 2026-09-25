@@ -19,9 +19,18 @@ RowLayout {
     signal toggled()                  // mute glyph clicked
     signal stepped(real delta)        // wheel: +0.05 / -0.05, already signed
 
+    // The glyph and the track by name, for a caller that lays its own input
+    // over this row (MediaVolume's relative scrub) and has to tell which of
+    // the two a click landed on -- by name rather than by child index, so a
+    // reordered or added child here can never misroute those clicks.
+    readonly property Item iconItem: iconText
+    readonly property Item trackItem: track
+
     spacing: Caelus.space
 
     Text {
+        id: iconText
+
         text: root.muted ? root.mutedIcon : root.icon
         color: root.muted ? Colors.audioMeta : root.accent
         font.family: Caelus.symbolFamily

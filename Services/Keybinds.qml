@@ -6,9 +6,11 @@ import QtQuick
 // Backs KeybindOverview.qml (SUPER+K): every bind Hyprland is running right
 // now, searchable by what it does or by the keys it sits on.
 //
-// The rows come from `scripts/keybinds.sh --tsv`, the same decode of
-// `hyprctl binds` the rofi sheet on SUPER+H draws from, so modmask bits and
-// key names are turned into "SUPER + SHIFT + S" in exactly one place. Read
+// The rows come from `scripts/keybinds.sh --tsv`, which decodes
+// `hyprctl binds` -- this used to be shared with a rofi cheat sheet on
+// SUPER+H, since replaced by this overview, but the decode still lives in
+// the script rather than here so modmask bits and key names are turned into
+// "SUPER + SHIFT + S" in exactly one place. Read
 // again on every open rather than once at startup: a saved hyprland.lua
 // reloads the binds under a running shell, and a cheat sheet that still shows
 // the old ones is worse than none.
