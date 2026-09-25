@@ -284,14 +284,19 @@ three, not just the one you use).
 
 ## Credits & licences
 
-- Built with [Quickshell](https://quickshell.outfoxxed.me) · MIT
+rd shell's own code and configs are MIT licensed (`LICENSE`). Everything
+below keeps its own licence.
+
+- Built with [Quickshell](https://quickshell.outfoxxed.me)
 - **caelusevka** — custom [Iosevka](https://github.com/be5invis/Iosevka)
   build, bundled under `assets/fonts/`; SIL OFL 1.1 (`assets/fonts/OFL.txt`)
 - **Material Symbols Rounded** — downloaded by `install.sh` from
   [google/material-design-icons](https://github.com/google/material-design-icons),
   Apache 2.0
 - **Wallpapers** — cloned from
-  [The-LainOS-Project/LainOS-wallpapers](https://github.com/The-LainOS-Project/LainOS-wallpapers)
+  [The-LainOS-Project/LainOS-wallpapers](https://github.com/The-LainOS-Project/LainOS-wallpapers);
+  the extras in `wallpapers/` belong to their original artists and are not
+  covered by the MIT licence
 - **fetchit** — [codeberg.org/nzuum/fetchit](https://codeberg.org/nzuum/fetchit)
 - **matugen** — [InioX/matugen](https://github.com/InioX/matugen), the
   dynamic-colour pipeline; palette base from
@@ -300,6 +305,5 @@ three, not just the one you use).
 ---
 
 <div align="center">
-<sub>Built with Quickshell · MIT</sub>
+<sub>MIT licensed · built with Quickshell</sub>
 </div>
-</content>
