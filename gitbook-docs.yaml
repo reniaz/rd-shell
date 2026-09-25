@@ -1,0 +1,11 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: rd shell
+  structure:
+    - type: space
+      key: docs
+      title: rd shell
+      path: docs
+      default: true
+      content:
+        directory: ./docs
