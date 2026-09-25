@@ -8,7 +8,7 @@ RowLayout {
 
     // Exposed for BarOverlays.qml: each pill's offset for the popup that
     // anchors on it, and the open flags those popups need to read and close
-    // back. claudePill, trayItems, dzumaPill and bellPill hold no open state
+    // back. claudePill, trayItems, localPill and bellPill hold no open state
     // of their own -- their popups are driven by their service instead.
     // micAnchorX/volumeAnchorX and bellAnchorX/menuAnchorX add their
     // BarGroup's own x on top of the pill's: those four now sit one level
@@ -19,7 +19,9 @@ RowLayout {
     readonly property real micAnchorX: audioGroup.x + micPill.x + micPill.width / 2
     readonly property real volumeAnchorX: audioGroup.x + volumePill.x + volumePill.width / 2
     readonly property real networkAnchorX: networkPill.x + networkPill.width / 2
-    readonly property real dzumaAnchorX: dzumaPill.x + dzumaPill.width / 2
+    readonly property real localAnchorX: localPill.x + localPill.width / 2
+    readonly property Item localPillItem: localPill.item
+    readonly property Component _localPill: Qt.createComponent("Local/LocalPill.qml")
     readonly property real bellAnchorX: controlsGroup.x + bellPill.x + bellPill.width / 2
     readonly property real menuAnchorX: controlsGroup.x + menuPill.x + menuPill.width / 2
 
@@ -212,26 +214,15 @@ RowLayout {
         }
     }
 
-    // Only present while the dzuma scraper has a drop nobody has
-    // acknowledged; acknowledging it in the popup is what takes it away.
-    Pill {
-        id: dzumaPill
+    // A machine-local pill from the gitignored Local/ folder (see
+    // .gitignore): on a checkout without Local/LocalPill.qml the component
+    // never becomes Ready, so nothing is loaded and nothing is logged.
+    // Hidden with its item so the row keeps no spacing for an empty slot.
+    Loader {
+        id: localPill
 
-        pressed: dzumaArea.pressed
-
-        icon: "local_mall"
-        label: Dzuma.count === 1 ? "drop" : Dzuma.count + " drops"
-        iconColor: Colors.accentBright
-        visible: Dzuma.count > 0
-
-        MouseArea {
-            id: dzumaArea
-            anchors.fill: parent
-            acceptedButtons: Qt.LeftButton
-            cursorShape: Qt.PointingHandCursor
-
-            onClicked: Dzuma.togglePanel()
-        }
+        sourceComponent: root._localPill.status === Component.Ready ? root._localPill : null
+        visible: item?.visible ?? false
     }
 
     // Bell, settings and power are one idea -- shell controls -- so they

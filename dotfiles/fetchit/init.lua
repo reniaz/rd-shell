@@ -10,7 +10,10 @@ function fetch()
             art.out,
             {
                 color.white(user.name .. "@" .. host.name),
-                color.red("os:      ") .. "rddbg os | 'fedora linux 44'",
+                -- user.name, fetchit's own API (already used two lines up),
+                -- rather than a hardcoded login: reads as "<your login> os"
+                -- on any machine.
+                color.red("os:      ") .. user.name .. " os | 'fedora linux 44'",
                 color.yellow("kernel:  ") .. "fedora " .. kernel.release,
                 color.green("cpu:     ") .. string.lower(cpu.name),
                 color.blue("gpu:     ") .. "nvidia geforce rtx 5070",

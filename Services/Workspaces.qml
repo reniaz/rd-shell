@@ -180,7 +180,7 @@ Singleton {
 
     // Only windows that still have a Wayland toplevel handle. Quickshell's
     // refreshToplevels() adds and updates but never drops, so a window whose
-    // closewindow slipped past it (seen with a showcase ghostty on 3) stays
+    // closewindow slipped past it (seen with a ghostty on 3) stays
     // in Hyprland.toplevels on its old workspace forever -- a dot lit for a
     // window that no longer exists. The handle is gone the moment the
     // surface is, whatever the IPC listing still says.

@@ -621,10 +621,6 @@ hl.bind(mainMod .. " + grave", function()
     if expo then expo.expo("toggle") end
 end, { description = "Workspace overview (hyprexpo)" })
 
--- The scratchpad special workspace (SUPER+S toggled it, SUPER+SHIFT+S moved a
--- window into it) went unused, so SUPER+SHIFT+S now builds the r/unixporn
--- showcase layout instead.
-hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("~/.config/quickshell/rd-shell/scripts/showcase.sh"), { description = "Showcase layout (fetchit/btop/cava/yazi)" })
 
 -- Scroll through existing workspaces with mainMod + scroll
 hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description = "Next workspace" })
@@ -738,7 +734,7 @@ hl.layer_rule({
 })
 
 -- Every popup a bar pill opens -- audio, mic, network, calendar,
--- notifications, disk, media, the Claude panel, dzuma, settings, the system
+-- notifications, disk, media, the Claude panel, settings, the system
 -- monitor, the power menu, the toast stack, and BarPopup's own default
 -- namespace for anything that does not set its own -- is a `PanelWindow` on
 -- its own layer, so neither rule above reaches it: the first is anchored to
@@ -752,7 +748,7 @@ hl.layer_rule({
 -- transparent gaps to protect, only rounded corners.
 hl.layer_rule({
     name  = "quickshell-popup-blur",
-    match = { namespace = "^qs-(audio|calendar|claude|disk|dzuma|edge|media|mic|network|notifications|popup|popups|power|settings|sysmon|wallpapers)$" },
+    match = { namespace = "^qs-(audio|calendar|claude|disk|edge|media|mic|network|notifications|popup|popups|power|settings|sysmon|wallpapers)$" },
 
     blur         = true,
     ignore_alpha = 0.2,
@@ -811,3 +807,8 @@ hl.window_rule({
 
 -- HyprMod managed settings
 require("hyprland-gui")
+
+-- Machine-local additions from the shell repo's gitignored Local/ folder, if
+-- it has any: binds for things this repo does not ship. pcall, so a checkout
+-- without the file (every fresh clone) loads exactly as if this were absent.
+pcall(dofile, os.getenv("HOME") .. "/.config/quickshell/rd-shell/Local/binds.lua")

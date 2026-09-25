@@ -48,7 +48,7 @@ FocusScope {
     // is taken explicitly rather than assumed: `card.x` is clamped to stay on
     // screen but nothing here clamps `card.height` against `cardClip`'s own
     // height the way the five popups with a `root.height` guard in their own
-    // file do (see SettingsPopup.qml, NotificationPanel.qml, DzumaPopup.qml,
+    // file do (see SettingsPopup.qml, NotificationPanel.qml,
     // ClaudePanel.qml, SysPopup.qml) -- AudioPopup, CalendarPopup, DiskPopup,
     // MediaPopup and NetworkPopup carry no such guard at all, so a consumer
     // of this rect should see what is actually painted rather than what
@@ -130,7 +130,7 @@ FocusScope {
     // never actually related, and the day the entrance's own duration moved
     // to `Motion.spatial` without this one following, `_settled` started
     // arming 280ms before the card had finished arriving -- a popup whose
-    // real size lands late (DzumaPopup's async drop image, decoding cold)
+    // real size lands late (an async image, decoding cold)
     // could open mid-window and be seen to fold a second time, animated,
     // right on top of its own entrance. Reading the animation's duration
     // back out closes that gap for good: the two cannot drift apart again

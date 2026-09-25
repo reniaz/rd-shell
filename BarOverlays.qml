@@ -41,7 +41,7 @@ Item {
     readonly property var anchoredLoaders: [
         sysLoader, mediaLoader,
         calendarLoader,
-        settingsLoader, notificationLoader, dzumaLoader, diskLoader,
+        settingsLoader, notificationLoader, localLoader, diskLoader,
         volumeLoader, micLoader, networkLoader, claudeLoader
     ]
 
@@ -187,15 +187,25 @@ Item {
         }
     }
 
+    // The popup behind BarRight's machine-local pill, from the gitignored
+    // local/ folder -- absent on a plain checkout, in which case the
+    // component never becomes Ready and this loader never has an item.
+    // Opened through the pill's own `panelOpen`, since nothing tracked
+    // knows what the local pill is about.
+    readonly property Component _localPopup: Qt.createComponent("Local/LocalPopup.qml")
+
     PopupLoader {
-        id: dzumaLoader
+        id: localLoader
 
-        open: Dzuma.panelOpen
+        open: root.rightGroup.localPillItem?.panelOpen ?? false
+        component: root._localPopup.status === Component.Ready ? root._localPopup : null
+    }
 
-        DzumaPopup {
-            anchorX: root.rightGroup.x + root.rightGroup.dzumaAnchorX
-            onDismissed: Dzuma.panelOpen = false
-        }
+    Binding {
+        target: localLoader.item
+        property: "anchorX"
+        value: root.rightGroup.x + root.rightGroup.localAnchorX
+        when: localLoader.item !== null
     }
 
     PopupLoader {

@@ -90,8 +90,7 @@ Singleton {
         // FileNotFound here means only that nobody has saved a setting since
         // install -- JsonAdapter's own declared defaults below already stand
         // in for that file, so there is nothing to correct. Quiet rather than
-        // logged, the same call Services/Dzuma.qml makes for its own
-        // not-yet-run state file.
+        // logged.
         printErrors: false
         onLoadFailed: root._ready = true
 

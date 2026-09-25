@@ -20,7 +20,7 @@ Singleton {
     property bool open: false
     property string query: ""
 
-    // [{ keys: ["SUPER", "SHIFT", "S"], action: "Showcase", ref: "12", haystack }]
+    // [{ keys: ["SUPER", "K"], action: "Keybind overview", ref: "12", haystack }]
     property var binds: []
 
     function toggle() {

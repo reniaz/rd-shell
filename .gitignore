@@ -27,3 +27,7 @@ CLAUDE.md
 
 # Python bytecode (scripts/sysmon.py when imported for a test)
 __pycache__/
+
+# Machine-local additions to the shell, never shipped: the bar loads
+# Local/LocalPill.qml and Local/LocalPopup.qml only when they exist.
+Local/

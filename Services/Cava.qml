@@ -121,8 +121,8 @@ Singleton {
 
     // Every cava capture stream this shell feeds: its own, under the
     // node.name `proc` gives it, and any other started the same way under a
-    // name with the same prefix -- scripts/showcase.sh runs its terminal cava
-    // as rd-cava-showcase, so the screenshot's spectrum is the same
+    // name with the same prefix (a terminal cava started with
+    // PULSE_PROP node.name=rd-cava-<anything>), so its spectrum is the same
     // Spotify-only mix as the bar's. Empty whenever none is running.
     readonly property var _nodes: Pipewire.nodes.values.filter(n => (n.name ?? "").startsWith("rd-cava"))
 

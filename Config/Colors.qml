@@ -300,7 +300,7 @@ Singleton {
     // ── popups ───────────────────────────────────────────────
     // Every card the bar hangs under a pill shares one surface and one outline:
     // they are the same object seen from different icons. Every popup built on
-    // BarPopup (Audio, Calendar, Claude, Disk, Dzuma, Media, Network,
+    // BarPopup (Audio, Calendar, Claude, Disk, Media, Network,
     // Notification, Settings, Sys) reads popupBg and popupBorder for that one
     // shared shell, so this is the only place glass needs to be turned on.
     // The wash behind a modal overlay. Derived from `surface` rather than a

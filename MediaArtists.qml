@@ -8,13 +8,12 @@ import qs.Services
 // ("Song (feat. X)") rather than MPRIS's own artist list -- the actual
 // parsing lives in Media.artistsOf(), this only has to lay the result out.
 //
-// Three ways to show it, picked from a measurement rather than guessed:
-// "Author · feat1, feat2" fits whole -> shown whole; it overflows by a
-// little -> the ordinary elide every other line on this card already uses;
-// it overflows by a lot, or there are simply too many names to read on one
-// line at all, -> the features take turns instead, fading through one at a
-// time under a fixed "Author · " -- the part of the line that never
-// moves, so a glance always finds the main artist in the same place.
+// Never a comma list. One feature: "Author · feat" shown whole, or with
+// the ordinary elide every other line on this card already uses when it
+// overflows by a little. Two or more -- or one that overflows by a lot --
+// the features take turns instead, fading through one at a time under a
+// fixed "Author · " -- the part of the line that never moves, so a glance
+// always finds the main artist in the same place.
 Item {
     id: root
 
@@ -52,11 +51,11 @@ Item {
     // seconds for the cycle to show the rest.
     readonly property real _overflow: root.width > 0 ? fullMetrics.width / root.width : 1
 
-    // More than "about 2" features cycles outright, however short the
-    // names -- "Author · A, B, C, D" is a list, not a line, no matter
-    // how well it happens to fit.
-    readonly property bool _cycle: root._hasFeatures
-        && (root._features.length > 2 || root._overflow > 1.3)
+    // A second feature cycles outright, however short the names -- the
+    // fade through them reads better than "Author · A, B" ever did, no
+    // matter how well the list would have fit.
+    readonly property bool _cycle: root._features.length > 1
+        || (root._hasFeatures && root._overflow > 1.3)
 
     // ── fits, or overflows a little: one line, ordinary elide ──
     Text {
