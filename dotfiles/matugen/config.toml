@@ -128,3 +128,13 @@ output_path = '~/.config/yazi/theme.toml'
 [templates.nvim]
 input_path = '~/.config/nvim/matugen/colorscheme.lua'
 output_path = '~/.config/nvim/colors/matugen.lua'
+
+# Firefox chrome/content colours. Firefox only re-reads chrome/userChrome.css
+# and userContent.css at startup, so a running Firefox picks this up on its
+# next launch -- there is no live-reload path for chrome CSS the way ghostty
+# or btop get one, and no post_hook can change that (a browser restart is a
+# user decision, not something a matugen run should trigger). The profile's
+# chrome/matugen.css is a symlink straight to this output_path.
+[templates.firefox]
+input_path = '~/.config/matugen/templates/firefox-colors.css'
+output_path = '~/.cache/rd-shell/firefox-colors.css'

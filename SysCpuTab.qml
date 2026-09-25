@@ -11,7 +11,9 @@ Item {
     // Read by the panel to size itself to the open tab. A StackLayout reports
     // the tallest of its pages, which would hold the card at the height of
     // whichever tab is longest.
-    readonly property real naturalHeight: content.implicitHeight
+    // The list's hidden rows count too: this is the height the page would
+    // like, and the popup only settles for less when the screen is full.
+    readonly property real naturalHeight: content.implicitHeight + procs.overflow
 
     ColumnLayout {
         id: content
@@ -62,6 +64,28 @@ Item {
             }
         }
 
-        SysProcList {}
+        // Last two minutes of the reading above, so a spike that has already
+        // passed is not lost the moment it drops off the live number.
+        // ClaudeAreaChart takes an array of objects keyed by `valueKey`;
+        // cpuHistory is a plain array of numbers (see the SysMon API
+        // contract), so it is wrapped rather than the chart being taught a
+        // second, bar-specific input shape.
+        SysCard {
+            title: "History"
+
+            ClaudeAreaChart {
+                Layout.fillWidth: true
+                model: (SysMon.cpuHistory ?? []).map(v => ({ v }))
+                valueKey: "v"
+                fill: Colors.sysColor
+            }
+        }
+
+        SysProcList {
+            id: procs
+
+            defaultSort: "cpu"
+            availableHeight: root.height - procs.y
+        }
     }
 }

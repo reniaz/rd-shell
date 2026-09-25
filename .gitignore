@@ -24,3 +24,6 @@ hypr/dotfiles/ghostty/themes/matugen
 
 # Local agent instructions for this checkout, not part of the rice.
 CLAUDE.md
+
+# Python bytecode (scripts/sysmon.py when imported for a test)
+__pycache__/

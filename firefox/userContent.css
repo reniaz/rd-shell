@@ -1,0 +1,98 @@
+/* WHY: content-level (page/extension-UI, not browser chrome) stylesheet for
+   the default-release profile. Read by Firefox at startup from
+   chrome/userContent.css (a stub install.sh writes that imports this
+   file via chrome/rd-shell/), same
+   legacyUserProfileCustomizations gate as userChrome.css. userContent.css is
+   loaded at the CSS "user" origin, which -- per the cascade spec -- beats
+   even an *author* stylesheet's !important. That's what lets the Sidebery
+   block below out-rank the user's own pasted Sidebery custom CSS (still
+   author-origin once Sidebery injects it into its UI) without editing that
+   pasted CSS at all.
+
+   The --mg-* vars come from chrome/matugen.css -> a symlink to
+   ~/.cache/rd-shell/firefox-colors.css, rendered by matugen's
+   [templates.firefox] (dotfiles/matugen/templates/firefox-colors.css), which
+   the stub imports first -- see userChrome.css for why the stub. New
+   colours land on the next Firefox restart, same as userChrome.css --
+   content documents that are already open re-parse chrome/content CSS on
+   window creation, not live.
+
+   Colour mapping used throughout this file (same ladder as everywhere else
+   in the repo, see the wallpaper-matugen CONTRACT):
+     surface / on_surface               -> base bg/fg
+     surface_container_high             -> lifted panel/toolbar tone
+     primary / on_primary / *_container -> accent (was the hard-coded
+                                            Sidebery orange #ef944d)
+     outline / outline_variant          -> borders, scrollbars
+     tertiary_container                 -> notification/badge accent
+*/
+
+/* about:/new-tab pages: cheap, no per-site risk (New Tab Override already
+   installed handles the actual new-tab page; this only keeps Firefox's own
+   about:blank flash from being stark white while chrome around it is dark). */
+@-moz-document url(about:blank), url(about:newtab), url(about:home) {
+  html, body {
+    background-color: var(--mg-surface, #0f0f0f) !important;
+    color: var(--mg-on_surface, #f4ded5) !important;
+  }
+}
+
+/* Sidebery (uuid 73708274-8c4e-4169-98f3-6889d83aebfa). Its own sidebar.css
+   (styles/sidebar.css in the xpi) exposes this var surface; we override the
+   colour ones on :root so they beat Sidebery's built-in defaults, then
+   re-assert the two literal-colour selectors from the user's pasted
+   Styles-editor CSS (`.Tab[data-active="true"] .body` border,
+   `.NavigationBar .nav-item[data-active="true"]` border, both hard-coded to
+   #ef944dff !important there) at the higher-priority user origin so they
+   follow the palette too without that pasted text ever being touched. */
+@-moz-document url-prefix("moz-extension://73708274-8c4e-4169-98f3-6889d83aebfa/") {
+  :root {
+    --frame-bg: var(--mg-surface, #0f0f0f) !important;
+    --frame-fg: var(--mg-on_surface, #f4ded5) !important;
+    --frame-el-bg: var(--mg-surface_container_high, #1e1f1e) !important;
+    --frame-el-fg: var(--mg-on_surface, #f4ded5) !important;
+    --s-frame-bg: var(--mg-surface, #0f0f0f) !important;
+    --s-frame-fg: var(--mg-on_surface, #f4ded5) !important;
+    --toolbar-bg: var(--mg-surface_container_high, #1e1f1e) !important;
+    --toolbar-fg: var(--mg-on_surface, #f4ded5) !important;
+    --s-toolbar-bg: var(--mg-surface_container_high, #1e1f1e) !important;
+    --s-toolbar-fg: var(--mg-on_surface, #f4ded5) !important;
+    --s-toolbar-border: var(--mg-outline_variant, #47464f) !important;
+    --active-el-bg: var(--mg-primary_container, #414178) !important;
+    --active-el-fg: var(--mg-on_primary_container, #e2dfff) !important;
+    --s-act-el-bg: var(--mg-primary_container, #414178) !important;
+    --s-act-el-fg: var(--mg-on_primary_container, #e2dfff) !important;
+    --s-act-el-border: var(--mg-primary, #ef944d) !important;
+    --tabs-normal-bg: var(--mg-surface, #0f0f0f) !important;
+    --tabs-activated-bg: var(--mg-primary_container, #414178) !important;
+    --tabs-activated-fg: var(--mg-on_primary_container, #e2dfff) !important;
+    --popup-bg: var(--mg-surface_container_high, #1e1f1e) !important;
+    --popup-border: var(--mg-outline, #918f9a) !important;
+    --s-popup-bg: var(--mg-surface_container_high, #1e1f1e) !important;
+    --s-popup-border: var(--mg-outline, #918f9a) !important;
+    --ctx-menu-bg: var(--mg-surface_container_high, #1e1f1e) !important;
+    --badge-bg: var(--mg-primary, #ef944d) !important;
+    --notification-bg: var(--mg-tertiary_container, #5f3c51) !important;
+    --scroll-color: var(--mg-outline_variant, #47464f) !important;
+  }
+
+  /* the user's pasted Styles-editor CSS hard-codes #ef944dff on these two
+     selectors with !important; user-origin !important beats it. */
+  .Tab[data-active="true"] .body {
+    border-color: var(--mg-primary, #ef944d) !important;
+  }
+  .NavigationBar .nav-item[data-active="true"] {
+    border-color: var(--mg-primary, #ef944d) !important;
+  }
+}
+
+/* Stylus (uuid 0ecb39d7-0d74-4c2d-b9fc-1002f294f5b3) manager/popup UI only --
+   actual per-site userstyles it injects elsewhere are untouched, out of
+   scope. Stylus's own chrome inherits the OS/Firefox theme by default, this
+   just nudges its background/foreground onto the same palette. */
+@-moz-document url-prefix("moz-extension://0ecb39d7-0d74-4c2d-b9fc-1002f294f5b3/") {
+  html, body {
+    background-color: var(--mg-surface, #0f0f0f) !important;
+    color: var(--mg-on_surface, #f4ded5) !important;
+  }
+}

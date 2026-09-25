@@ -14,6 +14,10 @@ Rectangle {
 
     Layout.fillWidth: true
     implicitHeight: inner.implicitHeight + 24
+
+    // Everything but the content: padding, title row and the gap under it.
+    // For a card that sizes its content from the room it has (SysProcList).
+    readonly property real chromeHeight: 24 + headRow.implicitHeight + inner.spacing
     radius: Caelus.radiusPopover
     color: Colors.sysCard
     border.width: 1
@@ -30,6 +34,8 @@ Rectangle {
         spacing: Caelus.space
 
         RowLayout {
+            id: headRow
+
             Layout.fillWidth: true
             spacing: Caelus.space
 

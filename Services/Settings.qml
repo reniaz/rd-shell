@@ -24,6 +24,11 @@ Singleton {
     // between that could disagree.
     property alias dynamicColour: adapter.dynamicColour
 
+    // Which system-popup tab was open last, so reopening the popup -- in this
+    // session or the next one, after the shell itself restarts -- lands back
+    // where the reader left it instead of always resetting to Processor.
+    property alias sysTab: adapter.sysTab
+
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
     // rather than in some second, hidden location a person would have to be
@@ -98,6 +103,7 @@ Singleton {
             id: adapter
 
             property bool dynamicColour: true
+            property string sysTab: "cpu"
         }
     }
 }

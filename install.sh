@@ -157,7 +157,7 @@ else
         for rf in free nonfree; do
             if rpm -q "rpmfusion-$rf-release" >/dev/null 2>&1; then
                 ok "rpmfusion-$rf"
-            elif ask "enable rpmfusion-$rf (needed for nvidia-settings / libva-nvidia-driver)?"; then
+            elif ask "enable rpmfusion-$rf (needed for libva-nvidia-driver)?"; then
                 sudo dnf5 install -y \
                     "https://download1.rpmfusion.org/$rf/fedora/rpmfusion-$rf-release-$(rpm -E %fedora).noarch.rpm" \
                     >/dev/null 2>&1 && ok "rpmfusion-$rf enabled" || fail "could not enable rpmfusion-$rf"
@@ -192,7 +192,7 @@ wpctl:wireplumber:req
 notify-send:libnotify:req
 jq:jq:req
 awk:gawk:req
-top:procps-ng:req
+python3:python3:req
 free:procps-ng:req
 df:coreutils:req
 curl:curl:req
@@ -257,18 +257,15 @@ else
     missing+=(plasma-nm)
 fi
 
-# nvidia-settings and libva-nvidia-driver only matter -- and only install
-# cleanly -- on a box that actually has the card; nvidia-smi has no Fedora
-# package at all (it ships with cuda-devel) so it is deliberately not probed
-# for. hyprland.lua sets LIBVA_DRIVER_NAME=nvidia unconditionally, which is
-# simply wrong on a machine with no card -- see the summary at the end.
+# libva-nvidia-driver only matters -- and only installs cleanly -- on a box
+# that actually has the card; nvidia-smi has no Fedora package at all (it
+# ships with cuda-devel) so it is deliberately not probed for either.
+# hyprland.lua sets LIBVA_DRIVER_NAME=nvidia unconditionally, which is simply
+# wrong on a machine with no card -- see the summary at the end.
+# GPU stats (util, clocks, power, VRAM, fan, processes) come from the driver's
+# own libnvidia-ml.so.1 through ctypes in scripts/sysmon.py -- nvidia-settings
+# is no longer used and is not probed for.
 if has_nvidia; then
-    if command -v nvidia-settings >/dev/null 2>&1; then
-        ok "nvidia-settings"
-    else
-        warn "nvidia-settings not found (package nvidia-settings) — GPU temp/VRAM/fan will be blank"
-        missing+=(nvidia-settings)
-    fi
     if rpm -q libva-nvidia-driver >/dev/null 2>&1; then
         ok "libva-nvidia-driver"
     else
@@ -276,7 +273,7 @@ if has_nvidia; then
         missing+=(libva-nvidia-driver)
     fi
 else
-    ok "no NVIDIA card detected — nvidia-settings / libva-nvidia-driver not needed"
+    ok "no NVIDIA card detected — libva-nvidia-driver not needed"
 fi
 
 if [ ${#missing[@]} -gt 0 ]; then
@@ -734,6 +731,97 @@ else
         || warn "hyprlock-colors.conf not written — hyprlock falls back to its own defaults"
 fi
 
+# --- firefox ----------------------------------------------------------------
+# userChrome.css/userContent.css only load from a profile's chrome/ directory,
+# and Firefox only reads that directory at startup -- so, like the render
+# above, this needs one Firefox restart before it does anything. Firefox
+# >= ~147 moved the profile root to an XDG-style path (~/.config/mozilla/
+# firefox, what this machine has); ~/.mozilla/firefox is the older layout,
+# still checked as a fallback. installs.ini (new, keyed by install hash,
+# Default=<relative path>) is preferred over profiles.ini's own Default=1
+# flag -- the same order Firefox itself resolves a default profile in.
+step "Firefox"
+
+firefox_default_profile() {  # firefox_default_profile <profile-root>
+    local root=$1 rel abs
+    if [ -f "$root/installs.ini" ]; then
+        rel=$(awk -F= '{ gsub(/\r$/, "") } /^Default=/ { print $2; exit }' "$root/installs.ini")
+        if [ -n "$rel" ] && [ -d "$root/$rel" ]; then
+            printf '%s\n' "$root/$rel"
+            return 0
+        fi
+    fi
+    if [ -f "$root/profiles.ini" ]; then
+        # IsRelative=1 (the common case) means Path is under $root; =0 means
+        # Path is already absolute. Default=1 marks the profile to use.
+        # `exit` inside a rule still runs the END block below it, so a "done"
+        # flag guards against printing the same match twice.
+        abs=$(awk -v root="$root/" -F= '
+            { gsub(/\r$/, "") }
+            /^\[/          { if (!done && isdef && path != "") { done = 1; print (isrel == "0" ? path : root path); exit }
+                              path = ""; isrel = "1"; isdef = 0 }
+            /^Path=/       { path = $2 }
+            /^IsRelative=/ { isrel = $2 }
+            /^Default=/    { if ($2 == "1") isdef = 1 }
+            END            { if (!done && isdef && path != "") print (isrel == "0" ? path : root path) }
+        ' "$root/profiles.ini")
+        if [ -n "$abs" ] && [ -d "$abs" ]; then
+            printf '%s\n' "$abs"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+profile=""
+for root in "$HOME/.config/mozilla/firefox" "$HOME/.mozilla/firefox"; do
+    [ -d "$root" ] || continue
+    profile=$(firefox_default_profile "$root") && break
+done
+
+if [ -z "$profile" ]; then
+    warn "no Firefox profile found — start Firefox once, then re-run this script"
+else
+    # Stubs rather than links. Firefox lets a file: sheet @import only from
+    # its own directory or below, and a symlinked sheet counts as living where
+    # it points -- so chrome/userChrome.css as a link into the repo loses its
+    # matugen.css import. Instead chrome/ holds two real two-line sheets that
+    # import matugen.css and rd-shell/<sheet>, both symlinks sitting inside
+    # chrome/, which Firefox follows. Anything else already there is backed up.
+    link "$REPO/firefox" "$profile/chrome/rd-shell"
+    for sheet in userChrome.css userContent.css; do
+        dest="$profile/chrome/$sheet"
+        stub="/* Written by rd-shell's install.sh; edit firefox/$sheet in the repo instead. */
+@import \"matugen.css\";
+@import \"rd-shell/$sheet\";"
+        if [ -f "$dest" ] && [ ! -L "$dest" ] && [ "$(cat "$dest")" = "$stub" ]; then
+            ok "$dest"
+            continue
+        fi
+        if [ -e "$dest" ] || [ -L "$dest" ]; then
+            bak="$dest.bak-$(date +%Y%m%d-%H%M%S)"
+            mv "$dest" "$bak"
+            warn "existing $dest backed up to $bak"
+        fi
+        printf '%s\n' "$stub" > "$dest"
+        ok "$dest"
+    done
+    # Points into the cache dir matugen writes to, not a repo file -- dangling
+    # until the "First colour render" step above (or matugen failing there, or
+    # the first wallpaper switch) actually writes it. link() doesn't care
+    # either way, and neither does Firefox until the @import actually resolves.
+    link "${XDG_CACHE_HOME:-$HOME/.cache}/rd-shell/firefox-colors.css" "$profile/chrome/matugen.css"
+
+    USER_JS="$profile/user.js"
+    PREF_LINE='user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);'
+    if [ -f "$USER_JS" ] && grep -qF "$PREF_LINE" "$USER_JS"; then
+        ok "user.js already allows chrome/ stylesheets"
+    else
+        printf '%s\n' "$PREF_LINE" >> "$USER_JS"
+        ok "user.js: enabled chrome/ stylesheets"
+    fi
+fi
+
 printf '\n\033[1;32mDone.\033[0m\n'
 
 # --- summary -----------------------------------------------------------------
@@ -765,6 +853,14 @@ cat <<EOF
      Dzuma feature (Services/Dzuma.qml)   needs your own private
                            ~/coding/dzuma_scraper/dzuma_watch.py — optional,
                            the pill/panel is simply inert without it.
+
+     Firefox chrome/ stylesheets          restart Firefox once to load them.
+                           Paste firefox/sidebery.css into Sidebery -> Settings
+                           -> Styles, and firefox/stylus-global.user.css into
+                           the Stylus style. The Sidebery/Stylus UUIDs baked
+                           into firefox/userContent.css are from this machine —
+                           swap in your own from
+                           about:debugging#/runtime/this-firefox.
 
      vesktop / flatpak spotify / flatpak signal / wayvibes soundpacks
                            autostarted from hyprland.lua when present, never

@@ -7,7 +7,9 @@ import qs.Services
 Item {
     id: root
 
-    readonly property real naturalHeight: content.implicitHeight
+    // The list's hidden rows count too: this is the height the page would
+    // like, and the popup only settles for less when the screen is full.
+    readonly property real naturalHeight: content.implicitHeight + procs.overflow
 
     ColumnLayout {
         id: content
@@ -29,11 +31,19 @@ Item {
                 }
             ]
 
-            SysMeter {
-                label: "In use"
-                value: Format.human(SysMon.memUsed) + " / " + Format.human(SysMon.memTotal)
-                fraction: SysMon.memTotal > 0 ? SysMon.memUsed / SysMon.memTotal : 0
-                fill: Colors.usage(SysMon.memPercent, Colors.sysColor)
+            // Stacked rather than one bar against the total: used, cached and
+            // free are three different promises about the same gigabyte, and
+            // showing them as one share each is what lets a reader tell "the
+            // kernel is holding page cache it can drop" apart from "something
+            // is actually leaking". `memFree` is new (see the SysMon API
+            // contract); guarded so this still draws sanely as a plain
+            // used/free split for the short time before DATA's sampler
+            // change lands and starts publishing it.
+            SysStackMeter {
+                used: SysMon.memUsed
+                cache: Math.max(0, SysMon.memAvail - (SysMon.memFree ?? SysMon.memAvail))
+                free: SysMon.memFree ?? SysMon.memAvail
+                usedColor: Colors.usage(SysMon.memPercent, Colors.sysColor)
             }
 
             SysMeter {
@@ -58,8 +68,38 @@ Item {
                 label: "Cache and buffers"
                 value: Format.human(SysMon.memCached)
             }
+
+            SysStatRow {
+                label: "zram"
+                // Compressed swap: what it is holding, what that costs once
+                // packed, and the ratio between the two -- the number that
+                // actually says whether zram is earning its keep on this
+                // machine right now.
+                value: Format.human(SysMon.zramOrig ?? 0) + " → " + Format.human(SysMon.zramCompr ?? 0)
+                    + ", " + (SysMon.zramRatio ?? 0).toFixed(1) + "×"
+                visible: (SysMon.zramOrig ?? 0) > 0
+            }
         }
 
-        SysProcList { memory: true }
+        // Same two minutes of history the other tabs show, plotting the
+        // percentage in the trailing figure above -- see SysCpuTab.qml for
+        // why the plain-number array is wrapped before ClaudeAreaChart sees it.
+        SysCard {
+            title: "History"
+
+            ClaudeAreaChart {
+                Layout.fillWidth: true
+                model: (SysMon.memHistory ?? []).map(v => ({ v }))
+                valueKey: "v"
+                fill: Colors.sysColor
+            }
+        }
+
+        SysProcList {
+            id: procs
+
+            defaultSort: "mem"
+            availableHeight: root.height - procs.y
+        }
     }
 }

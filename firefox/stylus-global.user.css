@@ -1,0 +1,80 @@
+/* WHY: matugen-aware replacement for the one global Stylus style already
+   installed in this profile (found via its "stylish/styles" IndexedDB
+   store, object id in that store's `styles` table -- inspected once from a
+   throwaway copy of the sqlite+wal, deleted right after reading; nothing
+   else in that profile's storage was touched). That style is a bare `* {}`
+   rule defining a `--dt-*` design-token palette (grays 0-10 + black/white +
+   six accent hues) plus border-radius/box-shadow/font-family resets -- no
+   selector in it actually consumes most of the `--dt-*` vars, they're just
+   declared globally for any page/userstyle that wants them.
+
+   Stylus styles are extension storage too, same limitation as Sidebery: no
+   file the extension @imports, so no live reload. The --mg-* block below is
+   baked from the matugen run current when this file was generated
+   (~/.cache/rd-shell/firefox-colors.css); var(...)'s second argument is the
+   ORIGINAL static hex, kept only as the restore-point value (Stylus never
+   reads matugen.css, so that fallback never actually triggers here).
+
+   ONE-TIME MANUAL STEP, and again after every wallpaper change: Stylus ->
+   Manage -> open this style -> replace its code with this file's -> Save.
+*/
+:root {
+  --mg-surface: #131318;
+  --mg-surface_container_lowest: #0e0e13;
+  --mg-surface_container_low: #1b1b21;
+  --mg-surface_container: #1f1f25;
+  --mg-surface_container_high: #2a292f;
+  --mg-surface_container_highest: #35343a;
+  --mg-outline_variant: #47464f;
+  --mg-outline: #918f9a;
+  --mg-on_surface_variant: #c8c5d0;
+  --mg-on_surface: #e4e1e9;
+  --mg-primary: #c2c1ff;
+  --mg-on_primary_container: #e2dfff;
+  --mg-red: #ffb2bd;
+  --mg-on_red_container: #ffd9dd;
+  --mg-yellow: #fcb975;
+  --mg-green: #91d5ac;
+  --mg-on_green_container: #adf2c7;
+  --mg-cyan: #85d1e8;
+  --mg-on_cyan_container: #b0ecff;
+  --mg-blue: #b4c5ff;
+  --mg-on_blue_container: #dbe1ff;
+  --mg-magenta: #ccbeff;
+  --mg-on_magenta_container: #e7deff;
+}
+
+* {
+    border-radius: 0px !important;
+    --dt-black: var(--mg-surface, #0f0f0f);
+    --dt-gray-0: var(--mg-surface_container_lowest, #141514);
+    --dt-gray-1: var(--mg-surface_container_low, #1e1f1e);
+    --dt-gray-2: var(--mg-surface_container, #272a28);
+    --dt-gray-3: var(--mg-surface_container_high, #3b403c);
+    --dt-gray-4: var(--mg-surface_container_highest, #585f5b);
+    --dt-gray-5: var(--mg-outline_variant, #6c756f);
+    --dt-gray-6: var(--mg-outline, #888e7b);
+    --dt-gray-7: var(--mg-on_surface_variant, #9a9c8b);
+    --dt-gray-8: var(--mg-on_surface_variant, #b6b69a);
+    --dt-gray-9: var(--mg-on_surface, #d9cdb5);
+    --dt-gray-10: var(--mg-on_surface, #e3d6c9);
+    --dt-white: var(--mg-on_surface, #f4decd);
+    --dt-red-6: var(--mg-red, #f16e65);
+    --dt-red-7: var(--mg-on_red_container, #ef968f);
+    --dt-orange-6: var(--mg-primary, #ef934d);
+    --dt-orange-7: var(--mg-on_primary_container, #f4b585);
+    --dt-yellow: var(--mg-yellow, #efbf71);
+    --dt-green-6: var(--mg-green, #7ec97e);
+    --dt-green-7: var(--mg-on_green_container, #a4daa4);
+    --dt-cyan-6: var(--mg-cyan, #7ec9a3);
+    --dt-cyan-7: var(--mg-on_cyan_container, #abd4bf);
+    --dt-blue-6: var(--mg-blue, #71b4d6);
+    --dt-blue-8: var(--mg-on_blue_container, #b0d4e8);
+    --dt-magenta-7: var(--mg-magenta, #e28dc6);
+    --dt-magenta-8: var(--mg-on_magenta_container, #ebadd6);
+    box-shadow: none !important;
+
+    font-family: 'caelusevka', 'CaskaydiaCove Nerd Font Propo';
+    /*background-color: hsl(140, 2%, 8%, 1%) !important;
+    backdrop-filter: blur(1px);*/
+}

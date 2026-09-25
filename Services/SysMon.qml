@@ -3,30 +3,45 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// CPU, memory and both GPUs, re-read from scripts/sysmon.sh on a timer.
+// CPU, memory and both GPUs, fed by one long-running scripts/sysmon.py that
+// replaces sysmon.sh + sysmon-procs.sh + nvidia-settings.
 //
-// The script prints /proc's cumulative jiffy counters untouched; turning them
-// into a percentage needs two samples, and holding the previous one here is
-// both cheaper and truer than making the script sleep for a second reading.
+// Percentages arrive ready-made rather than as raw counters: the sampler
+// keeps its own previous /proc/stat sample between ticks (a long-running
+// process can hold that state for free), so this file only ever has to
+// assign what a line handed it, never diff two of them itself the way the
+// short-lived sysmon.sh forced the old version of this file to.
 Singleton {
     id: root
 
+    // Two minutes of history at the tick rate below, for the area graphs.
+    readonly property int historyLength: 60
+
     // ── cpu ──────────────────────────────────────────────────
-    // -1 until two samples exist, so a pill can stay quiet rather than claim
-    // for one frame that a busy machine is idle.
+    // -1 until the sampler's first line lands (it needs two /proc/stat reads
+    // itself before that), so a pill can stay quiet rather than claim for
+    // one frame that a busy machine is idle.
     property real cpuPercent: -1
     property var cores: []
+    property var coreMhz: []
     property real cpuTemp: -1
     property real cpuMhz: 0
     property string cpuModel: ""
+    property real iowait: -1
+    property int running: 0
+    property string procCount: ""
 
     // ── memory ───────────────────────────────────────────────
     property real memTotal: 0
     property real memUsed: 0
     property real memAvail: 0
+    property real memFree: 0
     property real memCached: 0
     property real swapTotal: 0
     property real swapUsed: 0
+    property real zramOrig: 0
+    property real zramCompr: 0
+    property real zramRatio: 0
 
     readonly property int memPercent: root.memTotal > 0
         ? Math.round(root.memUsed / root.memTotal * 100)
@@ -35,24 +50,31 @@ Singleton {
         ? Math.round(root.swapUsed / root.swapTotal * 100)
         : 0
 
-    // ── gpu ──────────────────────────────────────────────────
-    // The discrete card, read through nvidia-settings. It answers with a
-    // temperature and its VRAM but not with utilisation, which lives in NVML
-    // and so in nvidia-smi -- a binary this driver package does not install.
+    // ── gpu (nvidia, via NVML in the sampler) ───────────────────
     property string gpuName: ""
     property string gpuDriver: ""
     property real gpuTemp: -1
     property real gpuFan: -1
+    property real gpuFanPercent: -1
     property real gpuMemUsed: 0
     property real gpuMemTotal: 0
+    property real gpuUtil: -1
+    property real gpuMemUtil: -1
+    property real gpuClock: -1
+    property real gpuMemClock: -1
+    property real gpuPower: -1
+    property real gpuPowerLimit: -1
+    property int gpuPstate: -1
+    property real gpuEnc: -1
+    property real gpuDec: -1
 
     readonly property int gpuMemPercent: root.gpuMemTotal > 0
         ? Math.round(root.gpuMemUsed / root.gpuMemTotal * 100)
         : -1
 
-    // The integrated Radeon, read from hwmon. It gives up the one number the
-    // discrete card withholds -- how busy it is -- so both are shown rather
-    // than one being picked as "the" GPU.
+    // The integrated Radeon, read from hwmon -- it gives up the one number
+    // the discrete card does not report through NVML on this box (busy%),
+    // so both are shown rather than one being picked as "the" GPU.
     property real igpuTemp: -1
     property real igpuBusy: -1
     property real igpuPower: -1
@@ -60,26 +82,25 @@ Singleton {
     // ── machine ──────────────────────────────────────────────
     property real uptime: 0
     property var load: [0, 0, 0]
-    property string procCount: ""
+
+    // ── history ──────────────────────────────────────────────
+    // Plain JS arrays of numbers, oldest first, reassigned (never mutated)
+    // every tick -- so a chart bound straight to one of these repaints on
+    // its own change notification instead of needing to be told to.
+    property var cpuHistory: []
+    property var gpuHistory: []
+    property var memHistory: []
 
     // ── processes ────────────────────────────────────────────
-    // Only read while the popup is open: the sampler runs top twice half a
-    // second apart, which is a fifth of a second of a core each time.
-    //
-    // Models rather than arrays, and reconciled rather than replaced. A fresh
-    // array every three seconds is a fresh model, and a view handed a new model
-    // throws its rows away and builds them again -- which drops the highlight
-    // under the pointer and withdraws a kill confirmation opened on a process
-    // the sample did not even change. Matching on pid and writing the figures
-    // in place keeps a row the same row for as long as the process is running,
-    // and keeps the list on screen across a close and re-open of the popup.
-    readonly property ListModel topCpu: ListModel {}
-    readonly property ListModel topMem: ListModel {}
+    // Reassigned each scan -- app-level groups, heaviest pid first within a
+    // group. Sorting and trimming to a row count is the list's job
+    // (SysProcList.qml), since each tab sorts by a different key.
+    property var processes: []
 
-    // Temperatures worth a colour change. AMD reports Tctl, which runs some ten
-    // degrees above the die under load and is what the fan curve is built on,
-    // so the warm step sits high; the discrete card throttles in the mid-
-    // eighties and is given the same headroom.
+    // Temperatures worth a colour change. AMD reports Tctl, which runs some
+    // ten degrees above the die under load and is what the fan curve is
+    // built on, so the warm step sits high; the discrete card throttles in
+    // the mid-eighties and is given the same headroom.
     readonly property int cpuWarm: 75
     readonly property int cpuHot: 90
     readonly property int gpuWarm: 70
@@ -96,27 +117,42 @@ Singleton {
 
     function togglePanel() {
         root.panelOpen = !root.panelOpen;
-        if (root.panelOpen) {
-            root.refresh();
-            root.refreshProcesses();
-        }
     }
 
-    function refresh() {
-        query.running = true;
+    // Per-process scanning is the one thing here with a real CPU cost, so
+    // the sampler only pays it while a popup is actually open to show it --
+    // driven off panelOpen directly rather than only from togglePanel(),
+    // because BarOverlays also closes the panel by assigning the property
+    // straight (dismiss-on-click-outside).
+    // The rows are dropped on open rather than on close: the sampler stops
+    // sending them while closed, so whatever is left is from the last visit
+    // (dead pids, old numbers) and the list should show "sampling" instead --
+    // but clearing on close would empty the list under its closing fade.
+    onPanelOpenChanged: {
+        if (root.panelOpen) root.processes = [];
+        root._send(root.panelOpen ? "procs on" : "procs off");
     }
 
-    function refreshProcesses() {
-        procQuery.running = true;
-    }
-
-    // SIGTERM by default -- a process asked to leave closes its files and saves
-    // what it was holding. force is SIGKILL, which is offered separately in the
+    // SIGTERM by default -- a process asked to leave closes its files and
+    // saves what it was holding. force is SIGKILL, offered separately in the
     // popup because it is a different promise: the process stops here, and
-    // whatever it had not written is gone.
-    function kill(pid, force) {
-        Quickshell.execDetached(["kill", force ? "-KILL" : "-TERM", String(pid)]);
+    // whatever it had not written is gone. `pids` is every pid in the
+    // group's row, so ending an app with several processes takes one click.
+    function kill(pids, force) {
+        for (const pid of pids)
+            Quickshell.execDetached(["kill", force ? "-KILL" : "-TERM", String(pid)]);
         settle.restart();
+    }
+
+    function _send(line) {
+        if (sampler.running) sampler.write(line + "\n");
+    }
+
+    function _push(arr, value) {
+        const a = arr.slice();
+        a.push(value);
+        if (a.length > root.historyLength) a.splice(0, a.length - root.historyLength);
+        return a;
     }
 
     function _parse(text) {
@@ -127,162 +163,112 @@ Singleton {
             return;
         }
 
-        // Index 0 is the whole-machine line, the rest are the cores in order.
-        const prev = root._prevCpu;
-        if (prev && prev.length === d.cpu.length) {
-            const percents = d.cpu.map((now, i) => {
-                const total = now[0] - prev[i][0];
-                const idle = now[1] - prev[i][1];
-                // A counter that did not move means an offline core, not a
-                // fully loaded one.
-                return total > 0
-                    ? Math.max(0, Math.min(100, Math.round((1 - idle / total) * 100)))
-                    : 0;
-            });
-
-            root.cpuPercent = percents[0];
-            root.cores = percents.slice(1);
-        }
-        root._prevCpu = d.cpu;
-
+        root.cpuPercent = d.cpuPercent ?? -1;
+        root.cores = d.cores ?? [];
+        root.coreMhz = d.coreMhz ?? [];
         root.cpuTemp = d.cpuTemp ?? -1;
         root.cpuMhz = d.cpuMhz ?? 0;
+        root.cpuModel = d.cpuModel ?? "";
+        root.iowait = d.iowait ?? -1;
+        root.running = d.running ?? 0;
+        // Old wire shape kept exactly ("running/total" from /proc/loadavg),
+        // so `procCount` keeps meaning exactly what it always meant: the
+        // total alone, a string, not the pair.
+        root.procCount = (d.procs ?? "").split("/")[1] ?? "";
 
-        root.memTotal = d.memTotal;
+        root.memTotal = d.memTotal ?? 0;
+        root.memAvail = d.memAvail ?? 0;
+        root.memFree = d.memFree ?? 0;
         // Used is what is gone, not what is allocated: MemAvailable already
-        // discounts the cache the kernel would hand back under pressure, which
-        // is why this number stays sane on a machine with 18G of page cache.
-        root.memUsed = d.memTotal - d.memAvail;
-        root.memAvail = d.memAvail;
-        root.memCached = d.cached;
-        root.swapTotal = d.swapTotal;
-        root.swapUsed = d.swapUsed;
+        // discounts the cache the kernel would hand back under pressure.
+        root.memUsed = root.memTotal - root.memAvail;
+        root.memCached = d.cached ?? 0;
+        root.swapTotal = d.swapTotal ?? 0;
+        root.swapUsed = d.swapUsed ?? 0;
+        root.zramOrig = d.zramOrig ?? 0;
+        root.zramCompr = d.zramCompr ?? 0;
+        root.zramRatio = d.zramRatio ?? 0;
 
+        root.gpuName = d.gpuName ?? "";
+        root.gpuDriver = d.gpuDriver ?? "";
         root.gpuTemp = d.gpuTemp ?? -1;
+        root.gpuFan = d.gpuFan ?? -1;
+        root.gpuFanPercent = d.gpuFanPercent ?? -1;
         root.gpuMemUsed = d.gpuMemUsed ?? 0;
         root.gpuMemTotal = d.gpuMemTotal ?? 0;
-        root.gpuFan = d.gpuFan ?? -1;
+        root.gpuUtil = d.gpuUtil ?? -1;
+        root.gpuMemUtil = d.gpuMemUtil ?? -1;
+        root.gpuClock = d.gpuClock ?? -1;
+        root.gpuMemClock = d.gpuMemClock ?? -1;
+        root.gpuPower = d.gpuPower ?? -1;
+        root.gpuPowerLimit = d.gpuPowerLimit ?? -1;
+        root.gpuPstate = d.gpuPstate ?? -1;
+        root.gpuEnc = d.gpuEnc ?? -1;
+        root.gpuDec = d.gpuDec ?? -1;
 
         root.igpuTemp = d.igpuTemp ?? -1;
         root.igpuBusy = d.igpuBusy ?? -1;
         root.igpuPower = d.igpuPower ?? -1;
 
-        root.uptime = d.uptime;
-        root.load = d.load;
-        // "3/1568" from loadavg: running of total.
-        root.procCount = (d.procs ?? "").split("/")[1] ?? "";
+        root.uptime = d.uptime ?? 0;
+        root.load = d.load ?? [0, 0, 0];
+
+        // Sampled every tick, open or closed -- unknown reads as 0 here
+        // rather than -1, since a history chart has no sane way to plot "no
+        // data" as a negative bar.
+        root.cpuHistory = root._push(root.cpuHistory, Math.max(0, root.cpuPercent));
+        root.gpuHistory = root._push(root.gpuHistory, Math.max(0, root.gpuUtil));
+        root.memHistory = root._push(root.memHistory, Math.max(0, root.memPercent));
+
+        if (d.processes) root.processes = d.processes;
     }
 
-    function _parseProcesses(text) {
-        try {
-            const d = JSON.parse(text);
-            root._reconcile(root.topCpu, d.cpu);
-            root._reconcile(root.topMem, d.mem);
-        } catch (e) {
-        }
-    }
+    // Backoff for the restart timer below, doubled on every crash inside the
+    // first 5s of a run (a crash loop -- missing python3, a syntax error
+    // reintroduced by a bad edit) and reset back to 1s once a run has stood
+    // up for longer than that (a one-off kill, not a loop).
+    property int _backoff: 1000
+    property real _startedAt: 0
 
-    // Writes `rows` into `model` without disturbing what is already in it.
-    // Walked from the top down: the process that belongs at each place is
-    // either already somewhere below it -- in which case it is moved up and its
-    // figures rewritten -- or it is new and gets inserted. Anything still past
-    // the end of the new list was not in this sample and has gone.
-    //
-    // setProperty rewrites one role of one row, and move() carries a row's
-    // delegate with it, so a process that merely climbed the ranking keeps its
-    // view, its hover and any question open on it. That also makes a row's pid
-    // constant for as long as the row exists, which is stronger than the guard
-    // SysProcRow pins it with and leaves that guard with nothing to do.
-    //
-    // The same shape as ClaudeSession's reconciler, for the same reason, and
-    // subject to the same rule: every role is a scalar, because setProperty
-    // silently does nothing when the new value changes type.
-    function _reconcile(model, rows) {
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            let at = -1;
-
-            for (let j = i; j < model.count; j++) {
-                if (model.get(j).pid === row.pid) {
-                    at = j;
-                    break;
-                }
-            }
-
-            if (at < 0) {
-                model.insert(i, row);
-                continue;
-            }
-
-            if (at !== i) model.move(at, i, 1);
-
-            const have = model.get(i);
-            for (const key in row) {
-                if (have[key] !== row[key]) model.setProperty(i, key, row[key]);
-            }
-        }
-
-        if (model.count > rows.length)
-            model.remove(rows.length, model.count - rows.length);
-    }
-
-    property var _prevCpu: null
-
-    // Fast until the second sample lands, since the first one only primes the
-    // delta and every percentage in the popup is blank until then.
     Timer {
-        interval: root.cpuPercent < 0 ? 700 : 2000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root.refresh()
+        id: restartTimer
+        onTriggered: sampler.running = true
     }
 
-    // A signal is delivered long before the process it named is reaped, so the
-    // list is re-read once the kernel has had time to do it.
+    Process {
+        id: sampler
+        running: true
+        stdinEnabled: true
+        command: ["python3", Quickshell.shellPath("scripts/sysmon.py")]
+
+        onRunningChanged: if (sampler.running) {
+            root._startedAt = Date.now();
+            // A popup already open across a restart (the sampler crashed
+            // while shown) needs to be told again -- the fresh process
+            // starts with per-process scanning off.
+            if (root.panelOpen) root._send("procs on");
+        }
+
+        onExited: (exitCode, exitStatus) => {
+            if (Date.now() - root._startedAt > 5000) root._backoff = 1000;
+            restartTimer.interval = root._backoff;
+            root._backoff = Math.min(root._backoff * 2, 30000);
+            restartTimer.start();
+        }
+
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => root._parse(data)
+        }
+    }
+
+    // A signal is delivered long before the process it named is reaped, so
+    // the sampler is asked for a fresh scan once the kernel has had time to
+    // do it -- this is what makes a kill drop the row without waiting out
+    // the rest of the normal 2s tick.
     Timer {
         id: settle
         interval: 500
-        onTriggered: root.refreshProcesses()
-    }
-
-    Process {
-        id: query
-        command: ["sh", Quickshell.shellPath("scripts/sysmon.sh")]
-        stdout: StdioCollector {
-            onStreamFinished: root._parse(this.text)
-        }
-    }
-
-    Process {
-        id: procQuery
-        command: ["sh", Quickshell.shellPath("scripts/sysmon-procs.sh")]
-        stdout: StdioCollector {
-            onStreamFinished: root._parseProcesses(this.text)
-        }
-    }
-
-    // What this machine is, read once: three strings that never change while
-    // the shell runs, and so have no business in the two-second poll.
-    Process {
-        running: true
-        command: ["sh", "-c",
-            "sed -n 's/^model name[^:]*: //p' /proc/cpuinfo | head -1;"
-            + " cat /proc/driver/nvidia/gpus/*/information 2>/dev/null"
-            + " | sed -n 's/^Model:[^A-Za-z]*//p' | head -1;"
-            + " awk '/Kernel Module/ { for (i = 1; i <= NF; i++)"
-            + " if ($i ~ /^[0-9]+[.][0-9]+/) { print $i; exit } }'"
-            + " /proc/driver/nvidia/version 2>/dev/null"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = this.text.split("\n").map(l => l.trim());
-                // Marketing suffixes only push the interesting part out of the
-                // card: nobody needs to be told a Ryzen has a processor, or
-                // that an NVIDIA card was made by NVIDIA.
-                root.cpuModel = (lines[0] ?? "").replace(/\s*\d+-Core Processor\s*/, "");
-                root.gpuName = (lines[1] ?? "").replace(/^NVIDIA /, "");
-                root.gpuDriver = lines[2] ?? "";
-            }
-        }
+        onTriggered: root._send("scan")
     }
 }

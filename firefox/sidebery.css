@@ -1,0 +1,45 @@
+/* WHY: Sidebery has no file it @imports for its look -- its "Styles editor"
+   (Sidebery settings -> Styles) stores this text as a blob in the
+   extension's own storage, not on disk, so matugen can't write to it and
+   there is no live reload. This is the matugen-aware replacement for the
+   old hard-coded version (same file, previously pasted with a literal
+   #ef944dff accent) that used to live in
+   ~/coding/daccfiles/.config/browser_stuff/sidebery-sidebar.css.
+
+   ONE-TIME MANUAL STEP, and again after every wallpaper change: open
+   Sidebery -> Settings -> Styles, replace its contents with this file's,
+   save. The --mg-primary value below is baked in from the matugen run at
+   the time this file was generated (rendered to
+   ~/.cache/rd-shell/firefox-colors.css) -- Sidebery's own storage can't
+   var()-import that file, so re-paste to pick up a new wallpaper's colour.
+   The fallback in var(--mg-primary, #ef944d) is the original static caelus
+   orange, kept only as a restore-point reference; Sidebery never reads
+   matugen.css so that fallback never actually applies here. */
+:root {
+  --mg-primary: #c2c1ff;
+}
+
+#root.root {--tabs-height: 36px;}
+#root.root {--tabs-inner-gap: 8px;}
+#root.root {--tabs-margin: 4px;}
+#root.root {--tabs-font: 16px sans-serif;}
+#root.root {--tabs-count-font: 16px sans-serif;}
+#root.root {--general-margin: 4px;}
+#root.root {--general-border-radius: 0px;}
+
+.Tab[data-active="true"] .body {
+	border: 2px solid var(--mg-primary, #ef944d) !important;
+	border-radius: 0px;
+}
+
+.NavigationBar .main-items .nav-item[data-class="panel"] .name-box {
+	border-width: 2px !important;
+}
+
+#root[data-act-el-color-scheme="dark"] {
+	--active-el-shadow: none;
+}
+
+.NavigationBar .nav-item[data-active="true"] {
+	border: 1px solid var(--mg-primary, #ef944d) !important;
+}

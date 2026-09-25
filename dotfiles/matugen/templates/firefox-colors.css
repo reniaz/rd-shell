@@ -1,0 +1,95 @@
+/* Rendered by matugen on every wallpaper switch (see the bar's
+   scripts/wallpaper-apply.sh and the [templates.firefox] entry in
+   ~/.config/matugen/config.toml) into ~/.cache/rd-shell/firefox-colors.css.
+
+   Read by:
+     - firefox/userChrome.css and firefox/userContent.css, both symlinked
+       into the profile's chrome/ dir as chrome/matugen.css and pulled in
+       with `@import "matugen.css";`.
+     - Nothing else lives here on purpose: Sidebery's Styles-editor text and
+       Stylus's one global style are extension-sandboxed storage, not files,
+       so they can't @import this path. firefox/sidebery.css and
+       firefox/stylus-global.user.css instead bake in the current hex values
+       (with the same --mg-<role> names for readability) and get re-pasted
+       by hand after a wallpaper change -- see their own header comments.
+
+   Firefox only re-reads chrome/userChrome.css and userContent.css at
+   startup, so a running Firefox picks this up on its next launch, not live.
+
+   Role names follow the repo-wide convention: --mg-<matugen role>, values
+   from matugen's colors.ROLE.default.hex ("default" resolves to the active
+   --mode this matugen run used). */
+
+:root {
+  /* surface ladder */
+  --mg-background: {{colors.background.default.hex}};
+  --mg-surface: {{colors.surface.default.hex}};
+  --mg-surface_dim: {{colors.surface_dim.default.hex}};
+  --mg-surface_bright: {{colors.surface_bright.default.hex}};
+  --mg-surface_container_lowest: {{colors.surface_container_lowest.default.hex}};
+  --mg-surface_container_low: {{colors.surface_container_low.default.hex}};
+  --mg-surface_container: {{colors.surface_container.default.hex}};
+  --mg-surface_container_high: {{colors.surface_container_high.default.hex}};
+  --mg-surface_container_highest: {{colors.surface_container_highest.default.hex}};
+  --mg-on_surface: {{colors.on_surface.default.hex}};
+  --mg-on_surface_variant: {{colors.on_surface_variant.default.hex}};
+
+  /* primary */
+  --mg-primary: {{colors.primary.default.hex}};
+  --mg-on_primary: {{colors.on_primary.default.hex}};
+  --mg-primary_container: {{colors.primary_container.default.hex}};
+  --mg-on_primary_container: {{colors.on_primary_container.default.hex}};
+
+  /* secondary */
+  --mg-secondary: {{colors.secondary.default.hex}};
+  --mg-on_secondary: {{colors.on_secondary.default.hex}};
+  --mg-secondary_container: {{colors.secondary_container.default.hex}};
+  --mg-on_secondary_container: {{colors.on_secondary_container.default.hex}};
+
+  /* tertiary */
+  --mg-tertiary: {{colors.tertiary.default.hex}};
+  --mg-on_tertiary: {{colors.on_tertiary.default.hex}};
+  --mg-tertiary_container: {{colors.tertiary_container.default.hex}};
+  --mg-on_tertiary_container: {{colors.on_tertiary_container.default.hex}};
+
+  /* outline */
+  --mg-outline: {{colors.outline.default.hex}};
+  --mg-outline_variant: {{colors.outline_variant.default.hex}};
+
+  /* error */
+  --mg-error: {{colors.error.default.hex}};
+  --mg-on_error: {{colors.on_error.default.hex}};
+  --mg-error_container: {{colors.error_container.default.hex}};
+  --mg-on_error_container: {{colors.on_error_container.default.hex}};
+
+  /* custom harmonized hues, same six as every other app's ANSI mapping */
+  --mg-red: {{colors.red.default.hex}};
+  --mg-on_red: {{colors.on_red.default.hex}};
+  --mg-red_container: {{colors.red_container.default.hex}};
+  --mg-on_red_container: {{colors.on_red_container.default.hex}};
+
+  --mg-green: {{colors.green.default.hex}};
+  --mg-on_green: {{colors.on_green.default.hex}};
+  --mg-green_container: {{colors.green_container.default.hex}};
+  --mg-on_green_container: {{colors.on_green_container.default.hex}};
+
+  --mg-yellow: {{colors.yellow.default.hex}};
+  --mg-on_yellow: {{colors.on_yellow.default.hex}};
+  --mg-yellow_container: {{colors.yellow_container.default.hex}};
+  --mg-on_yellow_container: {{colors.on_yellow_container.default.hex}};
+
+  --mg-blue: {{colors.blue.default.hex}};
+  --mg-on_blue: {{colors.on_blue.default.hex}};
+  --mg-blue_container: {{colors.blue_container.default.hex}};
+  --mg-on_blue_container: {{colors.on_blue_container.default.hex}};
+
+  --mg-magenta: {{colors.magenta.default.hex}};
+  --mg-on_magenta: {{colors.on_magenta.default.hex}};
+  --mg-magenta_container: {{colors.magenta_container.default.hex}};
+  --mg-on_magenta_container: {{colors.on_magenta_container.default.hex}};
+
+  --mg-cyan: {{colors.cyan.default.hex}};
+  --mg-on_cyan: {{colors.on_cyan.default.hex}};
+  --mg-cyan_container: {{colors.cyan_container.default.hex}};
+  --mg-on_cyan_container: {{colors.on_cyan_container.default.hex}};
+}

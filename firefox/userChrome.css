@@ -1,0 +1,72 @@
+/* WHY: chrome-level (browser UI, not page content) stylesheet for the
+   default-release profile. Read by Firefox itself at startup, from
+   chrome/userChrome.css, a stub install.sh writes that imports
+   chrome/matugen.css and then this file via chrome/rd-shell/ -- gated on
+   toolkit.legacyUserProfileCustomizations.stylesheets=true in user.js,
+   already set. Firefox only parses chrome/ CSS when a window is created, so
+   a running Firefox keeps its current colours until the next restart; this
+   is expected and unavoidable, not a bug.
+
+   The stub, not this file, imports chrome/matugen.css (a symlink to
+   ~/.cache/rd-shell/firefox-colors.css, rendered by matugen's
+   [templates.firefox], see dotfiles/matugen/templates/firefox-colors.css for
+   the --mg-<role> vars): Firefox lets a file: sheet import only from its
+   own directory or below, and a symlinked sheet counts as living where it
+   points, so this file linked straight into chrome/ could not reach it. Every var() below carries the old hard-coded caelus
+   hex as its fallback, so a missing/unrendered matugen.css restores exactly
+   the previous static theme instead of breaking the chrome. */
+
+#TabsToolbar { display: none !important; }
+#sidebar-box #sidebar-header { display: none !important; }
+
+/* No rounded corners anywhere: the blanket rule, plus the variables Firefox
+   feeds into shadow DOM that a userChrome selector cannot otherwise reach. */
+*, *::before, *::after { border-radius: 0 !important; }
+
+/* caelus theme, inlined from ffc-theme.xpi so it needs no add-on signature.
+   Colours now follow the matugen wallpaper palette (surface/on_surface for
+   the base ladder, surface_container_high for the lifted toolbar/panel
+   tone) -- see the mapping note in this dir's userContent.css header. */
+:root {
+  --lwt-accent-color: var(--mg-surface, #0f0f0f) !important;
+  --lwt-text-color: var(--mg-on_surface, #f4ded5) !important;
+  --tab-selected-textcolor: var(--mg-on_surface, #f4ded5) !important;
+  --lwt-tab-line-color: var(--mg-on_surface, #f4ded5) !important;
+  --lwt-toolbar-field-background-color: var(--mg-surface, #0f0f0f) !important;
+  --lwt-toolbar-field-color: var(--mg-on_surface, #f4ded5) !important;
+  --lwt-toolbar-field-focus: var(--mg-surface, #0f0f0f) !important;
+  --lwt-toolbar-field-focus-color: var(--mg-on_surface, #f4ded5) !important;
+  --toolbar-bgcolor: var(--mg-surface_container_high, #1e1f1e) !important;
+  --toolbar-color: var(--mg-on_surface, #f4ded5) !important;
+  --toolbar-field-background-color: var(--mg-surface, #0f0f0f) !important;
+  --toolbar-field-color: var(--mg-on_surface, #f4ded5) !important;
+  --arrowpanel-background: var(--mg-surface_container_high, #1e1f1e) !important;
+  --arrowpanel-color: var(--mg-on_surface, #f4ded5) !important;
+  --panel-background: var(--mg-surface_container_high, #1e1f1e) !important;
+  --panel-color: var(--mg-on_surface, #f4ded5) !important;
+  --tabpanel-background-color: var(--mg-surface, #0f0f0f) !important;
+
+  --border-radius-small: 0 !important;
+  --border-radius-medium: 0 !important;
+  --border-radius-large: 0 !important;
+  --border-radius-circle: 0 !important;
+  --toolbarbutton-border-radius: 0 !important;
+  --arrowpanel-border-radius: 0 !important;
+  --panel-border-radius: 0 !important;
+  --tab-border-radius: 0 !important;
+  --button-border-radius: 0 !important;
+  --input-border-radius: 0 !important;
+  --urlbar-border-radius: 0 !important;
+}
+
+#navigator-toolbox { background-color: var(--mg-surface, #0f0f0f) !important; }
+#nav-bar, #PersonalToolbar { background-color: var(--mg-surface_container_high, #1e1f1e) !important; }
+
+/* caelusevka everywhere in the chrome, Caskaydia in the address and search fields. */
+* { font-family: "caelusevka" !important; }
+
+#urlbar, #urlbar *,
+#searchbar, #searchbar *,
+#PopupSearchAutoComplete, #PopupSearchAutoComplete * {
+  font-family: "CaskaydiaCove Nerd Font Propo" !important;
+}

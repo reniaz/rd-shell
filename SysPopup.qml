@@ -10,10 +10,35 @@ BarPopup {
     id: root
 
     // View state, so it lives on the window and not on the service: which tab
-    // was last read is not something the pill or the IPC handler needs.
-    property int tab: 0
+    // was last read is not something the pill or the IPC handler needs. The
+    // initial value is a binding, not a literal: it reads Settings.sysTab
+    // once at creation and then breaks the moment anything below assigns
+    // `tab` imperatively (ordinary QML property semantics), which is exactly
+    // the "read once on open, write forward from then on" split (h) below
+    // wants -- the popup should not stay permanently synced to the setting,
+    // only start from it.
+    property int tab: Math.max(0, root.tabKeys.indexOf(Settings.sysTab))
 
     readonly property var tabs: ["Processor", "Graphics", "Memory"]
+    readonly property var tabKeys: ["cpu", "gpu", "mem"]
+
+    // Persisted so the tab survives not just the next open but the next
+    // shell restart too -- see Services/Settings.qml.
+    onTabChanged: Settings.sysTab = root.tabKeys[root.tab]
+
+    // ←/→ switch tabs while the card holds focus. Deliberately not the
+    // number keys the roadmap first floated: this popup has three tabs today
+    // and may not tomorrow, and a bound-in "1/2/3" is one more thing to keep
+    // in sync with `tabs` above every time it changes -- arrows need no such
+    // bookkeeping. Declared on `root` itself rather than inside BarPopup.qml,
+    // which this file may not edit: `card`, the item that actually holds
+    // active focus, has no handler for either key (only Escape, in that
+    // file), so an unaccepted press bubbles up through `cardClip` to `root`
+    // -- the same FocusScope instantiated here -- exactly as Qt Quick's
+    // ordinary unhandled-key propagation already carries Escape's rejection
+    // the other way if `card` ever stopped wanting it.
+    Keys.onLeftPressed: root.tab = Math.max(0, root.tab - 1)
+    Keys.onRightPressed: root.tab = Math.min(root.tabs.length - 1, root.tab + 1)
 
     namespace: "qs-sysmon"
     popupWidth: 380
@@ -41,26 +66,14 @@ BarPopup {
     // own implicit height, which is the tallest of all three pages.
     readonly property real pageHeight: [cpuPage, gpuPage, memPage][root.tab].naturalHeight
 
-    // While the panel is up these numbers are the only thing on screen, so they
-    // are read at the rate they are watched. Stopped on `open` rather than left
-    // to the window's lifetime: the window now outlives its own exit animation,
-    // and there is no reason to keep sampling a card the reader has already
-    // dismissed. Once it is gone the pill falls back to its own two-second
-    // cadence and process sampling stops entirely.
-    Timer {
-        interval: 1500
-        running: root.open
-        repeat: true
-        onTriggered: SysMon.refresh()
-    }
-
-    Timer {
-        interval: 3000
-        running: root.open
-        repeat: true
-        onTriggered: SysMon.refreshProcesses()
-    }
-
+    // No polling timer here any more: one sampler Process now runs
+    // continuously on its own 2s cadence regardless of whether this popup is
+    // open (see the SysMon API contract), and `panelOpen` -- flipped by
+    // SysMon.togglePanel(), not by this file -- is what tells that sampler
+    // to start and stop scanning individual processes. A popup-side Timer
+    // calling the old refresh()/refreshProcesses() would be asking twice for
+    // something already arriving on its own, and refreshProcesses() itself
+    // no longer exists on the new service at all.
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Caelus.spaceEdge
@@ -118,6 +131,43 @@ BarPopup {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.dismissed()
                     }
+                }
+            }
+
+            // ── summary rings ────────────────────────────────────────────
+            // The headline before the detail: CPU, GPU and RAM as one glance
+            // across all three, in the same usage() colour the bar pill's own
+            // icons already escalate through -- a card open to any one tab
+            // still shows how the other two are doing.
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Caelus.spaceLoose
+
+                SysRing {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
+                    label: "CPU"
+                    value: SysMon.cpuPercent
+                    available: SysMon.cpuPercent >= 0
+                    fill: Colors.usage(SysMon.cpuPercent, Colors.sysColor)
+                }
+
+                SysRing {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
+                    label: "GPU"
+                    value: SysMon.gpuUtil ?? -1
+                    available: (SysMon.gpuUtil ?? -1) >= 0
+                    fill: Colors.usage(Math.max(0, SysMon.gpuUtil ?? 0), Colors.sysColor)
+                }
+
+                SysRing {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
+                    label: "RAM"
+                    value: SysMon.memPercent
+                    available: SysMon.memPercent >= 0
+                    fill: Colors.usage(SysMon.memPercent, Colors.sysColor)
                 }
             }
 
