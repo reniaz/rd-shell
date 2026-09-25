@@ -21,3 +21,6 @@ tmux-*.log
 # so the render lands inside the repo checkout on disk even though it is
 # regenerated on every wallpaper switch and must never be committed.
 hypr/dotfiles/ghostty/themes/matugen
+
+# Local agent instructions for this checkout, not part of the rice.
+CLAUDE.md

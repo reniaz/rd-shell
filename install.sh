@@ -23,8 +23,7 @@
 #     ./install.sh          interactive
 #     ./install.sh -y       assume yes
 #
-# See "READ DAS HIER.md" for the compositor binds, a tour of the bar, and
-# troubleshooting.
+# See README.md for the keybinds, a tour of the bar, and troubleshooting.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -506,8 +505,6 @@ step "App dotfiles"
 if [ -d "$REPO/dotfiles" ]; then
     while IFS= read -r f; do
         rel=${f#"$REPO"/dotfiles/}
-        # the repo's own notes, not an app's config
-        [ "$rel" = README.md ] && continue
         link "$f" "$HOME/.config/$rel"
     done < <(find "$REPO/dotfiles" -type f | sort)
 else
@@ -792,6 +789,6 @@ cat <<EOF
    theming is not handled here — run kcmshell6 kcm_style / kcm_colors once
    instead of copying kdeglobals/gtk-3.0 files between machines.
 
-   See "READ DAS HIER.md" in this repo for the full keybind list and a tour
-   of the bar.
+   See README.md in this repo for the full keybind list (or press Super+K)
+   and a tour of the bar.
 EOF
