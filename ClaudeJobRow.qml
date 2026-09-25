@@ -41,7 +41,7 @@ Item {
             // column is where you notice this is not a session at all.
             text: root.working ? "bolt" : root.state === "done" ? "task_alt" : "pending"
             color: root.tone
-            font.family: "Material Symbols Rounded"
+            font.family: Caelus.symbolFamily
             font.pixelSize: root.cols.iconSize
         }
 
@@ -51,7 +51,7 @@ Item {
             width: root.cols.projectWidth
             text: root.sessionId
             color: Colors.claudeMeta
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
             elide: Text.ElideRight
         }
@@ -62,7 +62,7 @@ Item {
             width: root.cols.stateWidth
             text: root.state
             color: root.tone
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
             elide: Text.ElideRight
         }
@@ -76,7 +76,7 @@ Item {
             horizontalAlignment: Text.AlignRight
             text: root.jobTokens > 0 ? ClaudeSession.compact(root.jobTokens) : ""
             color: Colors.claudeMeta
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
         }
 
@@ -90,7 +90,7 @@ Item {
                 ? root.jobQueued + " queued  ·  " + root.jobDetail
                 : root.jobDetail
             color: Colors.claudeMeta
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
             elide: Text.ElideRight
         }
@@ -108,7 +108,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "checklist"
                 color: Colors.claudeAgent
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: root.cols.iconSize
             }
 
@@ -116,7 +116,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.jobTasks
                 color: Colors.claudeAgent
-                font.family: "caelusevka"
+                font.family: Caelus.fontFamily
                 font.pixelSize: root.cols.fontSize
             }
         }
@@ -132,13 +132,13 @@ Item {
             horizontalAlignment: Text.AlignRight
             text: "delete"
             color: rmArea.containsMouse ? Colors.claudeCritical : Colors.claudeMeta
-            font.family: "Material Symbols Rounded"
+            font.family: Caelus.symbolFamily
             font.pixelSize: 16
             visible: root.state === "done"
             opacity: hover.hovered ? 1 : 0
 
-            Behavior on opacity { NumberAnimation { duration: 120 } }
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
 
             MouseArea {
                 id: rmArea

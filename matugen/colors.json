@@ -1,0 +1,14 @@
+{
+  "_comment": "Rendered by matugen on every wallpaper change; read by Config/Wal.qml. Only the roles the bar actually consumes are emitted -- matugen produces fifty, and a file this small is one parse instead of fifty dictionary lookups on a path that runs on every wallpaper switch. The accent variants are deliberately absent: matugen's dark scheme resolves primary_fixed and on_primary_container to the same colour, so taking them as distinct tones would invent a ladder that is not there. Wal.qml derives those three from `primary` instead, which guarantees they differ and keeps them on one hue. secondary, tertiary and error carry the semantic pills: error stays red-ish in every Material You scheme, which is why mic and power can follow it without losing their meaning. onPrimary and onSurfaceVariant (§7.2) ARE both included despite that rule, because they cannot be derived by hand the way the accent variants are: which tone reads legibly on `primary` or as dimmed body text flips between matugen's light and dark scheme, and only matugen's own contrast-checked roles get that inversion right in both directions -- every field here reads `.default`, which is whichever mode wallpaper-apply.sh's `--mode` flag actually rendered.",
+  "primary":              "{{colors.primary.default.hex}}",
+  "onPrimary":            "{{colors.on_primary.default.hex}}",
+  "secondary":            "{{colors.secondary.default.hex}}",
+  "tertiary":             "{{colors.tertiary.default.hex}}",
+  "error":                "{{colors.error.default.hex}}",
+  "surface":              "{{colors.surface.default.hex}}",
+  "surfaceContainer":     "{{colors.surface_container.default.hex}}",
+  "surfaceContainerHigh": "{{colors.surface_container_high.default.hex}}",
+  "onSurface":            "{{colors.on_surface.default.hex}}",
+  "onSurfaceVariant":     "{{colors.on_surface_variant.default.hex}}",
+  "outline":              "{{colors.outline.default.hex}}"
+}

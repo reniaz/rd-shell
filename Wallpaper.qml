@@ -3,6 +3,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Effects
 import qs.Services
+import qs.Config
 
 // Quickshell draws the desktop wallpaper itself, on its own background layer,
 // so it can own the swap animation. swaybg only ever pops instantly and swww
@@ -283,8 +284,8 @@ PanelWindow {
         to: 1
         // Long enough to read as a sweep rather than a cut, short enough that
         // picking wallpapers in a row does not feel like waiting on each one.
-        duration: 700
-        easing.type: Easing.OutCubic
+        duration: Motion.reveal
+        easing.type: Motion.standard
 
         // Only now is the old wallpaper let go: until the circle has passed
         // the far corner it is still what fills everything the circle has not

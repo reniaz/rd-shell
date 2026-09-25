@@ -16,7 +16,7 @@ Rectangle {
     default property alias content: inner.data
 
     implicitHeight: inner.implicitHeight + 26
-    radius: 14
+    radius: Caelus.radiusPopover
     color: Colors.claudeCardBg
     border.width: 1
     border.color: Colors.claudeBorder
@@ -27,20 +27,20 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
-        spacing: 6
+        anchors.leftMargin: Caelus.spaceEdge
+        anchors.rightMargin: Caelus.spaceEdge
+        spacing: Caelus.spaceSnug
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
             visible: root.title !== "" || root.trailing !== ""
 
             Text {
                 text: root.title
                 color: Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -48,8 +48,8 @@ Rectangle {
             Text {
                 text: root.trailing
                 color: Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 visible: text !== ""
             }
         }

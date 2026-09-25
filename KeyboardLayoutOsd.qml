@@ -23,8 +23,8 @@ PanelWindow {
     // Deliberately no anchors. A layer surface left unanchored on both axes is
     // centred by the compositor, so the window is exactly the card and sits in
     // the middle without this having to know the screen's size.
-    implicitWidth: card.implicitWidth
-    implicitHeight: card.implicitHeight
+    implicitWidth: osd.implicitWidth
+    implicitHeight: osd.implicitHeight
 
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
@@ -37,71 +37,51 @@ PanelWindow {
     // reports a switch that has already happened.
     mask: Region {}
 
-    Rectangle {
-        id: card
+    OsdCard {
+        id: osd
 
         anchors.fill: parent
-        implicitWidth: Math.max(220, content.implicitWidth + 64)
-        implicitHeight: content.implicitHeight + 46
-        // Square, and bordered in the accent every other surface on this bar is
-        // outlined with, so the OSD reads as part of the shell rather than as a
-        // notification from whatever changed the layout.
-        radius: 0
-        color: Colors.surface
-        border.width: 1
-        border.color: Colors.accent
-
-        // The OSD now leaves the way it arrived. This used to be a one-shot
-        // assignment, because the window was torn down the instant osdVisible
-        // dropped and a fade-out bound to it would never have been seen; the
-        // loader holds it open long enough for the second half to play, so the
-        // opacity can go back to being a binding on the state.
-        //
         // Cycling the layout again while the OSD is still up only restarts the
         // service's hold timer -- osdVisible never drops, so this window is not
-        // rebuilt and the fade is not replayed under a reader who is mid-glance.
-        opacity: (root._entered && root.open) ? 1 : 0
+        // rebuilt and the entrance is not replayed under a reader who is
+        // mid-glance.
+        shown: root.open && osd._entered
 
-        Component.onCompleted: root._entered = true
+        property bool _entered: false
+        Component.onCompleted: osd._entered = true
 
-        Behavior on opacity { NumberAnimation { duration: 140 } }
+        RowLayout {
+            anchors.fill: parent
+            spacing: Caelus.spaceWide
 
-        // Layouts and not Column/Row: a Column ignores the horizontalCenter
-        // anchor on its children, so the code line was left-aligned against the
-        // wider layout name instead of centred over it.
-        ColumnLayout {
-            id: content
-
-            anchors.centerIn: parent
-            spacing: 6
-
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 14
-
-                Text {
-                    text: "keyboard"
-                    color: Colors.keyboardIcon
-                    font.family: "Material Symbols Rounded"
-                    font.pixelSize: 48
-                }
-
-                Text {
-                    text: KeyboardLayout.code
-                    color: Colors.fg
-                    font.family: "caelusevka"
-                    font.pixelSize: 48
-                }
+            Text {
+                text: "keyboard"
+                color: Colors.keyboardIcon
+                font.family: Caelus.symbolFamily
+                font.pixelSize: 20
+                Layout.alignment: Qt.AlignVCenter
             }
 
-            // The code is what the pill shows, so the name is what the OSD adds.
             Text {
-                Layout.alignment: Qt.AlignHCenter
+                // The code is what the bar's pill already shows, so it leads
+                // here too -- the OSD's own contribution is the name beside it.
+                text: KeyboardLayout.code
+                color: Colors.fg
+                font.family: Caelus.fontFamily
+                font.pixelSize: 18
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            Text {
                 text: KeyboardLayout.keymap
                 color: Colors.fgDim
-                font.family: "caelusevka"
-                font.pixelSize: 19
+                font.family: Caelus.fontFamily
+                font.pixelSize: 13
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignRight
                 visible: KeyboardLayout.keymap !== ""
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
             }
         }
     }

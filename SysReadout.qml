@@ -13,7 +13,7 @@ import qs.Services
 RowLayout {
     id: root
 
-    spacing: 12
+    spacing: Caelus.spaceWide
 
     // The three readings as data. This array is rebuilt whole every time SysMon
     // publishes, which is why the Repeater below is handed a count and not the
@@ -64,22 +64,22 @@ RowLayout {
 
             readonly property var stat: root.readings[reading.index]
 
-            spacing: 6
+            spacing: Caelus.spaceSnug
             visible: reading.stat.shown
 
             Text {
                 text: reading.stat.icon
                 color: reading.stat.load
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: 16
 
-                Behavior on color { ColorAnimation { duration: 200 } }
+                Behavior on color { ColorAnimation { duration: Motion.slow } }
             }
 
             Text {
                 text: reading.stat.value
                 color: Colors.fg
-                font.family: "caelusevka"
+                font.family: Caelus.fontFamily
                 font.pixelSize: 16
             }
 
@@ -88,10 +88,10 @@ RowLayout {
             Text {
                 text: reading.stat.trailing
                 color: reading.stat.trailingColor
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
 
-                Behavior on color { ColorAnimation { duration: 200 } }
+                Behavior on color { ColorAnimation { duration: Motion.slow } }
             }
         }
     }

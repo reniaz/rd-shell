@@ -15,7 +15,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        spacing: 10
+        spacing: Caelus.spaceLoose
 
         SysCard {
             title: "Memory"
@@ -24,8 +24,8 @@ Item {
                 Text {
                     text: SysMon.memPercent >= 0 ? SysMon.memPercent + "%" : "--"
                     color: Colors.usage(SysMon.memPercent, Colors.sysColor)
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
             ]
 

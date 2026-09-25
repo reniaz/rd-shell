@@ -1,0 +1,167 @@
+/**
+ * caelus — rofi theme
+ * ported from the Zed theme by dacctal
+ * requires rofi >= 1.7
+ */
+
+* {
+    /* palette */
+    bg:         #1e1f1e;  /* background        */
+    bg-alt:     #272a28;  /* surface / panel   */
+    bg-elem:    #3b403c;  /* element           */
+    bg-active:  #4a4f4b;  /* element.active    */
+    line:       #3b403c;  /* border            */
+    line-dim:   #2e322f;  /* border.variant    */
+
+    fg:         #baa89a;  /* text              */
+    fg-muted:   #72746a;  /* text.muted        */
+    fg-dim:     #4d5652;  /* text.placeholder  */
+
+    red:        #b85550;  /* accent / error    */
+    orange:     #b86e38;  /* text.accent       */
+    green:      #5e9960;  /* success           */
+
+    sel-bg:     #b86e3830;
+    hover-bg:   #3b403c50;
+    match-bg:   #b86e3830;
+
+    background-color: transparent;
+    text-color:       @fg;
+
+    font: "caelusevka 20";
+}
+
+window {
+    location:         center;
+    anchor:           center;
+    width:            40%;
+    padding:          0;
+    border:           1px;
+    border-color:     @line;
+    border-radius:    8px;
+    background-color: @bg;
+    /* transparency: "real";  <- uncomment if you run a compositor */
+}
+
+mainbox {
+    children: [ inputbar, message, listview ];
+    padding:  8px;
+    spacing:  8px;
+}
+
+inputbar {
+    children:         [ prompt, entry ];
+    padding:          8px 10px;
+    spacing:          8px;
+    border:           1px;
+    border-color:     @line-dim;
+    border-radius:    6px;
+    background-color: @bg-alt;
+}
+
+prompt {
+    text-color:     #b86e38;
+    vertical-align: 0.5;
+}
+
+entry {
+    text-color:         @fg;
+    placeholder:        "search";
+    placeholder-color:  @fg-dim;
+    cursor:             text;
+    vertical-align:     0.5;
+}
+
+listview {
+    lines:        8;
+    columns:      1;
+    fixed-height: false;
+    dynamic:      true;
+    cycle:        true;
+    scrollbar:    true;
+    spacing:      2px;
+}
+
+scrollbar {
+    handle-width:     4px;
+    handle-color:     @bg-elem;
+    background-color: @line-dim;
+    border-radius:    4px;
+}
+
+element {
+    padding:       6px 10px;
+    spacing:       10px;
+    border-radius: 6px;
+    cursor:        pointer;
+}
+
+element normal.normal    { text-color: @fg;     }
+element alternate.normal { text-color: @fg;     }
+element normal.urgent    { text-color: @red;    }
+element alternate.urgent { text-color: @red;    }
+element normal.active    { text-color: @green;  }
+element alternate.active { text-color: @green;  }
+
+element selected.normal {
+    background-color: @sel-bg;
+    text-color:       @fg;
+}
+element selected.urgent {
+    background-color: @sel-bg;
+    text-color:       @red;
+}
+element selected.active {
+    background-color: #5e996020;
+    text-color:       @green;
+}
+
+element-icon {
+    size:           1.2em;
+    vertical-align: 0.5;
+}
+
+element-text {
+    text-color:     inherit;
+    highlight:      bold #b86e38;   /* matched substring — must be a literal */
+    vertical-align: 0.5;
+}
+
+mode-switcher {
+    spacing: 4px;
+    padding: 4px 0 0 0;
+}
+
+button {
+    padding:          6px;
+    border-radius:    6px;
+    background-color: @bg-alt;
+    text-color:       @fg-muted;
+    cursor:           pointer;
+}
+
+button selected {
+    background-color: @bg-elem;
+    text-color:       @orange;
+}
+
+message {
+    padding: 0;
+    border:  0;
+}
+
+textbox {
+    padding:          8px 10px;
+    border-radius:    6px;
+    background-color: @bg-alt;
+    text-color:       @fg-muted;
+}
+
+error-message {
+    padding:          10px;
+    border:           1px;
+    border-color:     @red;
+    border-radius:    8px;
+    background-color: @bg;
+    text-color:       @red;
+}

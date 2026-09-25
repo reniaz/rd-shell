@@ -1,0 +1,40 @@
+/**
+ * keybinds — the SUPER+H cheat sheet
+ *
+ * The launcher theme with the list turned into a long, scrollable one: a cheat
+ * sheet is read, not picked from, so it wants more rows and smaller text than
+ * drun does. Everything else — palette, borders, the search bar at the top —
+ * comes from caelus unchanged.
+ */
+
+@import "~/.config/rofi/caelus.rasi"
+
+* {
+    font: "caelusevka 13";
+}
+
+window {
+    width: 52%;
+}
+
+/* mainbox already is [ inputbar, message, listview ]: the search bar stays. */
+
+entry {
+    placeholder: "search keybinds";
+}
+
+message {
+    padding: 0;
+}
+
+listview {
+    lines:        18;
+    fixed-height: true;
+    dynamic:      false;
+    scrollbar:    true;
+    spacing:      1px;
+}
+
+element {
+    padding: 4px 10px;
+}

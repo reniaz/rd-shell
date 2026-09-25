@@ -3,9 +3,13 @@ import QtQuick.Layouts
 import qs.Config
 import qs.Services
 
-// The month behind the bar's clock, and the reminders set from it. The card, its
-// notch and the click-outside dismissal all belong to BarPopup; what is left
-// here is the grid and the two ways to be reminded of something -- a timer some
+// The month behind the bar's clock, and the reminders set from it. The card
+// and the click-outside dismissal both belong to BarPopup, which now sits the
+// card flush against the island above instead of pointing a notch back up at
+// the pill -- a notch would have had to be drawn inside that island itself,
+// in a second translucent window, where two glass surfaces over one another
+// double-composite into a seam rather than a pointer. What is left here is
+// the grid and the two ways to be reminded of something -- a timer some
 // minutes out, or an alarm at a time on a day of the grid.
 BarPopup {
     id: root
@@ -79,17 +83,17 @@ BarPopup {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 14
-        spacing: 10
+        anchors.margins: Caelus.spaceEdge
+        spacing: Caelus.spaceLoose
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: "calendar_month"
                 color: Colors.calIcon
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: 16
             }
 
@@ -100,8 +104,8 @@ BarPopup {
                 Layout.fillWidth: true
                 text: Qt.formatDateTime(root.firstShown, "MMMM yyyy")
                 color: Colors.calTitle
-                font.family: "caelusevka"
-                font.pixelSize: 15
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLead
 
                 MouseArea {
                     anchors.fill: parent
@@ -123,8 +127,8 @@ BarPopup {
 
                     text: nav.modelData.glyph
                     color: navHover.containsMouse ? Colors.calTitle : Colors.calMeta
-                    font.family: "Material Symbols Rounded"
-                    font.pixelSize: 18
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
 
                     MouseArea {
                         id: navHover
@@ -161,8 +165,8 @@ BarPopup {
                     Layout.preferredHeight: 20
                     text: modelData
                     color: Colors.calMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -190,7 +194,7 @@ BarPopup {
                         anchors.centerIn: parent
                         width: 26
                         height: 26
-                        radius: height / 2
+                        radius: Caelus.radiusPill
                         color: cell.isToday ? Colors.calToday : "transparent"
                         // A ring rather than a second disc: the filled one means
                         // today, and two of them would be one too many.
@@ -204,8 +208,8 @@ BarPopup {
                         color: cell.isToday ? Colors.calTodayFg
                             : cell.outside ? Colors.calOutside
                             : Colors.calBody
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                     }
 
                     // Picking a day is the whole of what a click on the grid
@@ -227,21 +231,21 @@ BarPopup {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: "alarm"
                 color: Colors.calAlarm
-                font.family: "Material Symbols Rounded"
-                font.pixelSize: 15
+                font.family: Caelus.symbolFamily
+                font.pixelSize: Caelus.sizeLead
             }
 
             Text {
                 Layout.fillWidth: true
                 text: "Reminders"
                 color: Colors.calTitle
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
             }
 
             // Which day the alarm field means. Without it the picked cell up in
@@ -251,8 +255,8 @@ BarPopup {
                 text: root.sameDay(root.picked, root.today) ? "today"
                     : Qt.formatDateTime(root.picked, "ddd d MMM")
                 color: Colors.calMeta
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
             }
         }
 
@@ -267,22 +271,22 @@ BarPopup {
                 required property var modelData
 
                 Layout.fillWidth: true
-                spacing: 6
+                spacing: Caelus.spaceSnug
 
                 Text {
                     Layout.fillWidth: true
                     text: pending.modelData.text
                     color: Colors.calBody
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                     elide: Text.ElideRight
                 }
 
                 Text {
                     text: Format.countdown(pending.modelData.at, Reminders.now)
                     color: Colors.calAlarm
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
 
                 Text {
@@ -290,7 +294,7 @@ BarPopup {
 
                     text: "close"
                     color: cancelHover.containsMouse ? Colors.error : Colors.calMeta
-                    font.family: "Material Symbols Rounded"
+                    font.family: Caelus.symbolFamily
                     font.pixelSize: 14
 
                     MouseArea {
@@ -308,28 +312,28 @@ BarPopup {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: Caelus.spaceSnug
 
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 28
-                radius: 8
+                radius: Caelus.radiusCard
                 color: Colors.calField
                 border.width: 1
                 border.color: alarmText.activeFocus ? Colors.calAlarm : Colors.calFieldBorder
 
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: Motion.fast } }
 
                 TextInput {
                     id: alarmText
 
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: Caelus.space
+                    anchors.rightMargin: Caelus.space
                     verticalAlignment: TextInput.AlignVCenter
                     color: Colors.calTitle
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                     selectByMouse: true
                     // Enter from either field sets the alarm, so a reminder can
                     // be typed and set without the mouse coming back.
@@ -338,25 +342,25 @@ BarPopup {
 
                 Text {
                     anchors.left: parent.left
-                    anchors.leftMargin: 8
+                    anchors.leftMargin: Caelus.space
                     anchors.verticalCenter: parent.verticalCenter
                     text: "remind me to…"
                     visible: alarmText.text === ""
                     color: Colors.calMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
             }
 
             Rectangle {
                 Layout.preferredWidth: 54
                 implicitHeight: 28
-                radius: 8
+                radius: Caelus.radiusCard
                 color: Colors.calField
                 border.width: 1
                 border.color: alarmTime.activeFocus ? Colors.calAlarm : Colors.calFieldBorder
 
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: Motion.fast } }
 
                 TextInput {
                     id: alarmTime
@@ -365,8 +369,8 @@ BarPopup {
                     horizontalAlignment: TextInput.AlignHCenter
                     verticalAlignment: TextInput.AlignVCenter
                     color: root.timeValid || alarmTime.text === "" ? Colors.calTitle : Colors.error
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                     maximumLength: 5
                     selectByMouse: true
                     onAccepted: root.addAlarm()
@@ -377,15 +381,15 @@ BarPopup {
                     text: "HH:MM"
                     visible: alarmTime.text === ""
                     color: Colors.calMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
             }
 
             Rectangle {
                 implicitWidth: 30
                 implicitHeight: 28
-                radius: 8
+                radius: Caelus.radiusCard
                 color: addHover.containsMouse && root.timeValid ? Colors.calFieldBorder : Colors.calField
                 border.width: 1
                 border.color: Colors.calFieldBorder
@@ -397,7 +401,7 @@ BarPopup {
                     // button vanishing under the cursor is worse than it saying
                     // no.
                     color: root.timeValid ? Colors.calAlarm : Colors.calMeta
-                    font.family: "Material Symbols Rounded"
+                    font.family: Caelus.symbolFamily
                     font.pixelSize: 16
                 }
 
@@ -417,13 +421,13 @@ BarPopup {
         // clicked.
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: Caelus.spaceSnug
 
             Text {
                 text: "timer"
                 color: Colors.calMeta
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
             }
 
             Repeater {
@@ -436,7 +440,7 @@ BarPopup {
 
                     Layout.fillWidth: true
                     implicitHeight: 24
-                    radius: 8
+                    radius: Caelus.radiusCard
                     color: chipHover.containsMouse ? Colors.calFieldBorder : Colors.calField
                     border.width: 1
                     border.color: Colors.calFieldBorder
@@ -445,8 +449,8 @@ BarPopup {
                         anchors.centerIn: parent
                         text: chip.modelData < 60 ? chip.modelData + "m" : (chip.modelData / 60) + "h"
                         color: Colors.calBody
-                        font.family: "caelusevka"
-                        font.pixelSize: 12
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeLabel
                     }
 
                     MouseArea {

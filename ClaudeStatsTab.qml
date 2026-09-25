@@ -127,7 +127,7 @@ Flickable {
         id: statsCol
 
         width: root.width
-        spacing: 12
+        spacing: Caelus.spaceWide
 
         // The first scan parses the whole transcript corpus and takes a few
         // seconds. Drawing the sections against null totals would fill nine
@@ -137,8 +137,8 @@ Flickable {
             visible: !ClaudeGlobal.ready
             text: "scanning transcripts…"
             color: Colors.claudeMeta
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             horizontalAlignment: Text.AlignHCenter
             Layout.fillWidth: true
             Layout.topMargin: 40
@@ -151,7 +151,7 @@ Flickable {
 
             visible: ClaudeGlobal.ready
             Layout.fillWidth: true
-            spacing: 12
+            spacing: Caelus.spaceWide
 
             ClaudeSection {
                 Layout.fillWidth: true
@@ -282,8 +282,8 @@ Flickable {
                             Layout.fillWidth: true
                             text: root.hourLabel(tick.modelData)
                             color: Colors.claudeMeta
-                            font.family: "caelusevka"
-                            font.pixelSize: 13
+                            font.family: Caelus.fontFamily
+                            font.pixelSize: Caelus.sizeBody
                         }
                     }
                 }
@@ -357,7 +357,7 @@ Flickable {
             // session spends most of its life waiting to be typed at.
             ClaudeSection {
                 Layout.fillWidth: true
-                Layout.bottomMargin: 4
+                Layout.bottomMargin: Caelus.spaceTight
                 title: "output"
                 visible: ClaudeGlobal.ready
 

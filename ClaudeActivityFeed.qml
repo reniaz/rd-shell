@@ -71,20 +71,20 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: line.e.name
                     color: line.e.running ? Colors.claudeBusy : Colors.claudeBody
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
 
                 Text {
                     anchors.left: nameText.right
-                    anchors.leftMargin: 8
+                    anchors.leftMargin: Caelus.space
                     anchors.right: durText.left
-                    anchors.rightMargin: 8
+                    anchors.rightMargin: Caelus.space
                     anchors.verticalCenter: parent.verticalCenter
                     text: line.e.target
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                     elide: Text.ElideRight
                 }
 
@@ -95,8 +95,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: line.e.running ? "running" : root.span(line.e.durationMs)
                     color: line.e.running ? Colors.claudeBusy : Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
             }
         }

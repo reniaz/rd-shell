@@ -19,9 +19,16 @@ cd ~/coding/qs-bar
 ./install.sh
 ```
 
-Then add the autostart line from §3 to your Hyprland config and log back in
-(or run `~/.config/quickshell/rd-shell/launch.sh` by hand to try it without
-restarting the session).
+This repo also carries `hypr/` — the Hyprland config (Lua, `hl.*` API) it was
+built against, already wired up with every bind in §3. `install.sh` installs
+Hyprland itself (from the `lionheartp/Hyprland` COPR) alongside the bar and
+symlinks `hypr/hyprland.lua` and friends into `~/.config/hypr`, so on a fresh
+machine there is nothing to hand-edit into a config before logging in — just
+log out and pick "Hyprland" at the login screen (or run
+`~/.config/quickshell/rd-shell/launch.sh` by hand to try the bar on its own
+without restarting the session). §3 below is what those binds do, and the
+`hyprland.conf` block is reference for anyone taking only the bar and not
+`hypr/`.
 
 Do **not** start the bar with `qs -c rd-shell` directly, and do not put that in
 your autostart. Always go through `launch.sh`. It repairs and waits for the
@@ -34,14 +41,15 @@ before starting a new one, so it's what you re-run after editing QML too.
 
 - Fedora 44. `install.sh` uses `dnf5` and `dnf5 copr enable`; other distros are
   not supported by the script (the QML itself has no Fedora-specific code).
-- Wayland, Hyprland — **already installed and configured by you**. `install.sh`
-  never installs or touches your compositor; it only sets up the bar and the
-  handful of binaries the bar shells out to (`hyprlock` and `hyprshutdown` for
-  the power menu, and it enables the Hyprland COPR only if those two are
-  missing). Niri is untested on this machine — nothing here reads
-  Hyprland-specific state except the workspace dots, `KeyboardLayout.qml`
-  (`hyprctl switchxkblayout`) and the power/lock binds, so niri may work for
-  everything else, but nobody has checked.
+- Wayland, Hyprland — `install.sh` installs the compositor itself (from the
+  `lionheartp/Hyprland` COPR, the same one quickshell, matugen and hyprpicker
+  come from) along with everything the bar and `hypr/hyprland.lua` shell out
+  to, and links `hypr/`'s configs into `~/.config/hypr`. Already have your
+  own Hyprland config? Skip that part and just point `install.sh`'s package
+  list at your own binds — nothing here reads Hyprland-specific state except
+  the workspace dots, `KeyboardLayout.qml` (`hyprctl switchxkblayout`) and the
+  power/lock binds. Niri is untested; those three aside, nothing else here is
+  Hyprland-specific, but nobody has checked niri itself.
 - A **second keyboard layout**. The layout pill and its OSD only render when
   Hyprland's `kb_layout` lists more than one layout — see §3. With a single
   layout there is nothing for the pill to show and it stays hidden.
@@ -50,9 +58,11 @@ before starting a new one, so it's what you re-run after editing QML too.
 
 ## 3. Hyprland setup
 
-This machine runs Hyprland's Lua config (`~/.config/hypr/hyprland.lua`,
-`hl.*` API), not `hyprland.conf`. Both are given below — use whichever your
-Hyprland setup actually reads.
+`install.sh` already put these binds in place via `hypr/hyprland.lua` (Lua
+config, `hl.*` API) — nothing below needs copying in on a machine that took
+`hypr/` from this repo. Kept here as reference, and as the `hyprland.conf`
+equivalent for anyone bringing their own Hyprland config instead and wiring
+the bar into it by hand.
 
 ### hyprland.lua
 

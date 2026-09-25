@@ -1,0 +1,35 @@
+# Rendered by matugen on every wallpaper switch (matugen image ... --mode
+# dark|light -q, per scripts/wallpaper-apply.sh) into ~/.config/cava/config,
+# which is the file cava reads by default when run with no -p flag -- exactly
+# how it is run by hand in ghostty for screenshots. The bar's own cava
+# (Services/Cava.qml) always launches with an explicit -p pointing at its own
+# ~/.cache/rd-shell/cava.conf, so it never reads this file; this template only
+# ever touches the terminal instance.
+#
+# cava 0.10.2 has no `theme`/include directive -- checked against
+# /usr/share/doc/cava/README.md and the shipped example config -- so there is
+# no way to keep a hand-owned ~/.config/cava/config next to a separate
+# generated colour file the way ghostty's `theme =` line does. The whole file
+# is therefore matugen-owned; every other cava setting is left unset here so
+# cava falls back to its own built-in defaults (auto bar count/width, pulse
+# input via autodetect, noncurses output, etc) -- only [color] exists to
+# carry the wallpaper theme.
+#
+# Colours run primary -> secondary -> tertiary (bottom of the meter to top):
+# the wallpaper's own three Material hues, not the fixed six-hue ANSI set
+# ghostty uses, so the visualiser reads as "this wallpaper" rather than a
+# generic rainbow. All three are base-tone roles (~40 in light mode, ~80 in
+# dark), the same tone class already relied on for on_surface-class text, so
+# they hold contrast against `background` in both modes -- verified for both
+# --mode dark and --mode light renders of the current wallpaper before this
+# went in (see cava.toml in the matugen scratch dir for the numbers).
+#
+# background is left unset entirely (not even `default`) so cava keeps
+# whatever the terminal itself is showing -- ghostty's own matugen-rendered
+# background -- instead of pinning its own colour over it.
+[color]
+gradient = 1
+gradient_count = 3
+gradient_color_1 = '{{colors.primary.default.hex}}'
+gradient_color_2 = '{{colors.secondary.default.hex}}'
+gradient_color_3 = '{{colors.tertiary.default.hex}}'

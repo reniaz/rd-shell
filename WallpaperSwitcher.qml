@@ -33,6 +33,26 @@ PanelWindow {
     // scan still running -- and PathView answers -1 for currentIndex then.
     readonly property var currentEntry: Wallpapers.entries[pathView.currentIndex - root.pad] ?? null
 
+    // Drives the accent swatches under the strip. Only an image has colours to
+    // predict; a folder or the back card clears them rather than leaving the
+    // previous wallpaper's swatches sitting under a card they do not describe.
+    // Cleared on the way out so a closed panel is not holding a preview.
+    readonly property string previewPath: root.currentEntry?.kind === "image"
+        ? (root.currentEntry?.path ?? "") : ""
+
+    // The two stops Hyprland's active window border is actually built from --
+    // wallpaper-apply.sh feeds `primary` and `secondary` straight into
+    // `col.active_border` as a 45-degree gradient. Showing the card's own edge
+    // and its marker in these is the point: the border you are looking at in
+    // the strip is the border you will be looking at on every window after you
+    // press Enter. Falls back to the live accent until matugen has answered,
+    // so nothing ever renders borderless while a preview is in flight.
+    readonly property color previewBorder: Wallpapers.previewRoles?.primary ?? Colors.accentBright
+    readonly property color previewBorder2: Wallpapers.previewRoles?.secondary ?? Colors.accent
+
+    onPreviewPathChanged: Wallpapers.previewPath = root.previewPath
+    Component.onDestruction: Wallpapers.previewPath = ""
+
     anchors { top: true; left: true; right: true; bottom: true }
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
@@ -49,7 +69,13 @@ PanelWindow {
     mask: root.open ? null : closedMask
     Region { id: closedMask }
 
-    Component.onCompleted: root._entered = true
+    Component.onCompleted: {
+        root._entered = true;
+        // The first centred card exists before this window does, so its
+        // preview has to be asked for here rather than waiting for the path
+        // to change to something it already is.
+        Wallpapers.previewPath = root.previewPath;
+    }
 
     // PathView is a closed loop: item 0 sits next to the last item and the
     // strip will happily spin round forever. This list has two ends -- the
@@ -106,7 +132,7 @@ PanelWindow {
         focus: true
         opacity: root.shown ? 1 : 0
 
-        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Motion.fast; easing.type: Motion.standard } }
 
         Keys.onPressed: event => {
             switch (event.key) {
@@ -133,7 +159,7 @@ PanelWindow {
 
         Rectangle {
             anchors.fill: parent
-            color: Caelus.overlay
+            color: Colors.scrim
         }
 
         // Drawn first, under the strip, so it only ever catches a click the
@@ -166,13 +192,13 @@ PanelWindow {
             NumberAnimation {
                 id: leave
                 target: pathView; property: "opacity"; to: 0
-                duration: 110; easing.type: Easing.InCubic
+                duration: Motion.fast; easing.type: Motion.exit
             }
 
             NumberAnimation {
                 id: arrive
                 target: pathView; property: "opacity"; to: 1
-                duration: 200; easing.type: Easing.OutCubic
+                duration: Motion.slow; easing.type: Motion.standard
             }
 
             Connections {
@@ -243,7 +269,7 @@ PanelWindow {
                 // Short enough that a wheel spun quickly keeps up with the
                 // hand rather than queueing a string of 260ms steps and
                 // arriving somewhere the user stopped asking for.
-                highlightMoveDuration: 170
+                highlightMoveDuration: Motion.base
                 // A few delegates either side of what the path shows, so a
                 // fast scroll finds its next card already built instead of
                 // creating one and decoding a thumbnail mid-step.
@@ -492,7 +518,7 @@ PanelWindow {
                         anchors.fill: parent
                         radius: Caelus.radiusCard
                         clip: true
-                        color: cardRoot.isImage ? Caelus.base : Caelus.surface
+                        color: cardRoot.isImage ? Colors.surface : Colors.surfaceRaised
 
                         Image {
                             anchors.fill: parent
@@ -529,7 +555,7 @@ PanelWindow {
                         Rectangle {
                             anchors.fill: parent
                             visible: !cardRoot.isImage && !cardRoot.filler
-                            color: Caelus.base
+                            color: Colors.surface
                             opacity: 0.55
                         }
 
@@ -541,12 +567,12 @@ PanelWindow {
                             visible: !cardRoot.isImage
                             anchors.centerIn: parent
                             width: parent.width - 24
-                            spacing: 10
+                            spacing: Caelus.spaceLoose
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: cardRoot.entry?.kind === "back" ? "arrow_back" : "folder"
-                                color: Caelus.accentBright
+                                color: Colors.accentBright
                                 font.family: Caelus.symbolFamily
                                 font.pixelSize: 56
                             }
@@ -555,7 +581,7 @@ PanelWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: parent.width
                                 text: cardRoot.entry?.name ?? ""
-                                color: Caelus.textBright
+                                color: Colors.fg
                                 font.family: Caelus.fontFamily
                                 font.pixelSize: Caelus.sizeBody
                                 horizontalAlignment: Text.AlignHCenter
@@ -566,7 +592,7 @@ PanelWindow {
                                 visible: cardRoot.entry?.kind === "folder"
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: (cardRoot.entry?.count ?? 0) + " wallpapers"
-                                color: Caelus.textMuted
+                                color: Colors.fgMuted
                                 font.family: Caelus.fontFamily
                                 font.pixelSize: Caelus.sizeLabel
                             }
@@ -588,10 +614,13 @@ PanelWindow {
                         // the selection reads as that same edge brightening
                         // rather than as a frame appearing out of nothing.
                         border.width: cardRoot.isCurrent ? 2 : Caelus.borderWidth
-                        border.color: cardRoot.isCurrent ? Caelus.accentBright : Caelus.element
+                        // The centred card wears the border this wallpaper
+                        // would give every window, not the one the shell is
+                        // wearing now.
+                        border.color: cardRoot.isCurrent ? root.previewBorder : Colors.surfaceHover
 
-                        Behavior on border.color { ColorAnimation { duration: 160 } }
-                        Behavior on border.width { NumberAnimation { duration: 160 } }
+                        Behavior on border.color { ColorAnimation { duration: Motion.base } }
+                        Behavior on border.width { NumberAnimation { duration: Motion.base } }
                     }
 
                     // A marker under the selected card, the way a current tab
@@ -604,12 +633,20 @@ PanelWindow {
                         y: parent.height + 12
                         width: cardRoot.isCurrent ? 36 : 0
                         height: 3
-                        radius: height / 2
-                        color: Caelus.accentBright
+                        radius: Caelus.radiusPill
+                        // Both stops, left to right, because the real border is
+                        // a two-colour gradient and a marker drawn in only the
+                        // first one would under-promise what lands on screen.
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+
+                            GradientStop { position: 0; color: root.previewBorder }
+                            GradientStop { position: 1; color: root.previewBorder2 }
+                        }
                         opacity: cardRoot.isCurrent ? 1 : 0
 
-                        Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                        Behavior on opacity { NumberAnimation { duration: 160 } }
+                        Behavior on width { NumberAnimation { duration: Motion.slow; easing.type: Motion.standard } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.base } }
                     }
 
                     MouseArea {
@@ -657,7 +694,7 @@ PanelWindow {
                 anchors.centerIn: pathView
                 visible: Wallpapers.entries.length === 0
                 text: Wallpapers.scanning ? "scanning…" : "nothing here"
-                color: Caelus.textMuted
+                color: Colors.fgMuted
                 font.family: Caelus.fontFamily
                 font.pixelSize: Caelus.sizeBody
             }
@@ -666,12 +703,12 @@ PanelWindow {
                 anchors.top: pathView.bottom
                 anchors.topMargin: 18
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 4
+                spacing: Caelus.spaceTight
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Wallpapers.label !== "" ? Wallpapers.label : "wall"
-                    color: Caelus.textMuted
+                    color: Colors.fgMuted
                     font.family: Caelus.fontFamily
                     font.pixelSize: Caelus.sizeLabel
                 }
@@ -679,9 +716,47 @@ PanelWindow {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.currentEntry?.name ?? ""
-                    color: Caelus.textPrimary
+                    color: Colors.fgDim
                     font.family: Caelus.fontFamily
                     font.pixelSize: Caelus.sizeBody
+                }
+
+                // What this wallpaper would recolour the shell to, computed by
+                // matugen before it is applied -- the four roles the bar
+                // actually paints with, in the order they carry weight. The
+                // row keeps its height whether or not there is an answer yet,
+                // so the name above it does not jump when one arrives.
+                Item {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: swatches.width
+                    height: 14
+                    opacity: Wallpapers.previewRoles !== null ? 1 : 0
+
+                    Behavior on opacity { NumberAnimation { duration: Motion.base } }
+
+                    Row {
+                        id: swatches
+
+                        anchors.centerIn: parent
+                        spacing: Caelus.spaceTight
+
+                        Repeater {
+                            model: ["primary", "secondary", "tertiary", "error"]
+
+                            Rectangle {
+                                required property string modelData
+
+                                width: 22
+                                height: 10
+                                radius: Caelus.radiusPill
+                                color: Wallpapers.previewRoles?.[modelData] ?? "transparent"
+                                border.width: Caelus.borderWidth
+                                border.color: Colors.surfaceHover
+
+                                Behavior on color { ColorAnimation { duration: Motion.base } }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -1,7 +1,9 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
+import qs.Config
 
 // Row of StatusNotifierItem icons, sized to sit inside a Pill like WorkspaceDots.
 Row {
@@ -15,7 +17,7 @@ Row {
     readonly property var shown: SystemTray.items.values
         .filter(i => !/blue(man|tooth)/i.test((i.id ?? "") + " " + (i.title ?? "")))
 
-    spacing: 8
+    spacing: Caelus.space
 
     Repeater {
         model: root.shown
@@ -33,6 +35,26 @@ Row {
                 anchors.fill: parent
                 source: entry.modelData.icon
                 asynchronous: true
+
+                // Third-party apps ship this icon in whatever colour they
+                // chose, which is exactly the second icon language the bar
+                // is trying to get rid of everywhere else -- see
+                // WorkspaceDots' own category glyphs. Desaturated at rest
+                // keeps the tray in the same monochrome register as every
+                // pill; hovering (below) brings the real colour back so an
+                // icon can still be told apart from its neighbours by name
+                // rather than only by shape. -0.7, not MultiEffect's own
+                // -1.0 floor: full grayscale read several of the tray's
+                // icons -- all similarly dark, similarly shaped glyphs on a
+                // transparent square -- as identical grey blobs, and a
+                // little colour left in is what keeps them told apart at
+                // rest as well as on hover.
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    saturation: hoverArea.containsMouse ? 0 : -0.7
+
+                    Behavior on saturation { NumberAnimation { duration: Motion.fast } }
+                }
             }
 
             QsMenuAnchor {
@@ -62,10 +84,12 @@ Row {
             }
 
             MouseArea {
+                id: hoverArea
                 anchors.fill: parent
-                anchors.margins: -4
+                anchors.margins: -Caelus.spaceTight
                 acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                 cursorShape: Qt.PointingHandCursor
+                hoverEnabled: true
 
                 onClicked: mouse => {
                     // onlyMenu items have no activate action -- the menu is the item

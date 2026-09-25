@@ -46,8 +46,8 @@ SysCard {
         Text {
             text: "sampling…"
             color: Colors.sysMeta
-            font.family: "caelusevka"
-            font.pixelSize: 12
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLabel
             // count, not length: a ListModel is not an array. It also stays
             // filled between openings now, so this line is only ever seen on the
             // first open of a session rather than on every one.

@@ -1,26 +1,24 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs.Config
 import qs.Services
 
 // What is actually moving over the link behind the bar's network pill. The pill
 // answers "am I online and on which connection"; this card answers "and is
 // anything coming down it", which is the question asked of a bar when a download
-// is either finished or stuck. The card, its notch and the click-outside
-// dismissal all belong to BarPopup; what is left here is the reading itself.
+// is either finished or stuck. The card and the click-outside dismissal both
+// belong to BarPopup, which now sits the card flush against the island above
+// instead of pointing a notch back up at the pill -- a notch would have had
+// to be drawn inside that island itself, in a second translucent window,
+// where two glass surfaces over one another double-composite into a seam
+// rather than a pointer. What is left here is the reading itself.
 BarPopup {
     id: root
 
     namespace: "qs-network"
     popupWidth: 320
     popupHeight: body.implicitHeight + 28
-
-    // Canvas has no binding to the data it draws, so the repaint is driven from
-    // a property that does -- the same device ClaudeAreaChart uses for its own
-    // series.
-    readonly property var samples: Network.history
-
-    onSamplesChanged: spark.requestPaint()
 
     // The link is only sampled while somebody is looking at it. The counters
     // live in the kernel and cost nothing to leave alone, and the pill has no
@@ -52,25 +50,25 @@ BarPopup {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 14
-        spacing: 12
+        anchors.margins: Caelus.spaceEdge
+        spacing: Caelus.spaceWide
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: Network.wired ? "lan" : Network.connected ? "wifi" : "wifi_off"
                 color: Colors.popupAccent
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: 16
             }
 
             Text {
                 text: "Network"
                 color: Colors.networkTitle
-                font.family: "caelusevka"
-                font.pixelSize: 15
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLead
             }
 
             Item { Layout.fillWidth: true }
@@ -82,8 +80,8 @@ BarPopup {
                 Layout.maximumWidth: 150
                 text: Network.connected ? Network.name : "Offline"
                 color: Colors.networkMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 elide: Text.ElideRight
             }
         }
@@ -126,7 +124,7 @@ BarPopup {
                 property real fraction: Math.min(1, Math.max(0, flow.rate) / Network.peak)
 
                 Behavior on fraction {
-                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: Motion.slow; easing.type: Motion.standard }
                 }
 
                 Layout.fillWidth: true
@@ -139,22 +137,22 @@ BarPopup {
                     Text {
                         text: flow.down ? "arrow_downward" : "arrow_upward"
                         color: flow.tint
-                        font.family: "Material Symbols Rounded"
-                        font.pixelSize: 15
+                        font.family: Caelus.symbolFamily
+                        font.pixelSize: Caelus.sizeLead
                     }
 
                     Text {
                         text: flow.down ? "Down" : "Up"
                         color: Colors.networkBody
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                     }
 
                     Text {
                         text: Format.rate(flow.rate)
                         color: flow.tint
-                        font.family: "caelusevka"
-                        font.pixelSize: 15
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeLead
                     }
 
                     Item { Layout.fillWidth: true }
@@ -165,8 +163,8 @@ BarPopup {
                     Text {
                         text: Format.human(flow.total) + " total"
                         color: Colors.networkMeta
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                     }
                 }
 
@@ -176,7 +174,7 @@ BarPopup {
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: 6
-                    radius: 3
+                    radius: Caelus.radiusPill
                     color: Colors.networkTrack
 
                     // Follows the track exactly and instantly: the easing that
@@ -197,84 +195,123 @@ BarPopup {
         // nothing is sampled, so the series is the last sixty readings and not
         // the last sixty seconds, and a scale claiming otherwise would be a lie
         // on every re-open.
-        Canvas {
-            id: spark
+        //
+        // History updates on a one-second Timer for as long as this card is
+        // open (see above), so unlike ClaudeAreaChart's curve this one is
+        // never at rest -- no flash-on-refresh here, since flashing on every
+        // tick would read as a flicker rather than as a signal that something
+        // changed. The geometry below simply follows the reading the same way
+        // Canvas's requestPaint() used to, just without having to ask for it.
+        Item {
+            id: sparkWrap
 
             Layout.fillWidth: true
             // Its own implicit height, the same way the rules above ask for
             // their single pixel: the card is sized from what this column adds
-            // up to, and a Canvas has no natural height to contribute.
+            // up to, and neither a Shape nor an Item has a natural one to
+            // contribute on its own.
             implicitHeight: 44
 
-            onWidthChanged: requestPaint()
-            onHeightChanged: requestPaint()
+            // A plain rule rather than a stroked path: a straight horizontal
+            // line has no curve for Shapes to earn, and every other 1px
+            // separator in this popup is already drawn this way.
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                implicitHeight: 1
+                color: Colors.networkTrack
+            }
 
-            onPaint: {
-                const ctx = getContext("2d");
-                if (!ctx || width <= 0 || height <= 0) return;
+            Shape {
+                id: spark
 
-                ctx.reset();
+                anchors.fill: parent
+                // See ClaudeDonutChart.qml for why this is safe on this
+                // build's Qt (6.11.2) and needs no declarative fallback.
+                preferredRendererType: Shape.CurveRenderer
 
-                // Drawn whatever happens, so a card opened before a single pair
-                // of samples exists reads as an empty graph and not as a gap in
-                // the card. The half-pixel keeps a one-pixel rule on one row of
-                // pixels instead of smearing it over two.
-                ctx.beginPath();
-                ctx.moveTo(0, height - 0.5);
-                ctx.lineTo(width, height - 0.5);
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = Colors.networkTrack;
-                ctx.stroke();
+                readonly property var samples: Network.history
+                readonly property int n: spark.samples.length
 
-                const s = Network.history;
-                const n = s.length;
-                // One point has no run to draw between.
-                if (n < 2) return;
+                // Stepped by the width the history will eventually fill
+                // rather than by what it holds now, so the line grows in
+                // from the right as the minute fills. Scaled to what it
+                // holds, it would be stretched across the whole card from
+                // the second sample on and re-stretched on every tick after.
+                readonly property real step: Network.historyMax > 1
+                    ? spark.width / (Network.historyMax - 1) : 0
+                readonly property real x0: spark.width - (spark.n - 1) * spark.step
+                // Two pixels of headroom so the stroke on the tallest sample
+                // is not clipped in half by the top edge.
+                readonly property real usable: Math.max(0, spark.height - 2)
 
-                // Stepped by the width the history will eventually fill rather
-                // than by what it holds now, so the line grows in from the right
-                // as the minute fills. Scaled to what it holds, it would be
-                // stretched across the whole card from the second sample on and
-                // re-stretched on every tick after it.
-                const step = width / (Network.historyMax - 1);
-                const x0 = width - (n - 1) * step;
-                // Two pixels of headroom so the stroke on the tallest sample is
-                // not clipped in half by the top edge.
-                const usable = Math.max(0, height - 2);
-                const peak = Network.peak;
+                function seriesPoints(key) {
+                    // One point has no run to draw between; `peak` is floored
+                    // well above zero in Network.qml, but guarded here too
+                    // since this is the one place that would divide by it.
+                    if (spark.n < 2 || Network.peak <= 0
+                        || spark.width <= 0 || spark.height <= 0) return [];
 
-                function px(i) { return x0 + i * step; }
-                function py(v) { return height - (v / peak) * usable; }
+                    const pts = [];
+                    for (let i = 0; i < spark.n; i++) {
+                        const y = spark.height - (spark.samples[i][key] / Network.peak) * spark.usable;
+                        pts.push(Qt.point(spark.x0 + i * spark.step, y));
+                    }
+                    return pts;
+                }
 
-                // Download is the series with the area under it: it is the one
-                // that carries the weight on a home link, and a second filled
-                // band would hide whichever of the two happened to be smaller.
-                ctx.beginPath();
-                ctx.moveTo(px(0), py(s[0].rx));
-                for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(s[i].rx));
-                ctx.lineTo(px(n - 1), height);
-                ctx.lineTo(px(0), height);
-                ctx.closePath();
-                const d = Colors.networkDown;
-                ctx.fillStyle = Qt.rgba(d.r, d.g, d.b, 0.18);
-                ctx.fill();
+                readonly property var rxPoints: spark.seriesPoints("rx")
+                readonly property var txPoints: spark.seriesPoints("tx")
 
-                ctx.lineWidth = 2;
-                ctx.lineJoin = "round";
+                // The line's points plus two more along the floor, closing
+                // back under the first -- the same closing edge
+                // ClaudeAreaChart's fill uses, for the same reason.
+                readonly property var rxFillPoints: {
+                    const line = spark.rxPoints;
+                    if (line.length === 0) return [];
+                    const last = line[line.length - 1];
+                    const pts = line.slice();
+                    pts.push(Qt.point(last.x, spark.height));
+                    pts.push(Qt.point(line[0].x, spark.height));
+                    return pts;
+                }
 
-                ctx.beginPath();
-                ctx.moveTo(px(0), py(s[0].rx));
-                for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(s[i].rx));
-                ctx.strokeStyle = Colors.networkDown;
-                ctx.stroke();
+                // Download is the series with the area under it: it is the
+                // one that carries the weight on a home link, and a second
+                // filled band would hide whichever of the two happened to be
+                // smaller.
+                ShapePath {
+                    strokeColor: "transparent"
+                    fillColor: Qt.rgba(Colors.networkDown.r, Colors.networkDown.g,
+                                        Colors.networkDown.b, 0.18)
+
+                    PathPolyline { path: spark.rxFillPoints }
+                }
+
+                ShapePath {
+                    fillColor: "transparent"
+                    strokeColor: Colors.networkDown
+                    strokeWidth: 2
+                    joinStyle: ShapePath.RoundJoin
+                    // Flat, matching Canvas's own default lineCap, which this
+                    // path never overrode.
+                    capStyle: ShapePath.FlatCap
+
+                    PathPolyline { path: spark.rxPoints }
+                }
 
                 // Drawn last so the quieter direction is never buried under the
                 // busy one's fill.
-                ctx.beginPath();
-                ctx.moveTo(px(0), py(s[0].tx));
-                for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(s[i].tx));
-                ctx.strokeStyle = Colors.networkUp;
-                ctx.stroke();
+                ShapePath {
+                    fillColor: "transparent"
+                    strokeColor: Colors.networkUp
+                    strokeWidth: 2
+                    joinStyle: ShapePath.RoundJoin
+                    capStyle: ShapePath.FlatCap
+
+                    PathPolyline { path: spark.txPoints }
+                }
             }
         }
 
@@ -290,22 +327,22 @@ BarPopup {
         // on the thing being watched.
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 Layout.fillWidth: true
                 text: Network.device !== "" ? Network.device : "--"
                 color: Colors.networkBody
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 elide: Text.ElideRight
             }
 
             Text {
                 text: Network.wired ? "Ethernet" : Network.connected ? "Wi-Fi" : ""
                 color: Colors.networkMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
             }
         }
     }

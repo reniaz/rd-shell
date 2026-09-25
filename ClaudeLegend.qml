@@ -24,7 +24,7 @@ ColumnLayout {
     readonly property real total: Series.total(root.rows)
 
     Layout.fillWidth: true
-    spacing: 4
+    spacing: Caelus.spaceTight
 
     Repeater {
         model: root.rows
@@ -35,7 +35,7 @@ ColumnLayout {
             required property var modelData
 
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Rectangle {
                 implicitWidth: 8
@@ -47,8 +47,8 @@ ColumnLayout {
             Text {
                 text: entry.modelData.label
                 color: Colors.claudeBody
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -61,8 +61,8 @@ ColumnLayout {
                     ? Math.round(entry.modelData.value / root.total * 100) + "%"
                     : ""
                 color: Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
             }
 
             Text {
@@ -70,8 +70,8 @@ ColumnLayout {
                     ? ClaudeSession.money(entry.modelData.value)
                     : ClaudeSession.compact(entry.modelData.value)
                 color: Colors.claudeTitle
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 visible: root.valueKey !== ""
             }
         }

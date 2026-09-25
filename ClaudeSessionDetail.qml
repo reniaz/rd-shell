@@ -122,10 +122,10 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.topMargin: 6
-        anchors.leftMargin: 10
+        anchors.topMargin: Caelus.spaceSnug
+        anchors.leftMargin: Caelus.spaceLoose
         anchors.rightMargin: 2
-        spacing: 8
+        spacing: Caelus.space
 
         // Every section below hides itself when it has nothing to say, so an
         // idle session collapses to Now and a footer rather than to five empty
@@ -134,8 +134,8 @@ Item {
             Layout.fillWidth: true
             text: "reading transcript…"
             color: Colors.claudeMeta
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             visible: root.d === null
         }
 
@@ -147,15 +147,15 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 6
+                spacing: Caelus.spaceSnug
 
                 Text {
                     text: root.waiting ? "pause_circle" : root.busy ? "bolt" : "check_circle"
                     color: root.waiting ? Colors.claudeAttention
                         : root.busy ? Colors.claudeBusy
                         : Colors.claudeIdle
-                    font.family: "Material Symbols Rounded"
-                    font.pixelSize: 15
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeLead
                 }
 
                 Text {
@@ -163,7 +163,7 @@ Item {
                         : root.busy ? (root.toolName !== "" ? root.toolName : "thinking")
                         : "idle"
                     color: root.waiting ? Colors.claudeAttention : Colors.claudeTitle
-                    font.family: "caelusevka"
+                    font.family: Caelus.fontFamily
                     font.pixelSize: 14
                 }
 
@@ -173,8 +173,8 @@ Item {
                     Layout.fillWidth: true
                     text: root.busy ? root.toolTarget : ""
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                     elide: Text.ElideRight
                 }
             }
@@ -182,7 +182,7 @@ Item {
             Flow {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
-                spacing: 4
+                spacing: Caelus.spaceTight
 
                 Repeater {
                     model: root.chips
@@ -194,7 +194,7 @@ Item {
 
                         implicitWidth: chipText.implicitWidth + 14
                         implicitHeight: 20
-                        radius: 4
+                        radius: Caelus.radiusChip
                         color: Colors.claudePanelBg
 
                         Text {
@@ -203,8 +203,8 @@ Item {
                             anchors.centerIn: parent
                             text: chip.modelData.text
                             color: chip.modelData.accent ? Colors.claudeAccent : Colors.claudeMeta
-                            font.family: "caelusevka"
-                            font.pixelSize: 12
+                            font.family: Caelus.fontFamily
+                            font.pixelSize: Caelus.sizeLabel
                         }
                     }
                 }
@@ -263,7 +263,7 @@ Item {
                     // one you started yourself.
                     Layout.leftMargin: Math.max(0, (agent.a.spawnDepth ?? 1) - 1) * 12
                     implicitHeight: agentCol.implicitHeight + 12
-                    radius: 8
+                    radius: Caelus.radiusCard
                     color: Colors.claudePanelBg
 
                     ColumnLayout {
@@ -272,34 +272,34 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
+                        anchors.leftMargin: Caelus.spaceLoose
+                        anchors.rightMargin: Caelus.spaceLoose
                         spacing: 1
 
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 6
+                            spacing: Caelus.spaceSnug
 
                             Text {
                                 text: agent.a.running ? "radio_button_checked" : "check_circle"
                                 color: agent.a.running ? Colors.claudeAgent : Colors.claudeIdle
-                                font.family: "Material Symbols Rounded"
-                                font.pixelSize: 13
+                                font.family: Caelus.symbolFamily
+                                font.pixelSize: Caelus.sizeBody
                             }
 
                             Text {
                                 text: agent.a.agentType
                                 color: agent.a.running ? Colors.claudeAgent : Colors.claudeBody
-                                font.family: "caelusevka"
-                                font.pixelSize: 13
+                                font.family: Caelus.fontFamily
+                                font.pixelSize: Caelus.sizeBody
                             }
 
                             Text {
                                 Layout.fillWidth: true
                                 text: agent.a.description
                                 color: Colors.claudeMeta
-                                font.family: "caelusevka"
-                                font.pixelSize: 13
+                                font.family: Caelus.fontFamily
+                                font.pixelSize: Caelus.sizeBody
                                 elide: Text.ElideRight
                             }
 
@@ -310,8 +310,8 @@ Item {
                                     ? ClaudeSession.elapsed(Date.parse(agent.a.startedAt))
                                     : ClaudeSession.ago(agent.a.lastAt)
                                 color: agent.a.running ? Colors.claudeAgent : Colors.claudeMeta
-                                font.family: "caelusevka"
-                                font.pixelSize: 12
+                                font.family: Caelus.fontFamily
+                                font.pixelSize: Caelus.sizeLabel
                             }
                         }
 
@@ -327,8 +327,8 @@ Item {
                                 return bits.join("  ·  ");
                             }
                             color: Colors.claudeMeta
-                            font.family: "caelusevka"
-                            font.pixelSize: 12
+                            font.family: Caelus.fontFamily
+                            font.pixelSize: Caelus.sizeLabel
                             elide: Text.ElideRight
                             visible: text !== ""
                         }
@@ -361,7 +361,7 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Caelus.space
                 visible: root.promptText !== ""
 
                 Rectangle {
@@ -375,8 +375,8 @@ Item {
                     Layout.fillWidth: true
                     text: root.promptText
                     color: Colors.claudeBody
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
@@ -393,29 +393,29 @@ Item {
                     required property var modelData
 
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Caelus.space
 
                     Text {
                         text: (queued.index + 1) + "."
                         color: Colors.claudeAccent
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                     }
 
                     Text {
                         Layout.fillWidth: true
                         text: queued.modelData.content
                         color: Colors.claudeMeta
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                         elide: Text.ElideRight
                     }
 
                     Text {
                         text: ClaudeSession.ago(queued.modelData.at)
                         color: Colors.claudeMeta
-                        font.family: "caelusevka"
-                        font.pixelSize: 12
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeLabel
                     }
                 }
             }
@@ -430,12 +430,12 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Caelus.space
 
                 Text {
                     text: root.money(root.num(root.econ, "cost") + root.num(root.econ, "subagentCost"))
                     color: Colors.claudeAccent
-                    font.family: "caelusevka"
+                    font.family: Caelus.fontFamily
                     font.pixelSize: 20
                 }
 
@@ -447,8 +447,8 @@ Item {
                         ? "incl. " + root.money(root.econ.subagentCost) + " agents"
                         : "this session"
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                     elide: Text.ElideRight
                 }
 
@@ -457,8 +457,8 @@ Item {
                     Layout.bottomMargin: 2
                     text: root.growthText
                     color: root.growthColor
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                     visible: text !== ""
                 }
             }
@@ -519,36 +519,36 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Caelus.space
                 visible: root.git !== null && root.git.repo === true
 
                 Text {
                     text: "call_split"
                     color: Colors.claudeMeta
-                    font.family: "Material Symbols Rounded"
+                    font.family: Caelus.symbolFamily
                     font.pixelSize: 14
                 }
 
                 Text {
                     text: root.git ? root.git.branch : ""
                     color: Colors.claudeBody
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
 
                 Text {
                     text: root.num(root.git, "dirty") + " dirty"
                     color: root.num(root.git, "dirty") > 0 ? Colors.claudeWarn : Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
 
                 Text {
                     Layout.fillWidth: true
                     text: "↑" + root.num(root.git, "ahead") + "  ↓" + root.num(root.git, "behind")
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
             }
 
@@ -561,14 +561,14 @@ Item {
                     required property var modelData
 
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Caelus.space
 
                     Text {
                         Layout.fillWidth: true
                         text: root.relative(edited.modelData.path)
                         color: Colors.claudeBody
-                        font.family: "caelusevka"
-                        font.pixelSize: 12
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeLabel
                         // ElideLeft: the directory is the disposable half of a
                         // path, the filename is the whole point of the line.
                         elide: Text.ElideLeft
@@ -577,8 +577,8 @@ Item {
                     Text {
                         text: "×" + edited.modelData.edits
                         color: Colors.claudeMeta
-                        font.family: "caelusevka"
-                        font.pixelSize: 12
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeLabel
                     }
                 }
             }
@@ -592,8 +592,8 @@ Item {
                 Layout.fillWidth: true
                 text: root.cwd
                 color: cwdArea.containsMouse ? Colors.claudeAccent : Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
                 elide: Text.ElideMiddle
 
                 MouseArea {
@@ -610,8 +610,8 @@ Item {
                 Layout.fillWidth: true
                 text: root.sessionId
                 color: idArea.containsMouse ? Colors.claudeAccent : Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
                 elide: Text.ElideMiddle
 
                 MouseArea {

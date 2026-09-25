@@ -25,17 +25,17 @@ RowLayout {
     // and run the bar up from nothing every time the panel is built, which is
     // what made a reopened panel look like a session starting over.
     Behavior on fraction {
-        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: Motion.slow; easing.type: Motion.standard }
     }
 
-    spacing: 8
+    spacing: Caelus.space
 
     Rectangle {
         id: track
 
         Layout.fillWidth: true
         implicitHeight: root.thickness
-        radius: height / 2
+        radius: Caelus.radiusPill
         color: Colors.claudeTrack
 
         Rectangle {
@@ -44,15 +44,15 @@ RowLayout {
             radius: parent.radius
             color: root.fill
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
         }
     }
 
     Text {
         text: root.percent + "%"
         color: root.percent > 75 ? root.fill : Colors.claudeMeta
-        font.family: "caelusevka"
-        font.pixelSize: 13
+        font.family: Caelus.fontFamily
+        font.pixelSize: Caelus.sizeBody
         visible: root.percent >= 0
     }
 }

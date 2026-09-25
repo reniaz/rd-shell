@@ -1,0 +1,109 @@
+# Rendered by matugen from ~/.config/btop/matugen/matugen.theme on every
+# wallpaper switch (see ~/.config/matugen/config.toml, [templates.btop]).
+# Output lands at ~/.config/btop/themes/matugen.theme, which btop.conf points
+# to via `color_theme = "matugen"` (btop resolves that name against
+# ~/.config/btop/themes/<name>.theme -- no path, no extension).
+#
+# A running btop picks this up live: matugen's post_hook sends SIGUSR2 to the
+# btop process, which re-reads both btop.conf and the active .theme file from
+# disk without a restart (verified on this machine 2026-09-25 by editing a
+# theme file in place and sending SIGUSR2 to a throwaway btop instance --
+# background and gradient colors updated immediately). No post_hook fires if
+# no btop is running, so a fresh launch just reads the new file normally.
+#
+# Roles: material surfaces/text for the chrome, the six harmonized custom
+# hues (red/green/yellow/blue/magenta/cyan -- defined in config.toml, blended
+# toward the wallpaper) for anything that needs to stay a distinct color
+# instead of going monochrome, since this is a tonal-spot scheme (one hue).
+# `default` on each role resolves to whichever --mode matugen was run with,
+# so the same template is legible in both dark and light wallpapers.
+
+# Main background, empty for terminal default, need to be empty if you want transparent background
+theme[main_bg]="{{colors.surface.default.hex}}"
+
+# Main text color
+theme[main_fg]="{{colors.on_surface.default.hex}}"
+
+# Title color for boxes
+theme[title]="{{colors.on_surface.default.hex}}"
+
+# Highlight color for keyboard shortcuts
+theme[hi_fg]="{{colors.primary.default.hex}}"
+
+# Background color of selected item in processes box
+theme[selected_bg]="{{colors.primary_container.default.hex}}"
+
+# Foreground color of selected item in processes box
+theme[selected_fg]="{{colors.on_primary_container.default.hex}}"
+
+# Color of inactive/disabled text
+theme[inactive_fg]="{{colors.outline.default.hex}}"
+
+# Color of text appearing on top of graphs, i.e uptime and current network graph scaling
+theme[graph_text]="{{colors.on_surface.default.hex}}"
+
+# Background color of the percentage meters
+theme[meter_bg]="{{colors.surface_container_high.default.hex}}"
+
+# Misc colors for processes box including mini cpu graphs, details memory graph and details status text
+theme[proc_misc]="{{colors.secondary.default.hex}}"
+
+# Cpu box outline color
+theme[cpu_box]="{{colors.blue.default.hex}}"
+
+# Memory/disks box outline color
+theme[mem_box]="{{colors.green.default.hex}}"
+
+# Net up/down box outline color
+theme[net_box]="{{colors.magenta.default.hex}}"
+
+# Processes box outline color
+theme[proc_box]="{{colors.cyan.default.hex}}"
+
+# Box divider line and small boxes line color
+theme[div_line]="{{colors.outline_variant.default.hex}}"
+
+# Temperature graph colors -- rises from cool to hot like a real gauge
+theme[temp_start]="{{colors.green.default.hex}}"
+theme[temp_mid]="{{colors.yellow.default.hex}}"
+theme[temp_end]="{{colors.red.default.hex}}"
+
+# CPU graph colors -- low usage green, high usage red
+theme[cpu_start]="{{colors.green.default.hex}}"
+theme[cpu_mid]="{{colors.yellow.default.hex}}"
+theme[cpu_end]="{{colors.red.default.hex}}"
+
+# Mem/Disk free meter -- little free space reads as a warning, plenty free reads green
+theme[free_start]="{{colors.red.default.hex}}"
+theme[free_mid]="{{colors.yellow.default.hex}}"
+theme[free_end]="{{colors.green.default.hex}}"
+
+# Mem/Disk cached meter -- neutral, no good/bad direction, just a distinct hue path
+theme[cached_start]="{{colors.blue.default.hex}}"
+theme[cached_mid]="{{colors.cyan.default.hex}}"
+theme[cached_end]="{{colors.magenta.default.hex}}"
+
+# Mem/Disk available meter -- same low/high sense as the free meter
+theme[available_start]="{{colors.red.default.hex}}"
+theme[available_mid]="{{colors.yellow.default.hex}}"
+theme[available_end]="{{colors.green.default.hex}}"
+
+# Mem/Disk used meter -- low usage green, high usage red
+theme[used_start]="{{colors.green.default.hex}}"
+theme[used_mid]="{{colors.yellow.default.hex}}"
+theme[used_end]="{{colors.red.default.hex}}"
+
+# Download graph colors -- conventional "incoming" hues, distinct from upload
+theme[download_start]="{{colors.cyan.default.hex}}"
+theme[download_mid]="{{colors.blue.default.hex}}"
+theme[download_end]="{{colors.green.default.hex}}"
+
+# Upload graph colors -- conventional "outgoing" hues, distinct from download
+theme[upload_start]="{{colors.yellow.default.hex}}"
+theme[upload_mid]="{{colors.magenta.default.hex}}"
+theme[upload_end]="{{colors.red.default.hex}}"
+
+# Process box color gradient for threads, mem and cpu usage
+theme[process_start]="{{colors.green.default.hex}}"
+theme[process_mid]="{{colors.yellow.default.hex}}"
+theme[process_end]="{{colors.red.default.hex}}"

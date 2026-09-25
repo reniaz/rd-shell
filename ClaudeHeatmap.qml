@@ -78,8 +78,8 @@ Item {
                 Text {
                     text: root.rowLabels[line.index] ?? ""
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                     visible: (root.rowLabels ?? []).length > 0
                     // A fixed gutter rather than an implicit one: every row has
                     // to start at the same x or the columns stop being hours.
@@ -108,8 +108,8 @@ Item {
                         // chart uses for the same reason.
                         opacity: root.hoverIndex < 0 || root.hoverIndex === cell.flat ? 1 : 0.45
 
-                        Behavior on color { ColorAnimation { duration: 220 } }
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                        Behavior on color { ColorAnimation { duration: Motion.slow } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
                         MouseArea {
                             anchors.fill: parent
@@ -147,8 +147,8 @@ Item {
                 return (rowName !== "" ? rowName + " " : "") + col + " · " + v;
             }
             color: Colors.claudeBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
         }

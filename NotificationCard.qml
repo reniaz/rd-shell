@@ -42,7 +42,7 @@ Rectangle {
     signal activated()
 
     implicitHeight: layout.implicitHeight + 26
-    radius: 14
+    radius: Caelus.radiusPopover
     topLeftRadius: flush === "left" ? 0 : radius
     bottomLeftRadius: flush === "left" ? 0 : radius
     topRightRadius: flush === "right" ? 0 : radius
@@ -84,13 +84,13 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
-        spacing: 6
+        anchors.leftMargin: Caelus.spaceEdge
+        anchors.rightMargin: Caelus.spaceEdge
+        spacing: Caelus.spaceSnug
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Image {
                 source: card.notification?.image ?? ""
@@ -108,8 +108,8 @@ Rectangle {
                     : card.low ? Colors.notifMeta
                     : card.showApp ? Colors.notifAccent
                     : Colors.notifTitle
-                font.family: "caelusevka"
-                font.pixelSize: card.showApp ? 13 : 15
+                font.family: Caelus.fontFamily
+                font.pixelSize: card.showApp ? Caelus.sizeBody : Caelus.sizeLead
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -117,39 +117,56 @@ Rectangle {
             // Panel entries leave this off: the bell above the list already
             // shows DND, and there it is live state next to a stale arrival.
             RowLayout {
-                spacing: 4
+                spacing: Caelus.spaceTight
                 visible: card.popup && card.hotkey
 
                 Text {
                     text: Notifications.dnd ? "notifications_off" : "notifications"
                     color: Notifications.dnd ? Colors.notifDndOn : Colors.notifDndOff
-                    font.family: "Material Symbols Rounded"
+                    font.family: Caelus.symbolFamily
                     font.pixelSize: 14
                 }
 
                 Text {
                     text: Notifications.dnd ? "DND on" : "DND off"
                     color: Notifications.dnd ? Colors.notifDndOn : Colors.notifDndOff
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
             }
 
             Text {
                 text: Notifications.timeOf(card.notification)
                 color: Colors.notifMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
             }
 
             Text {
+                id: closeGlyph
+
                 text: "close"
                 color: closeArea.containsMouse ? Colors.notifCritical : Colors.notifMeta
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: 16
-                opacity: hover.hovered ? 1 : 0
+                opacity: 0
 
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                // hover.hovered flips on every card the pointer crosses, so
+                // this fade runs more often than almost anything else in the
+                // notification stack -- worth moving to the render thread so
+                // it keeps up while the GUI thread is busy elsewhere. A State
+                // rather than the old bound `opacity` + Behavior, since an
+                // OpacityAnimator writes the property directly and would
+                // fight a binding left in place on the same property.
+                states: State {
+                    name: "visible"
+                    when: hover.hovered
+                    PropertyChanges { target: closeGlyph; opacity: 1 }
+                }
+
+                transitions: Transition {
+                    OpacityAnimator { target: closeGlyph; duration: Motion.fast }
+                }
 
                 MouseArea {
                     id: closeArea
@@ -165,8 +182,8 @@ Rectangle {
         Text {
             text: card.notification?.summary ?? ""
             color: Colors.notifTitle
-            font.family: "caelusevka"
-            font.pixelSize: 15
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLead
             elide: Text.ElideRight
             Layout.fillWidth: true
             visible: card.showApp && text !== ""
@@ -175,8 +192,8 @@ Rectangle {
         Text {
             text: card.notification?.body ?? ""
             color: Colors.notifBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             wrapMode: Text.WordWrap
             maximumLineCount: card.popup ? 3 : 6
             elide: Text.ElideRight
@@ -187,7 +204,7 @@ Rectangle {
         Flow {
             Layout.fillWidth: true
             Layout.topMargin: 2
-            spacing: 6
+            spacing: Caelus.spaceSnug
             visible: repeater.count > 0
 
             Repeater {
@@ -199,20 +216,20 @@ Rectangle {
 
                     implicitWidth: actionText.implicitWidth + 20
                     implicitHeight: 26
-                    radius: height / 2
+                    radius: Caelus.radiusPill
                     color: actionArea.containsMouse ? Colors.notifBorder : Colors.notifPanelBg
                     border.width: 1
                     border.color: Colors.notifBorder
 
-                    Behavior on color { ColorAnimation { duration: 220 } }
+                    Behavior on color { ColorAnimation { duration: Motion.slow } }
 
                     Text {
                         id: actionText
                         anchors.centerIn: parent
                         text: modelData.text
                         color: Colors.notifTitle
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                     }
 
                     MouseArea {

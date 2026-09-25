@@ -47,7 +47,7 @@ RowLayout {
             property real fraction: column.load / 100
 
             Behavior on fraction {
-                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: Motion.slow; easing.type: Motion.standard }
             }
 
             Layout.fillWidth: true
@@ -67,7 +67,7 @@ RowLayout {
                 radius: parent.radius
                 color: Colors.usage(column.load, Colors.sysColor)
 
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
             }
         }
     }

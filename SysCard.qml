@@ -14,7 +14,7 @@ Rectangle {
 
     Layout.fillWidth: true
     implicitHeight: inner.implicitHeight + 24
-    radius: 14
+    radius: Caelus.radiusPopover
     color: Colors.sysCard
     border.width: 1
     border.color: Colors.popupBorder
@@ -27,24 +27,24 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: 13
         anchors.rightMargin: 13
-        spacing: 8
+        spacing: Caelus.space
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: root.title
                 color: Colors.sysMeta
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
 
             RowLayout {
                 id: trailingRow
-                spacing: 8
+                spacing: Caelus.space
             }
         }
     }

@@ -24,7 +24,7 @@ ColumnLayout {
     // at again. Animating the fraction instead leaves the opening frame exact
     // and keeps the easing for the refreshes that genuinely move it.
     Behavior on fraction {
-        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: Motion.slow; easing.type: Motion.standard }
     }
 
     Layout.fillWidth: true
@@ -32,12 +32,12 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        spacing: 8
+        spacing: Caelus.space
 
         Text {
             text: root.label
             color: Colors.sysTitle
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: 14
             elide: Text.ElideRight
             Layout.fillWidth: true
@@ -46,8 +46,8 @@ ColumnLayout {
         Text {
             text: root.value
             color: Colors.sysBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
         }
     }
 
@@ -56,7 +56,7 @@ ColumnLayout {
 
         Layout.fillWidth: true
         implicitHeight: root.thickness
-        radius: height / 2
+        radius: Caelus.radiusPill
         color: Colors.sysTrack
 
         // Follows the track exactly and instantly: the easing that makes a
@@ -68,7 +68,7 @@ ColumnLayout {
             radius: parent.radius
             color: root.fill
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
         }
     }
 }

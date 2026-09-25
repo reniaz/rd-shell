@@ -16,8 +16,11 @@ Item {
         id: glyph
 
         text: Notifications.dnd ? "notifications_off" : "notifications"
-        color: Notifications.dnd ? Colors.notifDndOn : Colors.notifColor
-        font.family: "Material Symbols Rounded"
+        // Resting is neutral like every other piece of bar chrome; the only
+        // colour the bell is allowed to show is the do-not-disturb state and
+        // the unread badge below, both of which mean something is true right now.
+        color: Notifications.dnd ? Colors.notifDndOn : Colors.notifIcon
+        font.family: Caelus.symbolFamily
         font.pixelSize: 16
     }
 
@@ -30,7 +33,7 @@ Item {
 
         width: 8
         height: 8
-        radius: width / 2
+        radius: Caelus.radiusPill
         color: Colors.notifUnread
 
         // Overhangs the glyph's top-right corner; the 1px ring keeps it legible
@@ -45,7 +48,7 @@ Item {
 
         scale: visible ? 1 : 0
         Behavior on scale {
-            NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: Motion.fast; easing.type: Motion.standard }
         }
     }
 }

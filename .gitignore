@@ -7,3 +7,17 @@ Archive.zip
 # Timestamped backups left by the wallpaper and lock scripts
 *.bak
 *.bak-*
+
+# Live per-user state, written by Services/Settings.qml at runtime -- a copy
+# pushed from one machine would reset everyone else's toggles.
+settings.json
+
+# Stray local files: a PID note and verbose tmux server logs (`tmux -v`).
+pid.txt
+tmux-*.log
+
+# Rendered by matugen into the ghostty config dir, which install.sh symlinks
+# wholesale from hypr/dotfiles/ghostty (~/.config/ghostty -> that path) --
+# so the render lands inside the repo checkout on disk even though it is
+# regenerated on every wallpaper switch and must never be committed.
+hypr/dotfiles/ghostty/themes/matugen

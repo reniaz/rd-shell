@@ -128,32 +128,39 @@ line instead of drawing a new one from nothing.
 
 ## Requirements
 
-- [`quickshell`](https://quickshell.outfoxxed.me) — on Fedora from the
-  `errornointernet/quickshell` COPR
-- A Wayland compositor — developed on **Hyprland**, which the workspace, layout and
-  power widgets talk to directly (`hyprctl`, `hyprlock`, `hyprshutdown`)
-- `pipewire` + `wireplumber`, `NetworkManager`, `jq`, `gawk`, `procps-ng`
+- Fedora 44. This repo also carries `hypr/`, the Hyprland config it was built
+  against (Lua config, `hl.*` API) — `install.sh` installs Hyprland itself
+  from the `lionheartp/Hyprland` COPR along with the bar, so a fresh box
+  needs nothing pre-installed.
+- [`quickshell`](https://quickshell.outfoxxed.me) — from the same COPR
+- `matugen` (dynamic colour, from the same COPR), `pipewire` + `wireplumber`,
+  `NetworkManager`, `jq`, `gawk`, `procps-ng`, `ImageMagick`
 - Two fonts: **Material Symbols Rounded** for every icon, **caelusevka** for every label
-- Optional: `nvidia-settings` (GPU readout), `brightnessctl` (brightness OSD),
+- Optional: `nvidia-settings`/`libva-nvidia-driver` (NVIDIA-only), `brightnessctl`
+  (brightness OSD), `cava`+`pipewire-utils` (visualizer), `ddcutil`, `btop`,
   `libcanberra-gtk3` (the sound a reminder makes; it still notifies without it),
   the Claude Code CLI (the Claude panel is empty without `~/.claude`)
 
-`install.sh` checks and installs all of it — see
-[`READ DAS HIER.md`](READ%20DAS%20HIER.md).
+`install.sh` checks and installs all of it, on both the bar and the Hyprland
+side — see [`READ DAS HIER.md`](READ%20DAS%20HIER.md).
 
 ## Install
 
 ```bash
-git clone https://github.com/reniaz/rd-shell ~/.config/quickshell/rd-shell
-cd ~/.config/quickshell/rd-shell && ./install.sh
+git clone https://github.com/reniaz/rd-shell ~/coding/qs-bar
+cd ~/coding/qs-bar && ./install.sh
 ```
 
 **[`READ DAS HIER.md`](READ%20DAS%20HIER.md)** is the full setup guide — read it first.
 
-`install.sh` is the one-time setup: it installs the packages the shell shells out
-to, links the config and the mic hotkey script into place, masks any competing
-notification daemon, and repairs the system-level faults that leave PipeWire dead
-at boot. It is safe to re-run — every step checks before it changes anything.
+`install.sh` is the one-time setup, for the compositor and the bar together: it
+installs every package and COPR both need, builds `fetchit` and (optionally)
+`wayvibes` from source, symlinks `~/.config/quickshell/rd-shell` and puts
+`hypr/`'s configs and app dotfiles in place, adds the `hyprexpo` plugin, clones
+in the wallpapers, renders the first colour theme so nothing points at a
+matugen file that does not exist yet, masks any competing notification daemon,
+and repairs the system-level faults that leave PipeWire dead at boot. It is
+safe to re-run — every step checks before it changes anything.
 
 Autostart with `launch.sh`, not `qs` directly. It brings the audio stack up and
 waits for the graph before starting the shell, which otherwise reads an empty
@@ -207,6 +214,49 @@ readonly property color fg:     "#f8f5f2"   // label text
 
 `templateColor1`…`templateColor12` hold the rest of the caelus palette, unassigned
 and ready to name as new widgets need them.
+
+## Dynamic colour
+
+The bar follows the wallpaper by default: every switch runs matugen and
+`Config/Colors.qml` reads its palette instead of the fixed caelus theme above.
+The switch lives in `settings.json` next to `shell.qml` (written by
+`Services/Settings.qml`, never committed):
+
+```json
+{ "dynamicColour": false }
+```
+
+Set it to `false` for the static caelus palette, `true` or no file at all for
+dynamic colour. The settings popup has no toggle for it right now. The change
+applies live: `Services/Settings.qml` watches the file and re-runs the colour
+pass. Wallpaper switches are live too, since they arrive through `FileView`,
+which watches its own file.
+
+One switch, three surfaces: the bar, the semantic pills and Hyprland's window
+borders all read `dynamicColour`. `scripts/wallpaper-apply.sh` applies the
+border through `hyprctl eval` (a Lua config refuses `hyprctl keyword`), so
+`hyprland.lua` keeps its caelus literals and a fresh Hyprland start is already
+the static look. Borders follow on the next wallpaper change or login, not the
+instant the switch is flipped.
+
+What follows the wallpaper and what does not:
+
+| | dynamic mode |
+|---|---|
+| surfaces, accent, label text, island edge | matugen roles outright |
+| network, keyboard, media, notification pills | matugen roles outright |
+| volume (green), mic and power (red), `ok`/`warn`/`error`, the 12 chart slots | hue kept, saturation and brightness borrowed |
+
+The second row is `Wal.reshade()`. Volume is green and mic is red at every
+hour of the day — those are read at a glance rather than puzzled over, which
+only works while the colour is the one it was yesterday — so the wallpaper
+moves their register without touching their hue.
+
+Dynamic mode runs on matugen, through `Config/Wal.qml`. Every wallpaper switch
+re-renders `matugen/colors.json` into `~/.cache/rd-shell/matugen.json` and the
+bar follows it without a restart. matugen returns Material You tonal roles, so
+surfaces and accent stay distinguishable. If matugen is missing or its output
+has not been written yet, the switch stays inert and the caelus palette holds.
 
 ## Keybinds
 

@@ -3,8 +3,12 @@ import QtQuick.Layouts
 import qs.Config
 import qs.Services
 
-// The per-filesystem breakdown behind the bar's disk pill. The card, its notch
-// and the click-outside dismissal all belong to BarPopup; what is left here is
+// The per-filesystem breakdown behind the bar's disk pill. The card and the
+// click-outside dismissal both belong to BarPopup, which now sits the card
+// flush against the island above instead of pointing a notch back up at the
+// pill -- a notch would have had to be drawn inside that island itself, in a
+// second translucent window, where two glass surfaces over one another
+// double-composite into a seam rather than a pointer. What is left here is
 // the reading itself.
 BarPopup {
     id: root
@@ -32,25 +36,25 @@ BarPopup {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 14
-        spacing: 12
+        anchors.margins: Caelus.spaceEdge
+        spacing: Caelus.spaceWide
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: "hard_drive"
                 color: Colors.popupAccent
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: 16
             }
 
             Text {
                 text: "Disks"
                 color: Colors.diskTitle
-                font.family: "caelusevka"
-                font.pixelSize: 15
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLead
             }
 
             Item { Layout.fillWidth: true }
@@ -60,8 +64,8 @@ BarPopup {
             Text {
                 text: Format.human(Disk.totalUsed) + " / " + Format.human(Disk.totalSize)
                 color: Colors.diskMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
             }
         }
 
@@ -103,7 +107,7 @@ BarPopup {
                 property real fraction: Math.min(1, (row.fs?.percent ?? 0) / 100)
 
                 Behavior on fraction {
-                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: Motion.slow; easing.type: Motion.standard }
                 }
 
                 Layout.fillWidth: true
@@ -111,13 +115,13 @@ BarPopup {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Caelus.space
 
                     Text {
                         Layout.fillWidth: true
                         text: (row.fs?.mounts ?? []).join("  ·  ")
                         color: Colors.diskTitle
-                        font.family: "caelusevka"
+                        font.family: Caelus.fontFamily
                         font.pixelSize: 14
                         elide: Text.ElideRight
                     }
@@ -125,7 +129,7 @@ BarPopup {
                     Text {
                         text: (row.fs?.percent ?? 0) + "%"
                         color: row.usage
-                        font.family: "caelusevka"
+                        font.family: Caelus.fontFamily
                         font.pixelSize: 14
                     }
                 }
@@ -133,7 +137,7 @@ BarPopup {
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: 6
-                    radius: 3
+                    radius: Caelus.radiusPill
                     color: Colors.diskTrack
 
                     // Follows the track exactly and instantly: the easing that
@@ -145,19 +149,19 @@ BarPopup {
                         radius: parent.radius
                         color: row.usage
 
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fast } }
                     }
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Caelus.space
 
                     Text {
                         text: Format.human(row.fs?.used ?? 0) + " / " + Format.human(row.fs?.size ?? 0)
                         color: Colors.diskBody
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                     }
 
                     Item { Layout.fillWidth: true }
@@ -165,8 +169,8 @@ BarPopup {
                     Text {
                         text: Format.human(row.fs?.avail ?? 0) + " free"
                         color: Colors.diskMeta
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                     }
                 }
             }

@@ -1,0 +1,130 @@
+# Themes for the apps around the rd-shell bar, re-rendered on every wallpaper
+# switch by the bar's scripts/wallpaper-apply.sh. The bar's own template is not
+# in here: it lives in the repo as matugen/bar.toml and is rendered in a run of
+# its own first, so that no template in this file can ever stop the bar from
+# following the wallpaper -- see the header of that file for why.
+
+# Required by matugen even when empty: it fails the whole run with
+# "missing field `config`" rather than defaulting.
+[config]
+
+# The terminal's ANSI hues. A tonal-spot scheme is one hue in five tones, so an
+# ANSI palette taken from its roles alone would make red, green and blue the
+# same colour -- fetchit's labels, btop's meters and every `ls` would go
+# monochrome. These keep six fixed hues instead and `blend` pulls each one at
+# most 15 degrees toward the wallpaper's source colour, so they read as the
+# same theme without ever converging. Each renders the usual role ladder
+# (`red`, `on_red`, `red_container`, `on_red_container`) at the tones of the
+# current --mode, which is what keeps them legible on `surface` in light mode
+# too.
+[config.custom_colors]
+red = { color = "#e5534b", blend = true }
+green = { color = "#57ab5a", blend = true }
+yellow = { color = "#c69026", blend = true }
+blue = { color = "#539bf5", blend = true }
+magenta = { color = "#b083f0", blend = true }
+cyan = { color = "#39c5cf", blend = true }
+
+# Vesktop accent. The template lives next to the theme that reads it, for the
+# same reason the rd-shell one lives in its repo. Output is a Vencord theme of
+# its own (enabled beside system24-caelus) rather than an @import from it:
+# Vencord cache-busts only the themes it loads itself, so a nested import would
+# keep the previous wallpaper's colour until a restart. Vencord watches the
+# themes folder, so a render here recolours the running client.
+[templates.vesktop]
+input_path = '~/.config/vesktop/themes/matugen/caelus-accent.css'
+output_path = '~/.config/vesktop/themes/caelus-accent.theme.css'
+
+# Spotify (spicetify caelus24) accent. The caelus24 theme.js fetches it from
+# xpui and swaps it in live; xpui is where it has to end up because the flatpak
+# sandbox cannot see ~/.config. It is rendered to ~/.cache and copied, not
+# rendered into xpui: after a spotify update xpui is root-owned or missing until
+# `spicetify apply`, and a template whose output cannot be written stops
+# matugen before it renders the others. The copy fails
+# quietly instead; the next wallpaper switch, or the --restore at login, puts
+# the file back, and until then the theme shows color.ini's orange.
+[templates.spotify]
+input_path = '~/.config/spicetify/Themes/caelus24/matugen/caelus-accent.css'
+output_path = '~/.cache/caelus24/caelus-accent.css'
+post_hook = 'cp -f ~/.cache/caelus24/caelus-accent.css /var/lib/flatpak/app/com.spotify.Client/x86_64/stable/active/files/extra/share/spotify/Apps/xpui/ 2>/dev/null || true'
+
+# Ghostty (the only terminal) follows the wallpaper palette. Ghostty has no
+# file-watch for theme files and documents that reload needs a keybind/menu
+# action or a restart -- but the running GTK app also exposes that same
+# `reload-config` action over D-Bus (org.gtk.Actions on the well-known name
+# com.mitchellh.ghostty), which is what the in-app "Reload Config" keybind
+# and command-palette entry call. Activating it from the post_hook reloads
+# every open window/tab immediately, with no window creation or signals.
+# Verified live: reloaded a running window from the old caelus palette to a
+# freshly matugen-rendered one and watched Ghostty's own "Reloaded the
+# config" toast fire and the cursor colour flip from caelus's red-brown to
+# matugen's palette colour.
+# busctl rather than gdbus, for --auto-start=no: ghostty ships a D-Bus
+# service file, so a plain call with no ghostty running would activate a
+# fresh background instance on every wallpaper switch instead of doing
+# nothing. The call only reaches ghostty's own bus name, --timeout keeps a
+# hung instance from stalling the switch, and `|| true` keeps a missing one
+# from aborting the matugen run.
+[templates.ghostty]
+input_path = '~/.config/ghostty/matugen/theme'
+output_path = '~/.config/ghostty/themes/matugen'
+post_hook = 'busctl --user --auto-start=no --timeout=2 call com.mitchellh.ghostty /com/mitchellh/ghostty org.gtk.Actions Activate "sava{sv}" reload-config 0 0 >/dev/null 2>&1 || true'
+
+# btop theme. btop.conf has color_theme = "matugen", which btop resolves
+# against ~/.config/btop/themes/matugen.theme (name only, no path/extension).
+# A running btop reloads both its config and the active .theme file on
+# SIGUSR2 without a restart (verified 2026-09-25: edited a theme file in
+# place and signaled a throwaway btop instance in tmux, colors updated live).
+# pkill -x matches only a process literally named "btop", so this can't hit
+# anything else; it no-ops (exit 1, swallowed by || true) when btop isn't running.
+[templates.btop]
+input_path = '~/.config/btop/matugen/matugen.theme'
+output_path = '~/.config/btop/themes/matugen.theme'
+post_hook = 'pkill -USR2 -x btop || true'
+
+# Terminal cava (0.10.2, run by hand as plain `cava` in ghostty for
+# screenshots). It reads ~/.config/cava/config by default with no -p flag.
+# The bar's own cava (Services/Cava.qml) always launches as
+# `cava -p ~/.cache/rd-shell/cava.conf`, an explicit -p that makes it never
+# look at this file, so this template cannot affect the bar.
+#
+# cava 0.10.2 has no `theme=`/include directive (checked against
+# /usr/share/doc/cava/README.md and its shipped example config on this
+# machine) -- unlike ghostty, there is no way to keep a hand-owned
+# ~/.config/cava/config next to a separate generated colour file, so the
+# whole config is matugen-owned. Every section but [color] is left out of
+# the template so cava falls back to its own built-in defaults.
+[templates.cava]
+input_path = '~/.config/cava/matugen/config'
+output_path = '~/.config/cava/config'
+# SIGUSR2 = "reload colors only" (cava README, confirmed against 0.10.2's
+# actual behaviour: a throwaway `cava -p <scratch config>` instance under a
+# pty emitted the OLD gradient colour in its ANSI SGR codes before the
+# signal and the NEW one immediately after, with no restart). Only a bare
+# `cava` (no `-p`) is signalled -- matched by checking each `cava`-comm
+# process's /proc/<pid>/cmdline for a `-p` flag -- so the bar's own
+# `cava -p ~/.cache/rd-shell/cava.conf` is always skipped. Verified live:
+# the bar's cava PID was unchanged and it kept running throughout.
+post_hook = 'for p in $(pgrep -x cava); do c=$(tr "\0" " " < /proc/$p/cmdline 2>/dev/null); case "$c" in *-p*) ;; *) kill -USR2 "$p" 2>/dev/null ;; esac; done || true'
+
+# yazi >= 26.x (schema uses [mgr], not the old [manager]; theme-dark.toml /
+# theme-light.toml are the built-in presets this partially overrides). See
+# ~/.config/yazi/matugen/theme.toml's header for the merge semantics and for
+# why live reload is not wired up here (ya emit/ya pub need $YAZI_ID, which is
+# only set inside a shell yazi itself spawned -- unreachable from this hook).
+[templates.yazi]
+input_path = '~/.config/yazi/matugen/theme.toml'
+output_path = '~/.config/yazi/theme.toml'
+
+# Neovim colorscheme, generated as a real colors/*.lua so `:colorscheme
+# matugen` works like any other scheme. No post_hook: nvim's own
+# lua/matugen_watch.lua (required from init.lua) watches this output file
+# with vim.uv.fs_event and re-sources it live in every running instance,
+# but only while "matugen" is the active colorscheme -- a user who ran
+# `:colorscheme gruvbox-material` (the built-in fallback, still fully
+# configured) is left alone. init.lua tries `:colorscheme matugen` after
+# setup and falls back to gruvbox-material automatically if this file is
+# missing or fails to load.
+[templates.nvim]
+input_path = '~/.config/nvim/matugen/colorscheme.lua'
+output_path = '~/.config/nvim/colors/matugen.lua'

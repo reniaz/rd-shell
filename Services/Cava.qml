@@ -1,0 +1,294 @@
+pragma Singleton
+import Quickshell
+import Quickshell.Io
+import Quickshell.Services.Pipewire
+import QtQuick
+import qs.Config
+
+// A live spectrum off what apps are playing -- every playback stream except
+// `ignoredStreams` -- read from
+// cava's own 'raw' output mode -- twelve numbers a frame, streamed on a pipe.
+//
+// cava has to be told all of this through a config file; there is no flag for
+// bar count or output format. That file is written here, at
+// ~/.cache/rd-shell/cava.conf, rather than shipped as a dotfile under
+// ~/.config/cava: Services/Wallpapers.qml already treats ~/.cache/rd-shell as
+// this shell's own cache directory, and a config this file writes itself on
+// every start is one a stale hand-edit -- the wrong bar count, a changed
+// delimiter -- can never survive to break the parser below.
+//
+// Nothing here runs unless a track is actually playing. Raw mode is a
+// continuous stream -- thirty frames a second below -- and a process left
+// running with nothing to visualise is exactly the kind of thing that keeps a
+// high-refresh compositor awake for no reason, so the Process is started and
+// stopped off Media.playing and Media.player directly rather than off a timer
+// or a visibility flag.
+//
+// Every detail of the config below was checked against the cava actually
+// installed on this machine (0.10.2, `rpm -q cava`), not just the example
+// file it ships:
+//   - this build links libpulse and libasound but not libpipewire
+//     (`ldd /usr/bin/cava`), so `method = pipewire` fails outright
+//     ("cava was built without 'pipewire' input support"). `method = pulse`
+//     is what works here: PipeWire's own pulse-compatible server answers it
+//     the same way a pulseaudio-only machine would.
+//   - cava is not pointed at the default sink's monitor. That monitor is
+//     the sink's finished mix, wayvibes' key clicks included, and no one
+//     stream can be taken back out of it. `proc` instead starts cava's
+//     capture stream with node.autoconnect=false, through PULSE_PROP --
+//     pipewire-pulse copies the client's proplist onto its streams, checked
+//     with `pw-cli ls Node` -- so WirePlumber links it to nothing, and
+//     `_unfed` below links each playback stream into it by hand. PipeWire
+//     sums every link into an input port, so cava still reads one mix.
+//   - raw_target = /dev/stdout needs no fifo of its own: cava only creates a
+//     fifo when its target does not already exist, and /dev/stdout always
+//     does, so the frames arrive on the same pipe Process already reads
+//     everything else through.
+//   - a captured run (`cava -p <this config>` piped to a file, killed after
+//     three seconds) confirmed the exact frame shape used by `_parse` below:
+//     `bars` ascii integers 0-100, EACH followed by ';' -- including the
+//     last one -- then '\n'. Splitting a well-formed line on ';' therefore
+//     yields bars+1 parts, the last one empty; that is the shape `_parse`
+//     checks for, not the count the example config's comment implies.
+//   - SIGTERM (what setting `running` to false sends) was confirmed to stop
+//     the process cleanly with no leftover state.
+Singleton {
+    id: root
+
+    readonly property int bars: 12
+
+    // cava's own emitted rate. Named rather than left as the literal in
+    // `_config` below because `level`'s envelope follower (further down)
+    // needs the same number to convert Motion's millisecond durations into a
+    // frame count -- one property keeps a future retune of either in sync
+    // instead of letting them quietly drift apart.
+    readonly property int framerate: 30
+
+    // The contract this is written against treats "cava binary present" and
+    // "process alive" as one flag, and here they really are the same fact:
+    // the Process below is only ever asked to run while Media.playing is
+    // true, and a missing binary means QProcess fails to start -- which
+    // Quickshell folds back into `running` going false rather than firing
+    // `exited`. Reading the process's own running state already answers
+    // both halves without a separate "is cava on $PATH" check.
+    // Latched on the first successful spawn rather than mirroring `running`.
+    // `running` follows playback, so reading it here would make "cava is
+    // installed" flip on every play and pause -- and MediaPopup reserves the
+    // album-art cell off this, so the row would resize under the reader every
+    // time the track was paused. A binary that has started once is installed
+    // for the rest of the session; whether it is streaming right now is what
+    // `active` is for.
+    readonly property bool available: root._everRan
+
+    property bool _everRan: false
+
+    readonly property bool active: proc.running && Media.playing
+
+    // Playback streams kept out of the spectrum, matched on node.name --
+    // which pipewire-pulse fills from the app's application.name.
+    readonly property var ignoredStreams: ["wayvibes"]
+
+    // Every cava capture stream this shell feeds: its own, under the
+    // node.name `proc` gives it, and any other started the same way under a
+    // name with the same prefix -- scripts/showcase.sh runs its terminal cava
+    // as rd-cava-showcase, so the screenshot's spectrum is the same
+    // wayvibes-free mix as the bar's. Empty whenever none is running.
+    readonly property var _nodes: Pipewire.nodes.values.filter(n => (n.name ?? "").startsWith("rd-cava"))
+
+    // Every [playback stream, cava] pair still to be linked: streams routed
+    // to some sink but not yet into that cava. Keyed off link groups rather
+    // than the node list alone: a stream's ports arrive after its node does
+    // and pw-link fails on a node with no ports yet, while a stream
+    // WirePlumber has already linked somewhere certainly has them. A link
+    // dies with either end, so nothing is ever unlinked by hand, and each
+    // pair drops out of here once its link shows up.
+    readonly property var _unfed: {
+        const groups = Pipewire.linkGroups.values;
+        const streams = Audio.sinkStreams.filter(s => !root.ignoredStreams.includes(s.name)
+            && groups.some(g => g.source === s));
+        const pairs = [];
+        for (const cava of root._nodes)
+            for (const s of streams)
+                if (!groups.some(g => g.source === s && g.target === cava))
+                    pairs.push([s, cava]);
+        return pairs;
+    }
+
+    // pw-link's links outlive pw-link itself, so a detached one-shot per
+    // pair is all this takes. A repeat for a link already made -- this
+    // re-evaluating before the first one lands -- only fails "File exists".
+    on_UnfedChanged: {
+        for (const [s, cava] of root._unfed)
+            Quickshell.execDetached(["pw-link", String(s.id), String(cava.id)]);
+    }
+
+    property var levels: root._zeros()
+
+    function _zeros() {
+        const z = new Array(root.bars);
+        z.fill(0);
+        return z;
+    }
+
+    // Frame-to-frame envelope coefficients for `level` below, solved from
+    // the standard first-order EMA settle formula -- (1 - a)^frames = 0.05,
+    // "reach 95% of a step within this many frames at cava's own rate" --
+    // rather than picked by feel, so retiming either half is a one-token
+    // change instead of a re-derivation. Attack borrows Motion.fast (a
+    // hover, a colour swap: the shell's fastest "notice this now") because a
+    // beat should register as a hit, not a fade-in; decay borrows
+    // Motion.slow (a toast sliding in, a card leaving) so the reading coasts
+    // back down between hits instead of chattering with every frame that
+    // dips near zero, which is what a plain running average would do.
+    readonly property real _levelAttack: 1 - Math.pow(0.05, 1 / (root.framerate * Motion.fast / 1000))
+    readonly property real _levelDecay: 1 - Math.pow(0.05, 1 / (root.framerate * Motion.slow / 1000))
+
+    property real _level: 0
+
+    // The contract interface (S5.md, "Cava level"): 0..1, the smoothed mean
+    // of whatever frame is current, so a consumer can read "how loud is it
+    // right now" without knowing the bar count or touching `levels` at all.
+    // Backed by a plain property rather than a binding on `levels` so
+    // `_parse` can drive the envelope follower imperatively, frame by frame
+    // -- the same shape `levels` itself already uses.
+    readonly property real level: root._level
+
+    readonly property string _configPath: `${Quickshell.env("HOME")}/.cache/rd-shell/cava.conf`
+
+    property bool _configReady: false
+
+    readonly property string _config:
+        "[general]\n" +
+        "bars = " + root.bars + "\n" +
+        // Halves the wake-ups the start/stop logic below exists to bound in
+        // the first place, for the time it genuinely is streaming: a
+        // twelve-bar mini meter loses nothing visible between 60fps and 30.
+        "framerate = " + root.framerate + "\n" +
+        // Belt and braces next to that same logic: two seconds of true
+        // silence -- a gap between tracks, not a pause -- and cava stops
+        // running FFT and redraw on its own until sound returns.
+        "sleep_timer = 2\n" +
+        "\n" +
+        "[input]\n" +
+        "method = pulse\n" +
+        "\n" +
+        "[output]\n" +
+        "method = raw\n" +
+        "raw_target = /dev/stdout\n" +
+        // One spectrum, low to high, left to right -- the flat `levels`
+        // array this file promises. 'stereo' mirrors two spectrums into the
+        // same bar count instead, which would leave every reader needing to
+        // know which half of the array is which channel.
+        "channels = mono\n" +
+        "data_format = ascii\n" +
+        "ascii_max_range = 100\n" +
+        "bar_delimiter = 59\n" +
+        "frame_delimiter = 10\n";
+
+    Component.onCompleted: configFile.setText(root._config)
+
+    FileView {
+        id: configFile
+        path: root._configPath
+        // This view only ever writes -- `setText` below, never `text()` or
+        // `data()` -- so the read preload triggers by default on every
+        // `path` assignment is pure overhead here, and on a cold start, with
+        // nothing at `_configPath` yet, it is also what logged "File does
+        // not exist" on every single launch, before the write a few lines
+        // down had a chance to run.
+        preload: false
+        onSaved: {
+            root._configReady = true;
+            root._sync();
+        }
+        // Left false on failure. An unwritten config means cava has nothing
+        // valid to read even where the binary exists, and `available`
+        // staying false already reads to every caller exactly like cava
+        // being absent -- there is nothing more useful to do with the error.
+        onSaveFailed: error => root._configReady = false
+    }
+
+    // Re-evaluated at every point any input to "should this be running"
+    // changes, and nowhere else -- deliberately not a binding on
+    // `proc.running` itself. A failed spawn (cava missing) makes Quickshell
+    // write `running` back to false from the C++ side, and a property write
+    // from any source clears a QML binding on it; a binding here would
+    // therefore survive exactly one missing-binary attempt before going
+    // inert, and never restart cava again even after it gets installed.
+    // Re-running this function imperatively on each real change has no such
+    // trap: every call just states the desired value fresh.
+    function _sync() {
+        proc.running = Media.playing && root._configReady;
+    }
+
+    Connections {
+        target: Media
+        function onPlayingChanged() { root._sync(); }
+        // A player can vanish outright -- the app quit, the tab closed --
+        // rather than pause on its way out, and `playing` never has to pass
+        // through false for that to happen. `player` turning null is the
+        // signal that actually fires for that case.
+        function onPlayerChanged() { root._sync(); }
+    }
+
+    // Cleared rather than left at its last frame: CavaBars is already
+    // collapsing to nothing at the same moment (both read `active`), but a
+    // stale non-zero frame sitting in `levels` would be what a reader saw if
+    // it un-collapsed again before the next real frame arrived.
+    onActiveChanged: if (!root.active) {
+        root.levels = root._zeros();
+        // Not left for the envelope follower to coast down on its own:
+        // nothing drives `_parse` forward once the process behind it stops,
+        // so without this `level` would freeze at whatever it last settled
+        // on instead of reading "nothing playing" like every other exposed
+        // value here does.
+        root._level = 0;
+    }
+
+    Process {
+        id: proc
+        command: ["cava", "-p", root._configPath]
+        // Named for `_nodes` to find, and left unlinked for `_unfed` to feed
+        // -- see the header comment.
+        environment: ({ PULSE_PROP: "node.name=rd-cava node.autoconnect=false" })
+
+        // The one place `available` can be raised. A spawn that fails --
+        // cava not installed -- never gets here, because Quickshell folds a
+        // failed start back into `running` going false without it ever
+        // having been true.
+        onRunningChanged: if (proc.running) root._everRan = true;
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => root._parse(data)
+        }
+    }
+
+    function _parse(line) {
+        const parts = line.split(";");
+        // A well-formed frame is `bars` numbers each followed by ';',
+        // including the last -- see the header comment -- so it splits into
+        // bars+1 parts. Anything shorter is a frame the pipe handed over
+        // half-written and is worth dropping rather than drawing: taken at
+        // face value it would read as a flicker to zero, which is exactly
+        // what the smoothing in CavaBars exists to prevent.
+        if (parts.length <= root.bars) return;
+
+        const next = new Array(root.bars);
+        let sum = 0;
+        for (let i = 0; i < root.bars; i++) {
+            const v = parseInt(parts[i], 10);
+            const value = isNaN(v) ? 0 : Math.max(0, Math.min(1, v / 100));
+            next[i] = value;
+            sum += value;
+        }
+        root.levels = next;
+
+        // Envelope-follow the frame mean rather than assign it straight:
+        // cava emits ~30 of these a second, and handing that mean straight
+        // to `level` would repeat every bin-to-bin flicker as a jump at the
+        // same rate -- exactly the noise this property exists to hide.
+        const mean = sum / root.bars;
+        const rate = mean > root._level ? root._levelAttack : root._levelDecay;
+        root._level += (mean - root._level) * rate;
+    }
+}

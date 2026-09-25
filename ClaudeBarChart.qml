@@ -91,7 +91,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 4
+        spacing: Caelus.spaceTight
 
         RowLayout {
             Layout.fillWidth: true
@@ -126,7 +126,7 @@ Item {
                         : 0
 
                     Behavior on fraction {
-                        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: Motion.slow; easing.type: Motion.standard }
                     }
 
                     Layout.fillWidth: true
@@ -151,8 +151,8 @@ Item {
                         // promised for as long as it is on screen.
                         opacity: root.hoverIndex < 0 || root.hoverIndex === cell.index ? 1 : 0.4
 
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                        Behavior on color { ColorAnimation { duration: Motion.fast } }
                     }
 
                     Text {
@@ -161,8 +161,8 @@ Item {
                         anchors.bottomMargin: 2
                         text: root.formatted(root.valueAt(cell.index))
                         color: Colors.claudeMeta
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
 
                         // Only the tallest bar, and only while nothing is
                         // hovered: the caption says the same thing the moment
@@ -208,12 +208,12 @@ Item {
                     Layout.preferredHeight: 15
                     text: root.labelAt(tick.index)
                     color: root.hoverIndex === tick.index ? Colors.claudeBody : Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
                 }
             }
         }
@@ -231,8 +231,8 @@ Item {
                 return l !== "" ? l + " · " + v : v;
             }
             color: Colors.claudeBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
         }

@@ -32,15 +32,15 @@ Rectangle {
                   Colors.claudeAccent.b, 0.10)
         : "transparent"
 
-    Behavior on color { ColorAnimation { duration: 160 } }
+    Behavior on color { ColorAnimation { duration: Motion.base } }
 
     Rectangle {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        anchors.margins: 4
+        anchors.margins: Caelus.spaceTight
         width: 2
-        radius: width / 2
+        radius: Caelus.radiusPill
         color: Colors.claudeAccent
         visible: root.applied
     }
@@ -51,19 +51,19 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
-        spacing: 4
+        anchors.leftMargin: Caelus.spaceWide
+        anchors.rightMargin: Caelus.spaceWide
+        spacing: Caelus.spaceTight
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: root.rule?.title ?? ""
                 color: Colors.claudeTitle
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -74,7 +74,7 @@ Rectangle {
             Rectangle {
                 implicitWidth: savesLabel.implicitWidth + 12
                 implicitHeight: savesLabel.implicitHeight + 4
-                radius: height / 2
+                radius: Caelus.radiusPill
                 color: Colors.claudeTrack
                 visible: savesLabel.text !== ""
 
@@ -84,8 +84,8 @@ Rectangle {
                     anchors.centerIn: parent
                     text: root.rule?.saves ?? ""
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
             }
 
@@ -100,7 +100,7 @@ Rectangle {
 
                 implicitWidth: actionLabel.implicitWidth + 20
                 implicitHeight: 24
-                radius: height / 2
+                radius: Caelus.radiusPill
                 color: actionArea.containsMouse && action.live
                     ? Colors.claudeTrack
                     : "transparent"
@@ -108,8 +108,8 @@ Rectangle {
                 border.color: Colors.claudeBorder
                 opacity: action.live ? 1 : 0.4
 
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
+                Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
                 Text {
                     id: actionLabel
@@ -122,10 +122,10 @@ Rectangle {
                     color: root.applied
                         ? (actionArea.containsMouse ? Colors.claudeCritical : Colors.claudeMeta)
                         : Colors.claudeAccent
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
                 }
 
                 MouseArea {
@@ -149,8 +149,8 @@ Rectangle {
             Layout.fillWidth: true
             text: root.rule?.detail ?? ""
             color: Colors.claudeBody
-            font.family: "caelusevka"
-            font.pixelSize: 12
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLabel
             wrapMode: Text.WordWrap
         }
 
@@ -163,8 +163,8 @@ Rectangle {
             text: (root.rule?.target ?? "") + " · " + (root.rule?.value ?? "")
             visible: (root.rule?.section ?? "") === "settings"
             color: Colors.claudeMeta
-            font.family: "caelusevka"
-            font.pixelSize: 12
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLabel
             elide: Text.ElideRight
         }
 
@@ -176,8 +176,8 @@ Rectangle {
             text: root.risk
             visible: root.risk !== ""
             color: Colors.claudeWarn
-            font.family: "caelusevka"
-            font.pixelSize: 12
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLabel
             wrapMode: Text.WordWrap
         }
     }

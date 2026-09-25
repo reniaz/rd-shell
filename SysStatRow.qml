@@ -13,13 +13,13 @@ RowLayout {
     property color valueColor: Colors.sysBody
 
     Layout.fillWidth: true
-    spacing: 8
+    spacing: Caelus.space
 
     Text {
         text: root.label
         color: Colors.sysMeta
-        font.family: "caelusevka"
-        font.pixelSize: 12
+        font.family: Caelus.fontFamily
+        font.pixelSize: Caelus.sizeLabel
         elide: Text.ElideRight
         Layout.fillWidth: true
     }
@@ -27,7 +27,7 @@ RowLayout {
     Text {
         text: root.value
         color: root.valueColor
-        font.family: "caelusevka"
-        font.pixelSize: 12
+        font.family: Caelus.fontFamily
+        font.pixelSize: Caelus.sizeLabel
     }
 }

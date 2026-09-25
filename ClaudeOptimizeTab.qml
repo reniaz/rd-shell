@@ -89,7 +89,7 @@ Flickable {
         id: optimizeCol
 
         width: root.width
-        spacing: 12
+        spacing: Caelus.spaceWide
 
         // Only shown while the password field is not on screen. When it is, the
         // error is almost always about that field and belongs beside it -- the
@@ -99,8 +99,8 @@ Flickable {
             text: ClaudeOptimize.error
             visible: ClaudeOptimize.error !== "" && !ClaudeOptimize.needsSudo
             color: Colors.claudeCritical
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             wrapMode: Text.WordWrap
         }
 
@@ -139,8 +139,8 @@ Flickable {
                     + "below makes a token cheaper; they shorten what gets re-sent, or cut "
                     + "how many turns re-send it."
                 color: Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
                 wrapMode: Text.WordWrap
             }
         }
@@ -154,22 +154,22 @@ Flickable {
                 + ClaudeSession.money(root.totals?.cost ?? 0) + " went to subagents"
             visible: (root.totals?.subagentCost ?? 0) > 0
             color: Colors.claudeBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             wrapMode: Text.WordWrap
         }
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: ClaudeOptimize.ready
                     ? ClaudeOptimize.appliedCount + " of " + ClaudeOptimize.totalCount + " applied"
                     : "reading ~/.claude…"
                 color: Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 Layout.fillWidth: true
             }
 
@@ -185,7 +185,7 @@ Flickable {
 
                 implicitWidth: applyAllLabel.implicitWidth + 22
                 implicitHeight: 26
-                radius: height / 2
+                radius: Caelus.radiusPill
                 color: applyAllArea.containsMouse && applyAll.live
                     ? Colors.claudeTrack
                     : "transparent"
@@ -193,8 +193,8 @@ Flickable {
                 border.color: Colors.claudeBorder
                 opacity: applyAll.live ? 1 : 0.4
 
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
+                Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
                 Text {
                     id: applyAllLabel
@@ -202,8 +202,8 @@ Flickable {
                     anchors.centerIn: parent
                     text: ClaudeOptimize.busy ? "working…" : "Apply all"
                     color: Colors.claudeAccent
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
 
                 MouseArea {
@@ -230,48 +230,48 @@ Flickable {
                 Layout.fillWidth: true
                 text: "~/.claude is not writable by you — sudo password needed to change these"
                 color: Colors.claudeWarn
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
                 wrapMode: Text.WordWrap
             }
 
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 30
-                radius: 8
+                radius: Caelus.radiusCard
                 color: Colors.claudeTabBar
                 border.width: 1
                 border.color: pw.activeFocus ? Colors.claudeAccent : Colors.claudeBorder
 
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: Motion.fast } }
 
                 TextInput {
                     id: pw
 
                     anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
+                    anchors.leftMargin: Caelus.spaceLoose
+                    anchors.rightMargin: Caelus.spaceLoose
                     verticalAlignment: TextInput.AlignVCenter
                     // The password exists in exactly two places: this field and
                     // the service's transient copy. It is never a command
                     // argument, never a log line and never drawn as text.
                     echoMode: TextInput.Password
                     color: Colors.claudeTitle
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                     selectByMouse: true
                     onTextChanged: ClaudeOptimize.password = pw.text
                 }
 
                 Text {
                     anchors.left: parent.left
-                    anchors.leftMargin: 10
+                    anchors.leftMargin: Caelus.spaceLoose
                     anchors.verticalCenter: parent.verticalCenter
                     text: "sudo password"
                     visible: pw.text === ""
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
             }
 
@@ -280,8 +280,8 @@ Flickable {
                 text: ClaudeOptimize.error
                 visible: ClaudeOptimize.error !== ""
                 color: Colors.claudeCritical
-                font.family: "caelusevka"
-                font.pixelSize: 12
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
                 wrapMode: Text.WordWrap
             }
         }
@@ -306,7 +306,7 @@ Flickable {
 
         ClaudeSection {
             Layout.fillWidth: true
-            Layout.bottomMargin: 4
+            Layout.bottomMargin: Caelus.spaceTight
             title: "global rules"
             visible: root.textRules.length > 0
 
@@ -328,13 +328,13 @@ Flickable {
         // section in their own CLAUDE.md should be able to trace it back here.
         Text {
             Layout.fillWidth: true
-            Layout.bottomMargin: 4
+            Layout.bottomMargin: Caelus.spaceTight
             text: "The rules above are written into ~/.claude/CLAUDE.md inside one marked "
                 + "section, and removing the last of them takes the section with it."
             visible: root.textRules.length > 0
             color: Colors.claudeMeta
-            font.family: "caelusevka"
-            font.pixelSize: 12
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLabel
             wrapMode: Text.WordWrap
         }
     }

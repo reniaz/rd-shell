@@ -1,0 +1,22 @@
+# The bar's own matugen config. scripts/wallpaper-apply.sh renders it in a run
+# of its own, before ~/.config/matugen/config.toml renders the apps' themes.
+#
+# Kept apart because matugen stops a whole run at the first template that
+# fails, and renders a run's templates in a different order every time (a
+# hash map, not file order). With the bar in the shared config, any one
+# broken app template -- a deleted ~/.config/yazi, a Spotify update leaving
+# its folder root-owned -- would on some wallpaper switches, and not others,
+# leave the bar on the previous wallpaper's colours. In a run of its own the
+# only template that can stop it is this one.
+#
+# `~/.config/quickshell/rd-shell` is a symlink to the repo, and is used rather
+# than the repo path directly so that moving the checkout does not silently
+# leave matugen rendering a template nobody reads.
+
+# Required by matugen even when empty: it fails the whole run with
+# "missing field `config`" rather than defaulting.
+[config]
+
+[templates.rd-shell]
+input_path = '~/.config/quickshell/rd-shell/matugen/colors.json'
+output_path = '~/.cache/rd-shell/matugen.json'

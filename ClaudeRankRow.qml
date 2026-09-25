@@ -29,7 +29,7 @@ ColumnLayout {
     // complete and its Behaviors are live -- and every ranking would grow out
     // of nothing each time the panel was opened.
     Behavior on fraction {
-        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: Motion.slow; easing.type: Motion.standard }
     }
 
     Layout.fillWidth: true
@@ -37,13 +37,13 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        spacing: 8
+        spacing: Caelus.space
 
         Text {
             text: root.label
             color: Colors.claudeBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             elide: Text.ElideRight
             Layout.fillWidth: true
         }
@@ -51,16 +51,16 @@ ColumnLayout {
         Text {
             text: root.value
             color: Colors.claudeTitle
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
         }
     }
 
     Text {
         text: root.sublabel
         color: Colors.claudeMeta
-        font.family: "caelusevka"
-        font.pixelSize: 13
+        font.family: Caelus.fontFamily
+        font.pixelSize: Caelus.sizeBody
         elide: Text.ElideRight
         visible: root.sublabel !== ""
         Layout.fillWidth: true
@@ -72,7 +72,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: 1
         implicitHeight: root.thickness
-        radius: height / 2
+        radius: Caelus.radiusPill
         color: Colors.claudeTrack
 
         Rectangle {
@@ -84,7 +84,7 @@ ColumnLayout {
             radius: parent.radius
             color: root.fill
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
         }
     }
 }

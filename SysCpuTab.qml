@@ -19,7 +19,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        spacing: 10
+        spacing: Caelus.spaceLoose
 
         SysCard {
             title: SysMon.cpuModel !== "" ? SysMon.cpuModel : "Processor"
@@ -28,8 +28,8 @@ Item {
                 Text {
                     text: Format.temp(SysMon.cpuTemp)
                     color: Colors.heat(SysMon.cpuTemp, SysMon.cpuWarm, SysMon.cpuHot, Colors.sysColor)
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
             ]
 

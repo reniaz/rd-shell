@@ -19,13 +19,13 @@ RowLayout {
     signal toggled()                  // mute glyph clicked
     signal stepped(real delta)        // wheel: +0.05 / -0.05, already signed
 
-    spacing: 8
+    spacing: Caelus.space
 
     Text {
         text: root.muted ? root.mutedIcon : root.icon
         color: root.muted ? Colors.audioMeta : root.accent
-        font.family: "Material Symbols Rounded"
-        font.pixelSize: 15
+        font.family: Caelus.symbolFamily
+        font.pixelSize: Caelus.sizeLead
 
         MouseArea {
             anchors.fill: parent
@@ -41,7 +41,7 @@ RowLayout {
 
         Layout.fillWidth: true
         implicitHeight: 6
-        radius: height / 2
+        radius: Caelus.radiusPill
         color: Colors.audioTrack
 
         Rectangle {
@@ -50,7 +50,7 @@ RowLayout {
             radius: parent.radius
             color: root.muted ? Colors.audioMeta : root.accent
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
         }
 
         // Grown vertically only: a six pixel target is not one, and widening
@@ -73,8 +73,8 @@ RowLayout {
         visible: root.showPercent
         text: Math.round(root.value * 100) + "%"
         color: root.muted ? Colors.audioMeta : Colors.audioBody
-        font.family: "caelusevka"
-        font.pixelSize: 12
+        font.family: Caelus.fontFamily
+        font.pixelSize: Caelus.sizeLabel
         horizontalAlignment: Text.AlignRight
 
         // The number is small but still worth a wheel target: without this

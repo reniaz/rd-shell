@@ -113,10 +113,10 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         height: root.cols.rowHeight
-        radius: 8
+        radius: Caelus.radiusCard
         color: root.expanded || hover.hovered ? Colors.claudeCardBg : "transparent"
 
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on color { ColorAnimation { duration: Motion.fast } }
 
         HoverHandler { id: hover }
 
@@ -127,7 +127,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: root.cols.stripeWidth
             height: parent.height - 8
-            radius: width / 2
+            radius: Caelus.radiusPill
             color: Colors.claudeAttention
             visible: root.waiting
         }
@@ -142,11 +142,11 @@ Item {
                 : root.busy ? "radio_button_checked"
                 : "radio_button_unchecked"
             color: root.tone
-            font.family: "Material Symbols Rounded"
+            font.family: Caelus.symbolFamily
             font.pixelSize: root.cols.iconSize
             opacity: 1
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
 
             // An opacity pulse and deliberately not a RotationAnimator: a
             // spinner on a bar that is always running keeps the compositor's
@@ -160,11 +160,11 @@ Item {
 
                 NumberAnimation {
                     target: glyph; property: "opacity"
-                    to: 0.35; duration: 700; easing.type: Easing.InOutSine
+                    to: 0.35; duration: Motion.reveal; easing.type: Motion.pulse
                 }
                 NumberAnimation {
                     target: glyph; property: "opacity"
-                    to: 1; duration: 700; easing.type: Easing.InOutSine
+                    to: 1; duration: Motion.reveal; easing.type: Motion.pulse
                 }
 
                 // The animation writes opacity directly, so stopping mid-cycle
@@ -179,7 +179,7 @@ Item {
             width: root.cols.projectWidth
             text: root.project !== "" ? root.project : root.name
             color: root.expanded ? Colors.claudeAccent : Colors.claudeTitle
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
             elide: Text.ElideRight
         }
@@ -190,7 +190,7 @@ Item {
             width: root.cols.stateWidth
             text: root.waiting ? "NEEDS YOU" : root.state
             color: root.tone
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
             elide: Text.ElideRight
         }
@@ -202,7 +202,7 @@ Item {
             horizontalAlignment: Text.AlignRight
             text: root.ctxPct + "%"
             color: root.ctxPct > 75 ? ClaudeSession.levelColor(root.ctxPct) : Colors.claudeMeta
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
         }
 
@@ -232,7 +232,7 @@ Item {
             color: root.waiting ? Colors.claudeAttention
                 : root.busy ? Colors.claudeBody
                 : Colors.claudeMeta
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: root.cols.fontSize
             elide: Text.ElideRight
         }
@@ -248,7 +248,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "account_tree"
                 color: Colors.claudeAgent
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: root.cols.iconSize
             }
 
@@ -256,7 +256,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.subagents
                 color: Colors.claudeAgent
-                font.family: "caelusevka"
+                font.family: Caelus.fontFamily
                 font.pixelSize: root.cols.fontSize
             }
         }
@@ -281,15 +281,15 @@ Item {
             horizontalAlignment: Text.AlignRight
             text: "terminal"
             color: termArea.containsMouse ? Colors.claudeAccent : Colors.claudeMeta
-            font.family: "Material Symbols Rounded"
+            font.family: Caelus.symbolFamily
             font.pixelSize: 16
             // Its slot in the gutter is reserved by cols.rightInset whether or
             // not this row has a window, so hiding it shifts nothing.
             visible: root.window !== ""
             opacity: hover.hovered ? 1 : 0
 
-            Behavior on opacity { NumberAnimation { duration: 120 } }
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
 
             MouseArea {
                 id: termArea
@@ -319,7 +319,7 @@ Item {
 
         Behavior on height {
             enabled: root.ready
-            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: Motion.base; easing.type: Motion.standard }
         }
 
         Loader {

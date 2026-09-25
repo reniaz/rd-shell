@@ -66,7 +66,7 @@ Flickable {
         id: usageCol
 
         width: root.width
-        spacing: 12
+        spacing: Caelus.spaceWide
 
         // The scan reports the last day it found activity on rather than
         // today's date, so a quiet morning does not make a total that was
@@ -76,8 +76,8 @@ Flickable {
                 ? "as of " + (root.totals?.lastDay ?? "")
                 : "scanning transcripts…"
             color: Colors.claudeMeta
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
         }
 
         // Where these numbers come from, because this tab used to print
@@ -100,7 +100,7 @@ Flickable {
             Text {
                 text: ClaudeSession.money(root.totals?.cost ?? 0)
                 color: Colors.claudeTitle
-                font.family: "caelusevka"
+                font.family: Caelus.fontFamily
                 // Above the house figure size of 18, which the three tiles
                 // below use: this is the one number the tab exists to answer,
                 // and at 18 it would carry no more weight than the token count
@@ -114,8 +114,8 @@ Flickable {
                     + (root.totals?.projects ?? 0) + " projects · since "
                     + (root.totals?.firstDay ?? "—")
                 color: Colors.claudeMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -123,7 +123,7 @@ Flickable {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Repeater {
                 model: [
@@ -142,8 +142,8 @@ Flickable {
                     Text {
                         text: ClaudeSession.compact(tile.modelData.value)
                         color: Colors.claudeTitle
-                        font.family: "caelusevka"
-                        font.pixelSize: 18
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeTitle
                         horizontalAlignment: Text.AlignHCenter
                         Layout.fillWidth: true
                     }
@@ -151,8 +151,8 @@ Flickable {
                     Text {
                         text: tile.modelData.label
                         color: Colors.claudeMeta
-                        font.family: "caelusevka"
-                        font.pixelSize: 13
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeBody
                         horizontalAlignment: Text.AlignHCenter
                         Layout.fillWidth: true
                     }
@@ -165,7 +165,7 @@ Flickable {
         // numbers.
         ClaudeSection {
             Layout.fillWidth: true
-            Layout.bottomMargin: 4
+            Layout.bottomMargin: Caelus.spaceTight
             title: "rate limits"
             visible: ClaudeSession.limits !== null
 
@@ -179,17 +179,17 @@ Flickable {
 
                     Layout.fillWidth: true
                     Layout.topMargin: 2
-                    spacing: 4
+                    spacing: Caelus.spaceTight
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: Caelus.space
 
                         Text {
                             text: limitRow.modelData.label
                             color: Colors.claudeBody
-                            font.family: "caelusevka"
-                            font.pixelSize: 13
+                            font.family: Caelus.fontFamily
+                            font.pixelSize: Caelus.sizeBody
                             Layout.fillWidth: true
                         }
 
@@ -205,8 +205,8 @@ Flickable {
                                     + " · " + ClaudeSession.clockAt(limitRow.modelData.resets)
                                 : ""
                             color: Colors.claudeMeta
-                            font.family: "caelusevka"
-                            font.pixelSize: 13
+                            font.family: Caelus.fontFamily
+                            font.pixelSize: Caelus.sizeBody
                         }
                     }
 
@@ -299,15 +299,15 @@ Flickable {
         // is no caveat teaches the eye to skip the line on the day it matters.
         Text {
             Layout.fillWidth: true
-            Layout.bottomMargin: 4
+            Layout.bottomMargin: Caelus.spaceTight
             text: (root.totals?.exactSessions ?? 0) + " of "
                 + (root.totals?.sessions ?? 0) + " sessions billed exactly; "
                 + ClaudeSession.money(root.totals?.derivedCost ?? 0)
                 + " estimated from token counts"
             visible: (root.totals?.derivedCost ?? 0) > 0
             color: Colors.claudeMeta
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             wrapMode: Text.WordWrap
         }
     }

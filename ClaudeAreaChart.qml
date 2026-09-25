@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs.Config
 import qs.Services
 
@@ -23,9 +24,10 @@ Item {
 
     readonly property int count: (root.model ?? []).length
 
-    // Resolved once per model change rather than per paint: the Canvas repaints
-    // on every hover and on every resize, and re-walking the payload each time
-    // would parse the same numbers a hundred times a second.
+    // Resolved once per model change rather than per frame: QtQuick.Shapes
+    // recomputes the curve's geometry the instant `points` changes, so this
+    // is now the only place the payload is walked, where Canvas used to
+    // re-parse the same numbers on every hover and every resize as well.
     readonly property var points: {
         const src = root.model ?? [];
         const out = [];
@@ -55,24 +57,24 @@ Item {
         return root.moneyFormat ? ClaudeSession.money(v) : ClaudeSession.compact(v);
     }
 
-    // Canvas takes no Behavior, so every plotted height is scaled through this
-    // instead. It was swept 0 -> 1 on creation to introduce the curve, which was
-    // fair while creation happened once; the panel is destroyed on close, so it
-    // happened on every open, and a chart of finished history that draws itself
-    // up from the axis says the history is being made now. Held at 1: the curve
-    // is simply there, the way the figures beside it are. Same in
-    // ClaudeDonutChart, and for the same reason.
-    property real progress: 1
-
     implicitHeight: 96
 
-    onPointsChanged: area.requestPaint()
-    onProgressChanged: area.requestPaint()
-    onFillChanged: area.requestPaint()
+    // Guards the flash below against firing on the panel's own creation --
+    // see the comment on `refresh` for why that matters. Set once, after the
+    // component (and every property it starts with) is already settled.
+    property bool ready: false
+    Component.onCompleted: root.ready = true
+
+    // A data change still has to say so somehow: the curve itself cannot
+    // tween into a new shape (see the comment on `linePoints` below for why),
+    // so a brief dip and recovery stands in for the per-point animation a
+    // fixed-length series could have had. Guarded so a freshly opened panel
+    // shows its curve immediately rather than flashing on arrival.
+    onPointsChanged: if (root.ready) refresh.restart()
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 4
+        spacing: Caelus.spaceTight
 
         Item {
             id: plot
@@ -80,61 +82,98 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            Canvas {
+            Shape {
                 id: area
 
                 anchors.fill: parent
 
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
+                // See ClaudeDonutChart.qml for why this is safe on this build
+                // (Qt 6.11.2) and why there is no declarative fallback branch
+                // needed when it is.
+                preferredRendererType: Shape.CurveRenderer
 
-                onPaint: {
-                    const ctx = getContext("2d");
-                    if (!ctx || width <= 0 || height <= 0) return;
+                SequentialAnimation {
+                    id: refresh
+                    PropertyAction { target: area; property: "opacity"; value: 0.35 }
+                    NumberAnimation {
+                        target: area
+                        property: "opacity"
+                        to: 1
+                        duration: Motion.base
+                        easing.type: Motion.standard
+                    }
+                }
 
-                    ctx.reset();
-
+                // PathPolyline takes its whole run as one array write, and the
+                // run's length is not fixed -- seven days on one tab, thirty
+                // on another -- so there is no fixed set of per-point
+                // properties a Behavior could ease between two different
+                // lengths. What moves is the shape as a whole, once, via the
+                // opacity flash above; individual points snap, same as they
+                // did under Canvas, just without a requestPaint() to drive it.
+                readonly property var linePoints: {
                     const n = root.points.length;
                     // A single point has no run to draw between, and a peak of
                     // zero would divide every height by nothing.
-                    if (n < 2 || root.peak <= 0) return;
+                    if (n < 2 || root.peak <= 0 || area.width <= 0 || area.height <= 0) return [];
 
-                    const step = width / (n - 1);
-                    // Two pixels of headroom so the stroke on the tallest point
-                    // is not clipped in half by the top edge.
-                    const usable = Math.max(0, height - 2);
+                    const step = area.width / (n - 1);
+                    // Two pixels of headroom so the stroke on the tallest
+                    // point is not clipped in half by the top edge.
+                    const usable = Math.max(0, area.height - 2);
 
-                    function px(i) { return i * step; }
-                    function py(i) {
-                        return height - (root.points[i] / root.peak) * usable * root.progress;
+                    const pts = [];
+                    for (let i = 0; i < n; i++) {
+                        const y = area.height - (root.points[i] / root.peak) * usable;
+                        pts.push(Qt.point(i * step, y));
                     }
+                    return pts;
+                }
 
-                    ctx.beginPath();
-                    ctx.moveTo(px(0), py(0));
-                    for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(i));
+                // The line's points plus two more that walk back along the
+                // floor to under the first one -- the fill's own closing edge
+                // -- which Shape then closes back up to the first point for
+                // free once fillColor is set.
+                readonly property var fillPoints: {
+                    const line = area.linePoints;
+                    if (line.length === 0) return [];
+                    const last = line[line.length - 1];
+                    const pts = line.slice();
+                    pts.push(Qt.point(last.x, area.height));
+                    pts.push(Qt.point(line[0].x, area.height));
+                    return pts;
+                }
 
-                    // The fill is the same colour as the line at a tenth of its
-                    // weight, so the band reads as the line's own shadow rather
-                    // than as a second series.
-                    ctx.lineTo(px(n - 1), height);
-                    ctx.lineTo(px(0), height);
-                    ctx.closePath();
-                    ctx.fillStyle = Qt.rgba(root.fill.r, root.fill.g, root.fill.b, 0.18);
-                    ctx.fill();
+                // The fill is the same colour as the line at a tenth of its
+                // weight, so the band reads as the line's own shadow rather
+                // than as a second series.
+                ShapePath {
+                    strokeColor: "transparent"
+                    fillColor: Qt.rgba(root.fill.r, root.fill.g, root.fill.b, 0.18)
 
-                    ctx.beginPath();
-                    ctx.moveTo(px(0), py(0));
-                    for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(i));
-                    ctx.lineWidth = 2;
-                    ctx.lineJoin = "round";
-                    ctx.strokeStyle = root.fill;
-                    ctx.stroke();
+                    Behavior on fillColor { ColorAnimation { duration: Motion.fast } }
+
+                    PathPolyline { path: area.fillPoints }
+                }
+
+                ShapePath {
+                    fillColor: "transparent"
+                    strokeColor: root.fill
+                    strokeWidth: 2
+                    joinStyle: ShapePath.RoundJoin
+                    // Flat, matching Canvas's own default lineCap, which this
+                    // path never overrode.
+                    capStyle: ShapePath.FlatCap
+
+                    Behavior on strokeColor { ColorAnimation { duration: Motion.fast } }
+
+                    PathPolyline { path: area.linePoints }
                 }
             }
 
             // The marker rides the curve at whichever point is hovered. It is a
-            // sibling of the Canvas rather than part of the paint so that
-            // moving the pointer costs a translation instead of a redraw of the
+            // sibling of the Shape rather than part of its geometry so that
+            // moving the pointer costs a translation instead of rebuilding the
             // whole series.
             Rectangle {
                 width: 7
@@ -192,8 +231,8 @@ Item {
                 return l !== "" ? l + " · " + v : v;
             }
             color: Colors.claudeBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
         }

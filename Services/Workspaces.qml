@@ -182,6 +182,27 @@ Singleton {
         return Hyprland.toplevels.values.filter(t => t.workspace?.id === id).length;
     }
 
+    // The lowercased class of one window on the workspace, for the dot to
+    // show a Material Symbols category glyph instead of a bare circle --
+    // caelestia-shell's own approach: map the class to a glyph and stay in
+    // the bar's one monochrome language, rather than embedding the app's
+    // own full-colour icon the way an earlier version of this file did.
+    // Hyprland hands toplevels back in its own map order, not the order
+    // they were opened or raised in, so picking [0] straight off the
+    // filtered list would let the glyph change on an event that touched a
+    // completely different window on the same workspace and read as a
+    // flicker. Sorting by address first is what keeps the pick the same
+    // window across calls until it actually closes.
+    //
+    // filter() already returns a fresh array, so sorting it here does not
+    // reorder Hyprland's own toplevels.values for anyone else reading it.
+    function firstAppClass(id) {
+        const windows = Hyprland.toplevels.values
+            .filter(t => t.workspace?.id === id)
+            .sort((a, b) => a.address.localeCompare(b.address));
+        return (windows[0]?.wayland?.appId ?? "").toLowerCase();
+    }
+
     function _ws(w) {
         return typeof w === "number" ? w : `"${w}"`;
     }

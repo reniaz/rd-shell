@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Config
 
 // One object owns every column offset in the session table, and rows measure
 // nothing of their own. Per-row measurement is exactly how a table stops being
@@ -10,7 +11,7 @@ QtObject {
     // QtObject has no default property, so a FontMetrics cannot be written here
     // as a plain child -- it only exists because a property holds it.
     readonly property FontMetrics metrics: FontMetrics {
-        font.family: "caelusevka"
+        font.family: Caelus.fontFamily
         font.pixelSize: root.fontSize
     }
 

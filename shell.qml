@@ -4,20 +4,36 @@ import Quickshell.Io
 import qs.Services
 
 ShellRoot {
-    // Above the Bar variants so the background-layer wallpaper surface is
-    // created first on every screen -- order here has no bearing on the
+    // Above the BarWindow variants so the background-layer wallpaper surface
+    // is created first on every screen -- order here has no bearing on the
     // compositor's actual layer stacking (WlrLayershell.layer does that), it
-    // just means Wallpaper never has to race Bar's own startup.
+    // just means Wallpaper never has to race BarWindow's own startup.
     Variants {
         model: Quickshell.screens
 
         Wallpaper {}
     }
 
+    // One fused window per screen -- bar strip, islands and every popup that
+    // used to be its own PanelWindow now live inside it (Tier 3).
+    // BarWindow.qml is a Scope, not a window itself: it holds the exclusion
+    // window that reserves the 44px strip and the actual fused surface as
+    // two siblings, since wlr-layer-shell will not honour a positive
+    // exclusiveZone on a surface anchored to all four edges.
     Variants {
         model: Quickshell.screens
 
-        Bar {}
+        BarWindow {}
+    }
+
+    // Hover-revealed per-monitor edge panel (brightness/contrast over DDC) --
+    // see EdgeBar.qml. One per screen, same idiom as Wallpaper and BarWindow
+    // above; EdgeBar itself works out which screen gets which edge from
+    // geometry.
+    Variants {
+        model: Quickshell.screens
+
+        EdgeBar {}
     }
 
     // Bound to Super+M in hyprland.lua: qs ipc -c rd-shell call power toggle
@@ -26,6 +42,16 @@ ShellRoot {
 
         function toggle(): void {
             Power.menuOpen = !Power.menuOpen;
+        }
+    }
+
+    // Bound to Super+Space in hyprland.lua, replacing the rofi shell-out:
+    // qs ipc -c rd-shell call launcher toggle
+    IpcHandler {
+        target: "launcher"
+
+        function toggle(): void {
+            Apps.toggle();
         }
     }
 

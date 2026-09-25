@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell.Services.Mpris
 import qs.Config
 import qs.Services
@@ -30,10 +31,10 @@ BarPopup {
             : point.hovered ? Colors.mediaTitle
             : Colors.mediaMeta
         opacity: button.available ? 1 : 0.35
-        font.family: "Material Symbols Rounded"
+        font.family: Caelus.symbolFamily
         font.pixelSize: 17
 
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on color { ColorAnimation { duration: Motion.fast } }
 
         MouseArea {
             id: press
@@ -71,31 +72,92 @@ BarPopup {
         }
     }
 
+    // Circular album art with a graceful miss: no track, no art, or a decode
+    // that fails all fall back to the same glyph the row would otherwise show
+    // bare, rather than a blank or black circle standing in for a picture
+    // that never arrived. The circular clip is a mask, not `clip: true` on a
+    // rounded Rectangle -- clipping only ever follows an item's bounding box
+    // in Qt Quick, never its radius, so a masked MultiEffect is what Wallpaper
+    // .qml reaches for too, for its own (differently-shaped) reveal mask.
+    component CircularArt: Item {
+        id: art
+
+        property url source
+        property string fallbackGlyph: "music_note"
+        property color glyphColor: Colors.mediaMeta
+
+        readonly property bool ready: artImage.status === Image.Ready
+
+        // Read only as a texture by the effect below. Opacity 0, not
+        // `visible: false`: an invisible item stops producing a texture
+        // entirely, the same reasoning Wallpaper.qml's revealShape spells
+        // out for its own mask source.
+        Image {
+            id: artImage
+
+            anchors.fill: parent
+            source: art.source
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            cache: true
+            opacity: 0
+        }
+
+        Item {
+            id: circleMask
+
+            anchors.fill: parent
+            opacity: 0
+            layer.enabled: true
+
+            Rectangle { anchors.fill: parent; radius: width / 2; color: "white" }
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            source: artImage
+            visible: art.ready
+            maskEnabled: true
+            maskSource: circleMask
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 0.04
+        }
+
+        Text {
+            anchors.centerIn: parent
+            visible: !art.ready
+            text: art.fallbackGlyph
+            color: art.glyphColor
+            font.family: Caelus.symbolFamily
+            font.pixelSize: Caelus.sizeTitle
+        }
+    }
+
     ColumnLayout {
         id: body
 
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 14
-        spacing: 10
+        anchors.margins: Caelus.spaceEdge
+        spacing: Caelus.spaceLoose
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Caelus.space
 
             Text {
                 text: "queue_music"
                 color: Colors.popupAccent
-                font.family: "Material Symbols Rounded"
+                font.family: Caelus.symbolFamily
                 font.pixelSize: 16
             }
 
             Text {
                 text: "Players"
                 color: Colors.mediaTitle
-                font.family: "caelusevka"
-                font.pixelSize: 15
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLead
             }
 
             Item { Layout.fillWidth: true }
@@ -105,8 +167,8 @@ BarPopup {
             Text {
                 text: Media.playingCount + " / " + Media.players.length + " playing"
                 color: Colors.mediaMeta
-                font.family: "caelusevka"
-                font.pixelSize: 13
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
             }
         }
 
@@ -126,6 +188,12 @@ BarPopup {
 
                 readonly property bool playing: entry.modelData.isPlaying
                 readonly property bool controllable: entry.modelData.canTogglePlaying
+
+                // The one row Cava's own reading actually describes: it reads
+                // whatever is coming out of the speakers as a whole, gated on
+                // `Media.playing` (Cava.qml's own `active`), which is this
+                // player and no other. The ring only ever goes on this row.
+                readonly property bool isPrimaryPlayer: entry.modelData === Media.player
 
                 // Skipping is shown as a pair or not at all: which way a queue
                 // can be walked changes as it is walked, and a button that
@@ -149,14 +217,14 @@ BarPopup {
 
                 Layout.fillWidth: true
                 implicitHeight: line.implicitHeight + 16
-                radius: 12
+                radius: Caelus.radiusPopover
                 color: hover.containsMouse ? Colors.surfaceHover : Colors.mediaCard
                 // Only the sounding ones are outlined: with four players loaded
                 // the outline is the answer at a glance, before any title is read.
                 border.width: 1
                 border.color: entry.playing ? Colors.mediaActive : "transparent"
 
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
 
                 MouseArea {
                     id: hover
@@ -189,15 +257,62 @@ BarPopup {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 10
-                    spacing: 10
+                    anchors.leftMargin: Caelus.spaceWide
+                    anchors.rightMargin: Caelus.spaceLoose
+                    spacing: Caelus.spaceLoose
 
                     Text {
+                        visible: !entry.isPrimaryPlayer
                         text: entry.playing ? "graphic_eq" : "music_note"
                         color: entry.playing ? Colors.mediaActive : Colors.mediaMeta
-                        font.family: "Material Symbols Rounded"
-                        font.pixelSize: 18
+                        font.family: Caelus.symbolFamily
+                        font.pixelSize: Caelus.sizeTitle
+                    }
+
+                    // 4.3, popup half: circular art with Cava's ring around
+                    // it, but only on the one row `isPrimaryPlayer` picks out.
+                    // The cell is reserved at the ring's full footprint as
+                    // soon as cava could ever have something to draw --
+                    // `Cava.available` is fixed for the life of the session,
+                    // unlike `active`, which flips on every play and pause --
+                    // so starting or stopping this player never changes this
+                    // row's width; only the ring inside the reserved space
+                    // fades in or out. With cava not installed, `available`
+                    // stays false and this cell stays exactly the old glyph's
+                    // size, art included.
+                    Item {
+                        id: artSlot
+
+                        readonly property int ringSize: 44
+                        readonly property int compactSize: Caelus.sizeTitle
+                        readonly property int cellSize: Cava.available ? artSlot.ringSize : artSlot.compactSize
+
+                        visible: entry.isPrimaryPlayer
+                        Layout.preferredWidth: artSlot.cellSize
+                        Layout.preferredHeight: artSlot.cellSize
+                        Layout.alignment: Qt.AlignVCenter
+
+                        // Only instantiated at all while cava could ever be
+                        // active, so a session without the binary never builds
+                        // a ring it will never show, on top of the ring's own
+                        // `Cava.active` gate inside CavaRing itself.
+                        Loader {
+                            anchors.centerIn: parent
+                            active: Cava.available
+                            sourceComponent: CavaRing {
+                                diameter: artSlot.ringSize
+                                tint: Colors.mediaActive
+                            }
+                        }
+
+                        CircularArt {
+                            anchors.centerIn: parent
+                            width: Cava.available ? 22 : artSlot.compactSize
+                            height: width
+                            source: entry.modelData.trackArtUrl ?? ""
+                            fallbackGlyph: entry.playing ? "graphic_eq" : "music_note"
+                            glyphColor: entry.playing ? Colors.mediaActive : Colors.mediaMeta
+                        }
                     }
 
                     ColumnLayout {
@@ -212,7 +327,7 @@ BarPopup {
                                 ? entry.modelData.trackTitle
                                 : entry.modelData.identity
                             color: Colors.mediaTitle
-                            font.family: "caelusevka"
+                            font.family: Caelus.fontFamily
                             font.pixelSize: 14
                             elide: Text.ElideRight
                         }
@@ -223,8 +338,8 @@ BarPopup {
                                 ? entry.modelData.identity + "  ·  " + entry.modelData.trackArtist
                                 : entry.modelData.identity
                             color: Colors.mediaMeta
-                            font.family: "caelusevka"
-                            font.pixelSize: 12
+                            font.family: Caelus.fontFamily
+                            font.pixelSize: Caelus.sizeLabel
                             elide: Text.ElideRight
                             visible: entry.modelData.trackTitle !== ""
                         }
@@ -236,7 +351,7 @@ BarPopup {
                         // actually answer.
                         RowLayout {
                             Layout.topMargin: 3
-                            spacing: 12
+                            spacing: Caelus.spaceWide
                             visible: entry.hasTransport
 
                             TransportButton {
@@ -297,7 +412,7 @@ BarPopup {
                         // circle sideways into an oval once the row runs
                         // short of space.
                         Layout.minimumWidth: 30
-                        radius: height / 2
+                        radius: Caelus.radiusPill
                         color: Colors.bg
                         opacity: entry.controllable ? 1 : 0.4
 
@@ -305,8 +420,8 @@ BarPopup {
                             anchors.centerIn: parent
                             text: entry.playing ? "pause" : "play_arrow"
                             color: Colors.popupAccent
-                            font.family: "Material Symbols Rounded"
-                            font.pixelSize: 18
+                            font.family: Caelus.symbolFamily
+                            font.pixelSize: Caelus.sizeTitle
                         }
                     }
                 }
@@ -315,12 +430,12 @@ BarPopup {
 
         Text {
             Layout.fillWidth: true
-            Layout.topMargin: 4
-            Layout.bottomMargin: 4
+            Layout.topMargin: Caelus.spaceTight
+            Layout.bottomMargin: Caelus.spaceTight
             text: "Nothing is loaded"
             color: Colors.mediaMeta
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             horizontalAlignment: Text.AlignHCenter
             visible: Media.players.length === 0
         }

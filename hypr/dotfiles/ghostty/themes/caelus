@@ -1,0 +1,24 @@
+# caelus
+palette = 0=#1e1f1e
+palette = 1=#b85550
+palette = 2=#5e9960
+palette = 3=#b86e38
+palette = 4=#4d5652
+palette = 5=#b86e38
+palette = 6=#5e9960
+palette = 7=#baa89a
+palette = 8=#3b403c
+palette = 9=#b85550
+palette = 10=#5e9960
+palette = 11=#b86e38
+palette = 12=#627068
+palette = 13=#baa89a
+palette = 14=#72746a
+palette = 15=#baa89a
+
+background = #1e1f1e
+foreground = #baa89a
+cursor-color = #b85550
+cursor-text = #1e1f1e
+selection-background = #3a2b29
+selection-foreground = #baa89a

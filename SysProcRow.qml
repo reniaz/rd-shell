@@ -32,10 +32,10 @@ Rectangle {
 
     Layout.fillWidth: true
     implicitHeight: 27
-    radius: 8
+    radius: Caelus.radiusCard
     color: hover.hovered || root.confirming ? Colors.sysTrack : "transparent"
 
-    Behavior on color { ColorAnimation { duration: 120 } }
+    Behavior on color { ColorAnimation { duration: Motion.fast } }
 
     HoverHandler { id: hover }
 
@@ -48,8 +48,8 @@ Rectangle {
         Text {
             text: root.name
             color: Colors.sysTitle
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             elide: Text.ElideRight
             Layout.fillWidth: true
         }
@@ -57,7 +57,7 @@ Rectangle {
         Text {
             text: root.pid
             color: Colors.sysMeta
-            font.family: "caelusevka"
+            font.family: Caelus.fontFamily
             font.pixelSize: 11
             visible: !root.confirming
         }
@@ -65,8 +65,8 @@ Rectangle {
         Text {
             text: root.value
             color: Colors.sysBody
-            font.family: "caelusevka"
-            font.pixelSize: 13
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
             // A fixed column: the pid beside it is four to seven digits wide,
             // and without this the readings zig-zag down the list.
             horizontalAlignment: Text.AlignRight
@@ -93,7 +93,7 @@ Rectangle {
                 border.width: 1
                 border.color: Colors.sysKill
 
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
 
                 Text {
                     id: caption
@@ -101,7 +101,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: button.modelData.label
                     color: buttonHover.hovered ? Colors.bg : Colors.sysKill
-                    font.family: "caelusevka"
+                    font.family: Caelus.fontFamily
                     font.pixelSize: 11
                 }
 
@@ -119,13 +119,13 @@ Rectangle {
         Text {
             text: root.confirming ? "close" : "cancel"
             color: killHover.hovered ? Colors.sysKill : Colors.sysMeta
-            font.family: "Material Symbols Rounded"
-            font.pixelSize: 15
+            font.family: Caelus.symbolFamily
+            font.pixelSize: Caelus.sizeLead
             // Kept in the layout while hidden so the value column does not
             // shuffle sideways as the pointer crosses the list.
             opacity: hover.hovered || root.confirming ? 1 : 0
 
-            Behavior on opacity { NumberAnimation { duration: 120 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
             HoverHandler { id: killHover; cursorShape: Qt.PointingHandCursor }
 

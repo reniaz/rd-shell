@@ -1,209 +1,189 @@
-import Quickshell
-import Quickshell.Wayland
 import QtQuick
+import QtQuick.Layouts
 import qs.Config
 import qs.Services
 
-PanelWindow {
+// The power half of the merged menu -- see SettingsPopup.qml's header for
+// why the two live in one card now. This used to be its own full-screen
+// PanelWindow with a confirm step guarding the two destructive actions; the
+// window is gone (SettingsPopup's BarPopup card is the only window now), but
+// the two-stage flow it existed for is not: "choose" still lists
+// Power.actions, "confirm" still asks the pending action's own question, and
+// only a second, explicit click on "Yes" still runs one. Everything that
+// flow needs -- stage, pending, the reset-on-open guard -- stays local to
+// this file, so SettingsPopup only has to embed it, not know how it works.
+ColumnLayout {
     id: root
 
-    signal dismissed()
+    spacing: Caelus.space
 
-    // "choose" picks an action, "confirm" asks about the pending one. Both stages
-    // drive the same `index`, so hover and the arrow keys can never disagree about
-    // what Enter would activate.
     property string stage: "choose"
-    property int index: 0
     property var pending: null
 
-    // Written by the PopupLoader that owns this window, which holds it alive
-    // long enough for the dissolve below to be seen -- see PopupLoader.qml.
-    // True by default because the window exists before its loader can reach it.
-    property bool open: true
+    // A menu that reopens still showing "Shut down?" from the last time it
+    // was up is how someone shuts their machine down by accident, so every
+    // open snaps this back to the safe stage regardless of how the last one
+    // ended. Power.menuOpen is the one flag the whole merged card opens and
+    // closes on -- see SettingsPopup.qml -- so watching it here is enough.
+    Connections {
+        target: Power
 
-    // Raised once the window exists, so the first frame drawn is the undimmed
-    // one and the menu is seen to come in rather than arriving already there.
-    property bool _entered: false
-    readonly property bool shown: root._entered && root.open
-
-    readonly property var options: stage === "choose"
-        ? Power.actions
-        : [{ icon: "close", label: "No" }, { icon: "check", label: "Yes" }]
-
-    anchors { top: true; bottom: true; left: true; right: true }
-    exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.layer: WlrLayer.Overlay
-    // Exclusive while the menu is up: it is driven with the arrow keys and
-    // Enter, and a keystroke meant for it landing in whatever is behind it would
-    // be worse than one lost here. Given back the instant it starts leaving --
-    // the grab is the whole keyboard, and holding it through an animation nobody
-    // can type into swallows a fifth of a second of input after every dismissal.
-    WlrLayershell.keyboardFocus: root.open
-        ? WlrKeyboardFocus.Exclusive
-        : WlrKeyboardFocus.None
-    WlrLayershell.namespace: "qs-power"
-    color: "transparent"
-
-    // Same reasoning as BarPopup's: the window covers the screen and outlives
-    // its own fade now, and a click aimed at what the menu was covering must not
-    // be eaten by a menu already on its way out.
-    mask: root.open ? null : closedMask
-
-    Region { id: closedMask }
-
-    Component.onCompleted: root._entered = true
-
-    function activate(i) {
-        root.index = i;
-        if (root.stage === "choose") {
-            const action = Power.actions[i];
-            if (action.confirm === false) {
-                action.run();
-                root.dismissed();
-                return;
+        function onMenuOpenChanged() {
+            if (Power.menuOpen) {
+                root.stage = "choose";
+                root.pending = null;
             }
-            root.pending = action;
-            root.stage = "confirm";
-            root.index = 0; // default to No, so a stray Enter is harmless
-        } else if (i === 1) {
+        }
+    }
+
+    // Locking is instantly reversible, so it is the one action that skips
+    // confirm and runs straight from "choose" -- same rule Power.actions
+    // itself already encodes with `confirm: false`.
+    function choose(action) {
+        if (action.confirm === false) {
+            action.run();
+            Power.menuOpen = false;
+            return;
+        }
+        root.pending = action;
+        root.stage = "confirm";
+    }
+
+    function decide(yes) {
+        if (yes) {
             root.pending.run();
-            root.dismissed();
+            Power.menuOpen = false;
         } else {
-            root.back();
+            root.pending = null;
+            root.stage = "choose";
         }
     }
 
-    function back() {
-        root.index = Power.actions.indexOf(root.pending);
-        root.pending = null;
-        root.stage = "choose";
-    }
+    // One square per action, in either stage: four from Power.actions while
+    // choosing, two ("No"/"Yes") while confirming. Sized to fill the row it
+    // is given rather than a fixed width, so both stages fill the same card
+    // whether they are showing two tiles or four.
+    component Tile: Rectangle {
+        id: tile
 
-    Item {
-        anchors.fill: parent
-        focus: true
+        property string icon: ""
+        property string label: ""
+        // The one tile allowed to wear the critical red -- same rule as
+        // SysPopup's kill button: the only thing on this card that is not
+        // reversible gets the one colour that means that.
+        property bool danger: false
+        readonly property bool hovered: press.containsMouse
 
-        Keys.onPressed: event => {
-            switch (event.key) {
-            case Qt.Key_Escape:
-                if (root.stage === "confirm") root.back();
-                else root.dismissed();
-                break;
-            case Qt.Key_Left:
-            case Qt.Key_H:
-                root.index = (root.index - 1 + root.options.length) % root.options.length;
-                break;
-            case Qt.Key_Right:
-            case Qt.Key_L:
-                root.index = (root.index + 1) % root.options.length;
-                break;
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-            case Qt.Key_Space:
-                root.activate(root.index);
-                break;
-            default:
-                return;
-            }
-            event.accepted = true;
-        }
+        signal picked()
 
-        Rectangle {
-            anchors.fill: parent
-            color: "#000000"
-            opacity: root.shown ? 0.72 : 0
+        Layout.fillWidth: true
+        implicitHeight: 58
+        radius: Caelus.radiusCard
+        color: tile.hovered ? Colors.surfaceHover : Colors.surfaceRaised
+        border.width: Caelus.borderWidth
+        border.color: Colors.popupBorder
 
-            Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: root.dismissed()
-            }
-        }
+        Behavior on color { ColorAnimation { duration: Motion.fast } }
 
         Column {
             anchors.centerIn: parent
-            spacing: 26
-            opacity: root.shown ? 1 : 0
-
-            Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            spacing: Caelus.spaceTight
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: root.pending?.question ?? ""
-                visible: root.stage === "confirm"
+                text: tile.icon
+                color: tile.danger ? Colors.error : Colors.fgDim
+                font.family: Caelus.symbolFamily
+                font.pixelSize: 20
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: tile.label
                 color: Colors.fg
-                font.family: "caelusevka"
-                font.pixelSize: 22
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
+            }
+        }
+
+        MouseArea {
+            id: press
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: tile.picked()
+        }
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: Caelus.space
+
+        Text {
+            text: "power_settings_new"
+            color: Colors.popupAccent
+            font.family: Caelus.symbolFamily
+            font.pixelSize: 16
+        }
+
+        Text {
+            text: "Power"
+            color: Colors.fg
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLead
+        }
+
+        Item { Layout.fillWidth: true }
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: Caelus.spaceSnug
+        visible: root.stage === "choose"
+
+        Repeater {
+            model: Power.actions
+
+            Tile {
+                required property var modelData
+
+                icon: modelData.icon
+                label: modelData.label
+                onPicked: root.choose(modelData)
+            }
+        }
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Caelus.spaceWide
+        visible: root.stage === "confirm"
+
+        Text {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            text: root.pending?.question ?? ""
+            color: Colors.fg
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeBody
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Caelus.spaceSnug
+
+            Tile {
+                icon: "close"
+                label: "No"
+                onPicked: root.decide(false)
             }
 
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 24
-
-                Repeater {
-                    model: root.options
-
-                    Rectangle {
-                        required property var modelData
-                        required property int index
-
-                        readonly property bool selected: index === root.index
-                        readonly property bool danger: root.stage === "confirm" && index === 1
-                        readonly property color mark: danger ? Colors.error : Colors.accent
-
-                        width: 132
-                        height: 132
-                        radius: 16
-                        color: Colors.bg
-                        border.width: 2
-                        border.color: selected ? mark : Colors.fgMuted
-
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 10
-
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.icon
-                                color: selected ? mark : Colors.fgMuted
-                                font.family: "Material Symbols Rounded"
-                                font.pixelSize: 48
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                            }
-
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
-                                color: Colors.fg
-                                font.family: "caelusevka"
-                                font.pixelSize: 16
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            onEntered: root.index = index
-                            onClicked: root.activate(index)
-                        }
-                    }
-                }
-            }
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: root.stage === "confirm"
-                    ? "Esc to go back  ·  ←/→ to move  ·  Enter to confirm"
-                    : "Esc to cancel  ·  ←/→ to move  ·  Enter to select"
-                color: Colors.fgMuted
-                font.family: "caelusevka"
-                font.pixelSize: 14
+            Tile {
+                icon: "check"
+                label: "Yes"
+                danger: true
+                onPicked: root.decide(true)
             }
         }
     }

@@ -24,7 +24,7 @@ Item {
         anchors.topMargin: 20
         text: "No live sessions"
         color: Colors.claudeMeta
-        font.family: "caelusevka"
+        font.family: Caelus.fontFamily
         font.pixelSize: 14
         visible: list.count === 0
     }

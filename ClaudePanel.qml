@@ -4,8 +4,8 @@ import qs.Config
 import qs.Services
 
 // Everything the account is doing, hung under the bar's Claude pill. The card,
-// its notch, the grow-out-of-the-icon animation and the click-outside dismissal
-// all belong to BarPopup; what is left here is the panel's own content.
+// the grow-out-of-the-icon animation and the click-outside dismissal all
+// belong to BarPopup; what is left here is the panel's own content.
 BarPopup {
     id: root
 
@@ -22,17 +22,20 @@ BarPopup {
     popupWidth: 520
 
     // As short as the open tab needs and no shorter, up to everything between
-    // the notch and the bottom of the screen. 60 is the 46 the card hangs at
-    // plus the same 14 gap the bar's pills float in. BarPopup animates the
+    // the card and the bottom of the screen. The cap is Caelus.barHeight -
+    // Caelus.barInset -- the 38 the card now hangs at, flush under the island
+    // -- plus Caelus.spaceEdge, the same 14 gap the bar's pills float in.
+    // Deriving it from those three instead of writing the sum keeps it from
+    // going stale again if the bar's own metrics move. BarPopup animates the
     // change, so switching from Statistics to Sessions is seen to fold up.
     //
     // The screen cap only applies once there is a screen height to cap against.
     // A layer surface is told its size a round trip after it is created, so for
     // the first frames `root.height` is zero, and an unguarded Math.min against
-    // it asks for a card sixty pixels tall -- which is how the panel came to
+    // it asks for a card fifty-two pixels tall -- which is how the panel came to
     // open at BarPopup's floor and then unfold into itself.
     popupHeight: root.height > 0
-        ? Math.min(root.height - 60, root.wantedHeight)
+        ? Math.min(root.height - (Caelus.barHeight - Caelus.barInset + Caelus.spaceEdge), root.wantedHeight)
         : root.wantedHeight
 
     readonly property real wantedHeight: 36 + head.implicitHeight + 12 + root.pageHeight
@@ -79,7 +82,7 @@ BarPopup {
 
         anchors.fill: parent
         anchors.margins: 18
-        spacing: 12
+        spacing: Caelus.spaceWide
 
         // The rows above the tabs, measured together and on their own: a card
         // that sized itself from the same layout it stretches would be feeding
@@ -91,7 +94,7 @@ BarPopup {
             // The page below is the only thing that gives when the screen is
             // shorter than the panel wants to be.
             Layout.minimumHeight: implicitHeight
-            spacing: 12
+            spacing: Caelus.spaceWide
 
             // ── header ───────────────────────────────────────────────────
             // Every row above the tabs states its own height as a floor, so that a
@@ -99,19 +102,19 @@ BarPopup {
             // rather than out of the limits it is there to show.
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Caelus.space
 
                 Text {
                     text: "terminal"
                     color: Colors.claudeIcon
-                    font.family: "Material Symbols Rounded"
-                    font.pixelSize: 18
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
                 }
 
                 Text {
                     text: "Claude"
                     color: Colors.claudeTitle
-                    font.family: "caelusevka"
+                    font.family: Caelus.fontFamily
                     font.pixelSize: 16
                     Layout.fillWidth: true
                 }
@@ -121,8 +124,8 @@ BarPopup {
                         ? ClaudeSession.sessionCount + " live · " + ClaudeSession.busyCount + " busy"
                         : ClaudeSession.sessionCount + " live"
                     color: Colors.claudeMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
 
                 // Only ever shown when it is not zero: "0 waiting" is the normal
@@ -130,18 +133,18 @@ BarPopup {
                 Text {
                     text: "· " + ClaudeSession.waitingCount + " waiting"
                     color: Colors.claudeAttention
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                     visible: ClaudeSession.waitingCount > 0
                 }
 
                 Text {
                     text: "close"
                     color: closeArea.containsMouse ? Colors.claudeCritical : Colors.claudeMeta
-                    font.family: "Material Symbols Rounded"
-                    font.pixelSize: 18
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
 
                     MouseArea {
                         id: closeArea
@@ -162,7 +165,7 @@ BarPopup {
             // four hours left, and the bar alone cannot tell those apart.
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 14
+                spacing: Caelus.spaceEdge
                 visible: ClaudeSession.limits !== null
 
                 // A count and not the array itself. An array literal is a new
@@ -203,20 +206,20 @@ BarPopup {
                                 + " · in " + ClaudeSession.until(headMeter.limit.resets)
                             visible: headMeter.limit.resets !== ""
                             color: Colors.claudeMeta
-                            font.family: "caelusevka"
-                            font.pixelSize: 12
+                            font.family: Caelus.fontFamily
+                            font.pixelSize: Caelus.sizeLabel
                             elide: Text.ElideRight
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 6
+                            spacing: Caelus.spaceSnug
 
                             Text {
                                 text: headMeter.limit.label
                                 color: Colors.claudeMeta
-                                font.family: "caelusevka"
-                                font.pixelSize: 13
+                                font.family: Caelus.fontFamily
+                                font.pixelSize: Caelus.sizeBody
                             }
 
                             ClaudeMeter {
@@ -236,7 +239,7 @@ BarPopup {
 
                 Layout.fillWidth: true
                 implicitHeight: 34
-                radius: height / 2
+                radius: Caelus.radiusPill
                 color: Colors.claudeTabBar
 
                 readonly property real inset: 4
@@ -249,11 +252,11 @@ BarPopup {
                     x: tabBar.inset + root.tab * tabBar.tabWidth
                     width: tabBar.tabWidth
                     height: tabBar.height - tabBar.inset * 2
-                    radius: height / 2
+                    radius: Caelus.radiusPill
                     color: Colors.claudeTabActive
 
                     Behavior on x {
-                        NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: Motion.fast; easing.type: Motion.standard }
                     }
                 }
 
@@ -279,10 +282,10 @@ BarPopup {
                                 color: root.tab === tabItem.index
                                     ? Colors.claudeTitle
                                     : Colors.claudeTabInactive
-                                font.family: "caelusevka"
-                                font.pixelSize: 13
+                                font.family: Caelus.fontFamily
+                                font.pixelSize: Caelus.sizeBody
 
-                                Behavior on color { ColorAnimation { duration: 120 } }
+                                Behavior on color { ColorAnimation { duration: Motion.fast } }
                             }
 
                             MouseArea {

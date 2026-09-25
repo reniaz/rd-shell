@@ -4,8 +4,8 @@ import qs.Config
 import qs.Services
 
 // What the bar's system pill is a summary of, one part of the machine per tab.
-// The card, its notch, the grow-out-of-the-icon animation and the click-outside
-// dismissal all belong to BarPopup; what is left here is the panel's content.
+// The card, the grow-out-of-the-icon animation and the click-outside dismissal
+// all belong to BarPopup; what is left here is the panel's content.
 BarPopup {
     id: root
 
@@ -18,17 +18,21 @@ BarPopup {
     namespace: "qs-sysmon"
     popupWidth: 380
 
-    // As short as the open tab needs and no taller than the screen allows. 60
-    // is the 46 the card hangs at plus the same 14 gap the bar's pills float
-    // in. BarPopup animates the change, so switching tabs is seen to fold.
+    // As short as the open tab needs and no taller than the screen allows.
+    // The cap is Caelus.barHeight - Caelus.barInset -- the 38 the card now
+    // hangs at, flush under the island -- plus Caelus.spaceEdge, the same 14
+    // gap the bar's pills float in. Deriving it from those three instead of
+    // writing the sum keeps it from going stale again if the bar's own
+    // metrics move. BarPopup animates the change, so switching tabs is seen
+    // to fold.
     //
     // The screen cap only applies once there is a screen height to cap against.
     // A layer surface is told its size a round trip after it is created, so for
     // the first frames `root.height` is zero, and an unguarded Math.min against
-    // it asks for a card sixty pixels tall -- which is how the popup came to
+    // it asks for a card fifty-two pixels tall -- which is how the popup came to
     // open at BarPopup's floor and then grow into itself.
     popupHeight: root.height > 0
-        ? Math.min(root.height - 60, root.wantedHeight)
+        ? Math.min(root.height - (Caelus.barHeight - Caelus.barInset + Caelus.spaceEdge), root.wantedHeight)
         : root.wantedHeight
 
     readonly property real wantedHeight: 28 + head.implicitHeight + 10 + root.pageHeight
@@ -59,8 +63,8 @@ BarPopup {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 14
-        spacing: 10
+        anchors.margins: Caelus.spaceEdge
+        spacing: Caelus.spaceLoose
 
         // The rows above the pages, measured together and on their own: a card
         // that sized itself from the same layout it stretches would feed its
@@ -70,41 +74,41 @@ BarPopup {
 
             Layout.fillWidth: true
             Layout.minimumHeight: implicitHeight
-            spacing: 10
+            spacing: Caelus.spaceLoose
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Caelus.space
 
                 Text {
                     text: "monitoring"
                     color: Colors.sysIcon
-                    font.family: "Material Symbols Rounded"
+                    font.family: Caelus.symbolFamily
                     font.pixelSize: 17
                 }
 
                 Text {
                     text: "System"
                     color: Colors.sysTitle
-                    font.family: "caelusevka"
-                    font.pixelSize: 15
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLead
                     Layout.fillWidth: true
                 }
 
                 Text {
                     text: "up " + Format.duration(SysMon.uptime)
                     color: Colors.sysMeta
-                    font.family: "caelusevka"
-                    font.pixelSize: 12
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
                 }
 
                 Text {
                     text: "close"
                     color: closeArea.containsMouse ? Colors.sysKill : Colors.sysMeta
-                    font.family: "Material Symbols Rounded"
+                    font.family: Caelus.symbolFamily
                     font.pixelSize: 17
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
 
                     MouseArea {
                         id: closeArea
@@ -123,7 +127,7 @@ BarPopup {
 
                 Layout.fillWidth: true
                 implicitHeight: 32
-                radius: height / 2
+                radius: Caelus.radiusPill
                 color: Colors.bg
 
                 readonly property real inset: 4
@@ -136,11 +140,11 @@ BarPopup {
                     x: tabBar.inset + root.tab * tabBar.tabWidth
                     width: tabBar.tabWidth
                     height: tabBar.height - tabBar.inset * 2
-                    radius: height / 2
+                    radius: Caelus.radiusPill
                     color: Colors.sysColor
 
                     Behavior on x {
-                        NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: Motion.fast; easing.type: Motion.standard }
                     }
                 }
 
@@ -164,10 +168,10 @@ BarPopup {
                                 anchors.centerIn: parent
                                 text: tabItem.modelData
                                 color: root.tab === tabItem.index ? Colors.bg : Colors.sysMeta
-                                font.family: "caelusevka"
-                                font.pixelSize: 13
+                                font.family: Caelus.fontFamily
+                                font.pixelSize: Caelus.sizeBody
 
-                                Behavior on color { ColorAnimation { duration: 120 } }
+                                Behavior on color { ColorAnimation { duration: Motion.fast } }
                             }
 
                             MouseArea {

@@ -17,13 +17,13 @@ RowLayout {
     property bool dim: false
 
     Layout.fillWidth: true
-    spacing: 8
+    spacing: Caelus.space
 
     Text {
         text: root.label
         color: Colors.claudeBody
-        font.family: "caelusevka"
-        font.pixelSize: 13
+        font.family: Caelus.fontFamily
+        font.pixelSize: Caelus.sizeBody
         elide: Text.ElideRight
         Layout.fillWidth: true
     }
@@ -31,7 +31,7 @@ RowLayout {
     Text {
         text: root.value
         color: root.dim ? Colors.claudeMeta : root.valueColor
-        font.family: "caelusevka"
-        font.pixelSize: 13
+        font.family: Caelus.fontFamily
+        font.pixelSize: Caelus.sizeBody
     }
 }

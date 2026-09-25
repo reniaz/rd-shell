@@ -1,0 +1,1344 @@
+/**
+ * caelus24 — spotify as a terminal
+ *
+ * Not a recolour. The brief was "make it not look like spotify at all
+ * anymore, it should feel like a terminal application that is very modern",
+ * with refact0r's system24 (dacctal's caelus palette) as the reference. So the
+ * design law here is system24's own option block, taken literally:
+ *
+ *   --unrounding: on        border-radius is 0. everywhere. album art, avatars,
+ *                           chips, buttons, the scrollbar, the focus ring.
+ *   --border-thickness: 2px main panels carry a 2px --line frame
+ *   --gap: 12px             panels sit 12px apart on a black gutter
+ *   --divider-thickness: 4px the accent marker on an active row is 4px
+ *   --panel-labels: on      every panel names itself in a notch cut through
+ *                           its own top border
+ *   monospace, lowercase chrome, one accent, no shadows, no blur, no gradient
+ *   banners, no glass.
+ *
+ * The one thing a TUI has that a web app does not is the block meter — the
+ * ████████░░░░░░░░ run that btop and tmux draw. Both sliders here are that,
+ * built out of a gradient and a repeating mask rather than a smooth capsule.
+ *
+ * Terminal, not retro: this is a 2026 TUI — helix, lazygit, btop — so it gets
+ * sharp edges, a monospace grid and generous negative space, not a DOS box.
+ *
+ * Selectors are stable hooks: main-* / Root__* / x-* classes, role and aria
+ * attributes, encore class suffixes. Never data-testid — this spicetify config
+ * sets disable_ui_logging=1 and those attributes are unreliable. Never an
+ * encore build prefix (e-10451-…) either; only the suffix after it is stable.
+ *
+ * Verified live over CDP against spotify 1.2.95.453 / spicetify 2.44.
+ */
+
+:root {
+  /* ── type ──────────────────────────────────────────────────────────
+     One family, everywhere: caelusevka, the same monospace face system24
+     uses. The fallbacks only matter on a machine that lacks it. */
+  --font: 'caelusevka', 'CaskaydiaCove Nerd Font Mono',
+          ui-monospace, monospace;
+  --font-wide: 'caelusevka Extended', var(--font);
+
+  --t-xs: 11px;   /* counts, column headers, panel labels */
+  --t-sm: 12px;   /* artists, durations, meta */
+  --t-md: 14px;   /* body — the shell's default */
+  --t-lg: 16px;   /* now-playing title, section heads */
+  --t-xl: 24px;   /* entity titles */
+  --tr: 0.04em;       /* chrome tracking */
+  --tr-label: 0.10em; /* panel labels — wide enough to read as a legend */
+
+  /* ── geometry ─────────────────────────────────────────────────────── */
+  --gap: 12px;
+  --bw: 2px;
+  --divider: 4px;
+  --pad: 12px;
+  --row-h: 40px;
+  --row-h-sidebar: 34px;
+  --meter-h: 8px;   /* meter height */
+
+  /* ── colour — every value comes from color.ini through --spice-* ─────
+     system24 builds its neutral states out of one wash, hsl(138 8% 40%), at
+     three alphas: --hover 0.1, --active 0.2, --active-2 0.3. --border is
+     --active and --border-subtle is --border, so the frame around a panel and
+     the fill under a selected row are literally the same colour. color.ini
+     carries the opaque wash as `border`; the alphas are mixed here. */
+  --wash: var(--spice-border);                    /* #5E6E63 hsl(138 8% 40%) */
+  --hover: color-mix(in srgb, var(--wash) 10%, transparent);
+  --active: color-mix(in srgb, var(--wash) 20%, transparent);
+  --active-2: color-mix(in srgb, var(--wash) 30%, transparent);
+
+  --bg: var(--spice-base);                        /* #222623 --bg-3, the gutter */
+  --panel: var(--spice-main);                     /* #1B1D1C --bg-4 */
+  --panel-2: var(--spice-main-elevated);          /* #222623 --bg-3 */
+  --line: var(--active);                          /* --border-subtle = --border */
+  --line-hover: var(--spice-border-hover);        /* #EF934D --border-hover */
+  --fg: var(--spice-text);                        /* #F8F5F2 --text-1 */
+  --fg-dim: var(--spice-subtext);                 /* #CFBEB4 --text-3 */
+  --fg-icon: var(--spice-icon);                   /* #988881 --text-4 */
+  --fg-mute: var(--spice-misc);                   /* #746863 --text-5 */
+  --accent: var(--spice-accent);                  /* #EF934D --accent-2/-3 */
+  --accent-hi: var(--spice-border-hover);         /* #EF934D selected/playing */
+  --accent-hov: var(--spice-button-hover);        /* #E87D2C --accent-4 */
+  --accent-lo: var(--spice-button-active);        /* #D76E1D --accent-5 */
+  --accent-text: var(--spice-accent-text);        /* #F8CCAB --accent-1, links */
+  --ok: var(--spice-notification);                /* #7EC97E --green-2 */
+  --err: var(--spice-notification-error);         /* #F16E65 --red-2 */
+  --fill-hover: var(--hover);
+  --fill-sel: var(--active);
+  --fill-press: var(--active-2);
+
+  /* Spotify paints the currently-playing row's title and marker with its own
+     `color: var(--text-bright-accent)` rule, keyed on a build-hashed class we
+     cannot name. Redefining the variable is how we reach that row without
+     hardcoding a hash that dies at the next update. */
+  --text-bright-accent: var(--accent-hi);
+
+  /* ── motion ───────────────────────────────────────────────────────────
+     system24 has exactly two: --list-item-transition and
+     --border-hover-transition, both `0.2s ease`, both symmetric. */
+  --dur: 0.2s;
+  --dur-in: 0.2s;
+  --ease: ease;
+}
+
+/* ── global ─────────────────────────────────────────────────────────── */
+
+body,
+button,
+input,
+select,
+textarea,
+[class*='encore-text'] {
+  font-family: var(--font) !important;
+}
+
+/* system24 sets these on body and nothing else touches them: 400 is normal
+   weight (bold text is unaffected), and the caelus variant zeroes the -0.05ch
+   tracking the DM Mono build ships with. */
+body {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* system24's --unrounding: on is one universal rule, and that is why nothing
+   in it ever comes back rounded after a spotify update introduces a widget
+   nobody has written a selector for yet. Ported literally, minus the avatar
+   exclusion — this theme squares avatars too, which is what --round-pfp: off
+   does in the reference. */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* ── the frame ───────────────────────────────────────────────────────
+   .Root__top-container is a grid whose areas are the panels. It is the black
+   gutter: the gap spaces the panels and the padding insets them from the
+   window edge, so nothing else needs a margin. */
+
+.Root__top-container {
+  background-color: var(--bg) !important;
+  gap: var(--gap);
+  /* spotify re-asserts the top inset alone from a more specific selector
+     (.spotify__container--is-desktop .Root__top-container), which leaves an
+     8px top against a 12px everywhere else and knocks the frame off square */
+  padding: var(--gap) !important;
+  box-sizing: border-box;
+}
+
+/* Every panel is one cell of that grid. Spotify hands some of them a negative
+   margin so they bleed into the gutter — zero it, or the frames stop lining up
+   on the same edges and the whole grid reads as sloppy. */
+.Root__globalNav,
+.Root__nav-bar,
+.Root__main-view,
+.Root__right-sidebar,
+.Root__now-playing-bar {
+  position: relative;
+  margin: 0 !important;
+  background-color: var(--panel) !important;
+  border: var(--bw) solid var(--line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: border-color var(--dur) var(--ease);
+}
+
+/* system24 gives every panel one behaviour: point at it and its frame lights
+   up in the accent. The label inside that frame follows, below. */
+.Root__globalNav:hover,
+.Root__nav-bar:hover,
+.Root__main-view:hover,
+.Root__right-sidebar:hover,
+.Root__now-playing-bar:hover {
+  border-color: var(--line-hover) !important;
+}
+
+/* The panels clip so nothing escapes the frame; the clip margin is the bleed
+   the panel label needs for the half of itself that hangs outside. The global
+   nav is deliberately excluded — its suggestion dropdown is an absolutely
+   positioned child several hundred px taller than the 64px panel, and any
+   clipping hides it outright. */
+.Root__nav-bar,
+.Root__main-view,
+.Root__right-sidebar {
+  overflow: clip;
+  overflow-clip-margin: 1.25rem;
+}
+
+/* That 20px of bleed is for the label and nothing else, but a clip margin has
+   no way to say so — it lets *any* oversized child paint 20px past the frame.
+   An artist page is exactly such a child: Spotify lays its hero photo out at
+   the panel's full width and then `transform: scale(1.1)` on top, so it spills
+   over the border and the label both (measured 286..1595 against a panel of
+   344..1537). Clipping the content box as well pins the photo to the panel
+   interior; the label lives on the panel itself, outside this box, so it keeps
+   its overhang. */
+.Root__main-view .main-view-container {
+  overflow: clip;
+}
+
+.Root__globalNav,
+.Root__now-playing-bar {
+  overflow: visible;
+}
+
+/* strip the inner surfaces so the panel frame is the only edge you see */
+.Root__globalNav > *,
+.Root__nav-bar > *,
+.Root__main-view .main-view-container,
+.Root__main-view .main-view-container__scroll-node,
+.Root__right-sidebar > *,
+.main-yourLibraryX-libraryContainer,
+.main-nowPlayingView-container,
+.main-nowPlayingView-nowPlayingWidget,
+.main-topBar-background,
+.main-nowPlayingBar-container,
+.main-nowPlayingBar-nowPlayingBar {
+  background-color: transparent !important;
+}
+
+/* ── panel labels ────────────────────────────────────────────────────
+   system24's panel-labels module, ported verbatim: one ::after per panel,
+   `top: -10px; left: 8px`, 16px at weight 500 in --text-muted, on a chip of
+   --background-base-low (the panel's own colour, which here is a shade darker
+   than the gutter it sits on), 4px of horizontal padding, z-index 100. The
+   chip straddles the top border and its own background is what erases the
+   border beneath it — there is no notch cut anywhere.
+
+   It shares the panel's --border-hover-transition, so pointing at a panel
+   lights the frame and the label together. */
+
+.Root__globalNav::after,
+.Root__nav-bar::after,
+.Root__main-view::after,
+.Root__right-sidebar::after,
+.Root__now-playing-bar::after {
+  display: block;
+  position: absolute;
+  top: -10px;
+  left: 8px;
+  z-index: 100;
+  padding: 0 4px;
+  background-color: var(--panel);
+  color: var(--fg-mute);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color var(--dur) var(--ease);
+}
+
+.Root__globalNav:hover::after,
+.Root__nav-bar:hover::after,
+.Root__main-view:hover::after,
+.Root__right-sidebar:hover::after,
+.Root__now-playing-bar:hover::after {
+  color: var(--line-hover);
+}
+
+.Root__globalNav::after       { content: 'nav'; }
+.Root__nav-bar::after         { content: 'library'; }
+.Root__main-view::after       { content: 'browse'; }
+.Root__right-sidebar::after   { content: 'now playing'; }
+.Root__now-playing-bar::after { content: 'player'; }
+
+/* The label hangs above the panel, so it costs no content height. It does
+   overlap the first few pixels inside the frame, and spotify puts content
+   flush against that edge where discord has its own padding — this is the one
+   thing the port has to add. */
+.Root__nav-bar,
+.Root__main-view,
+.Root__right-sidebar {
+  padding-top: 10px !important;
+}
+
+/* A collapsed library is a ~60px rail and the right sidebar collapses to a
+   40px peek strip — neither is wide enough for a label, and neither should
+   pay for the padding one costs. */
+.Root__nav-bar:has(.main-yourLibraryX-headerIsCollapsed),
+.Root__right-sidebar:has(.Root__right-sidebar-collapsed) {
+  padding-top: 0 !important;
+}
+
+.Root__nav-bar:has(.main-yourLibraryX-headerIsCollapsed)::after,
+.Root__right-sidebar:has(.Root__right-sidebar-collapsed)::after {
+  content: none;
+}
+
+/* ── case ────────────────────────────────────────────────────────────
+   Chrome is lowercase, the way a terminal writes every label it draws.
+   Content is not: a track title, an artist, an album or a playlist name is
+   data — it is what you scan the list for, and flattening its casing costs
+   you the shape of the word.
+
+   Encore's text component sets `text-transform: none` on its own inner span,
+   so a rule on the control that holds the label never reaches the label.
+   Every scope below is therefore listed twice: once for the control, once for
+   the encore span inside it. */
+
+.main-trackList-column,
+.main-trackList-column [class*='encore-text'],
+.main-yourLibraryX-header [class*='encore-text'],
+.x-sortBox-sortDropdown,
+.x-sortBox-sortDropdown [class*='encore-text'],
+.main-entityHeader-pretitle,
+.main-contextMenu-menuItemButton,
+.main-contextMenu-menuItemButton [class*='encore-text'],
+.main-shelf-title,
+.main-shelf-title [class*='encore-text'],
+.main-nowPlayingView-sectionHeaderText,
+.main-nowPlayingView-sectionHeaderText *,
+.main-nowPlayingView-sectionHeader [data-encore-id='buttonTertiary'],
+.main-nowPlayingView-sectionHeader [data-encore-id='buttonTertiary'] [class*='encore-text'],
+.main-actionBar-ActionBarRow [data-encore-id='buttonTertiary'] [class*='encore-text'],
+.main-entityHeader-metaData,
+.main-entityHeader-metaData [class*='encore-text'],
+[data-encore-id='buttonPrimary'],
+[data-encore-id='buttonPrimary'] [class*='encore-text'],
+[data-encore-id='buttonSecondary'],
+[data-encore-id='buttonSecondary'] [class*='encore-text'],
+[class*='legacy-button-primary'],
+[class*='legacy-button-primary'] [class*='encore-text'],
+[class*='legacy-button-secondary'],
+[class*='legacy-button-secondary'] [class*='encore-text'],
+[class*='legacy-chip__inner'],
+[class*='legacy-chip__inner'] [class*='encore-text'] {
+  text-transform: lowercase;
+}
+
+/* the creator's name inside the metadata line is content, not chrome */
+.main-entityHeader-metaData a {
+  text-transform: none;
+}
+
+/* ── global nav ──────────────────────────────────────────────────────
+   The nav links are icon-only tertiary buttons that encore rounds into discs.
+   Square them and drop the fill; a terminal marks the active view, it does
+   not put every control in a bubble. */
+
+.main-globalNav-navLink,
+.main-globalNav-link-icon,
+.main-globalNav-buttonWrapper button {
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  color: var(--fg-dim) !important;
+  box-shadow: none !important;
+  transition: color var(--dur) var(--ease),
+              background-color var(--dur) var(--ease);
+}
+
+.main-globalNav-navLink:hover,
+.main-globalNav-link-icon:hover,
+.main-globalNav-buttonWrapper button:hover {
+  background-color: var(--fill-hover) !important;
+  color: var(--fg) !important;
+  transition-duration: var(--dur-in);
+}
+
+/* The home and search buttons carry no aria-current — this class is the only
+   thing that says which view you are on, so without it the nav gives no
+   answer to "where am I". */
+.main-globalNav-navLinkActive {
+  color: var(--accent-hi) !important;
+  box-shadow: inset 0 -2px 0 0 var(--accent-hi) !important;
+}
+
+/* a third-party extension injects its own scroller of nav links here; give it
+   the same treatment rather than letting it keep spotify's round buttons */
+.custom-navlinks-scrollable_container .main-globalNav-navLink,
+.spicetify-sc-scroller button {
+  background-color: transparent !important;
+  border-radius: 0 !important;
+}
+
+/* ── search ──────────────────────────────────────────────────────────
+   The field is a prompt, not a pill: square, sunk to the gutter's black, and
+   the focus state is a hard 2px accent edge rather than a glow. */
+
+.main-globalNav-searchInputContainer,
+.main-globalNav-searchInputSection {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.main-topBar-searchBar,
+.x-searchInput-searchInputInput,
+.x-filterBox-filterInput,
+.x-sortBox-sortDropdown {
+  background-color: var(--bg) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  /* spotify draws its hover and focus rings as inset white box-shadows */
+  box-shadow: none !important;
+  color: var(--fg) !important;
+  font-family: var(--font) !important;
+  font-size: var(--t-md) !important;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.main-topBar-searchBar::placeholder,
+.x-filterBox-filterInput::placeholder,
+.main-globalNav-searchInputText {
+  color: var(--fg-mute) !important;
+}
+
+.main-topBar-searchBar:hover,
+.x-filterBox-filterInput:hover,
+.x-sortBox-sortDropdown:hover {
+  border-color: var(--fg-mute) !important;
+  box-shadow: none !important;
+}
+
+.main-topBar-searchBar:focus,
+.x-searchInput-searchInputInput:focus,
+.x-filterBox-filterInput:focus {
+  border: var(--bw) solid var(--accent) !important;
+  box-shadow: none !important;
+}
+
+.main-globalNav-searchInputContainer button {
+  color: var(--fg-mute) !important;
+  border-radius: 0 !important;
+  transition: color var(--dur) var(--ease);
+}
+
+.main-globalNav-searchInputContainer button:hover {
+  color: var(--fg) !important;
+}
+
+/* The suggestion dropdown floats over the panel below it. With no shadows
+   anywhere in this theme, the 2px edge is the entire mechanism by which a
+   floating surface separates itself from what it covers. */
+#search-dropdown {
+  background-color: var(--panel-2) !important;
+  border: var(--bw) solid var(--line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+#search-dropdown [role='row'] {
+  border-radius: 0 !important;
+  transition: background-color var(--dur) var(--ease);
+}
+
+#search-dropdown [role='row']:hover {
+  background-color: var(--fill-hover) !important;
+}
+
+/* ── buttons ─────────────────────────────────────────────────────────
+   Encore paints a primary button's disc on an inner span, not on the button,
+   so squaring the button alone leaves the circle untouched. */
+
+[class*='button-primary__inner'] {
+  background-color: var(--accent) !important;
+  color: var(--panel) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: background-color var(--dur) var(--ease);
+}
+
+[class*='legacy-button-primary']:hover [class*='button-primary__inner'] {
+  background-color: var(--accent-hov) !important;
+}
+
+[class*='legacy-button-primary']:active [class*='button-primary__inner'] {
+  background-color: var(--accent-lo) !important;
+}
+
+/* the wrapper stays bare, and it does not grow under the cursor — spotify
+   scales its play button up on hover, which is the single most app-like
+   gesture in the whole UI */
+[class*='legacy-button-primary'],
+[class*='legacy-button-primary']:hover,
+[class*='legacy-button-primary']:active,
+.main-playButton-PlayButton,
+.main-playButton-PlayButton:hover {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  border-radius: 0 !important;
+}
+
+[class*='button-secondary'],
+[data-encore-id='buttonSecondary'] {
+  background-color: transparent !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  color: var(--fg) !important;
+  box-shadow: none !important;
+}
+
+[data-encore-id='buttonSecondary']:hover {
+  background-color: var(--fill-hover) !important;
+  border-color: var(--fg-mute) !important;
+}
+
+/* Icon buttons are a bare glyph with a square block of fill under the cursor
+   — no disc, no scale. */
+.main-actionBar-ActionBarRow button:not(.main-actionBar-ActionBarPlayButtonContainer button),
+.player-controls__buttons button,
+.main-nowPlayingBar-right button,
+.main-nowPlayingView-headerButton,
+.Root__right-sidebar-peek button,
+.main-trackList-rowMoreButton,
+.main-trackList-rowAddToPlaylistButton {
+  color: var(--fg-icon) !important;
+  background-color: transparent;
+  border-radius: 0 !important;
+  transition: color var(--dur) var(--ease),
+              background-color var(--dur) var(--ease);
+}
+
+.main-actionBar-ActionBarRow button:not(.main-actionBar-ActionBarPlayButtonContainer button):hover,
+.player-controls__buttons button:hover,
+.main-nowPlayingBar-right button:hover,
+.main-nowPlayingView-headerButton:hover,
+.Root__right-sidebar-peek button:hover {
+  color: var(--fg) !important;
+  background-color: var(--fill-hover);
+  transition-duration: var(--dur-in);
+}
+
+/* row buttons stay bare — a block of fill per row turns a list into noise */
+.main-trackList-rowMoreButton:hover,
+.main-trackList-rowAddToPlaylistButton:hover {
+  color: var(--fg) !important;
+  background-color: transparent;
+}
+
+button[aria-checked='true'] {
+  color: var(--accent-hi) !important;
+}
+
+/* ── chips ───────────────────────────────────────────────────────────
+   Filter chips become bracketed tags: square, flat, hairline edge. Encore
+   prefixes its classes with a build version, so match the stable suffix.
+   Legacy chips paint on an inner span; the newer ones on the element. */
+
+[class*='legacy-chip__inner'],
+[class*='-chip']:not([class*='legacy-chip']):not([class*='chip-group']):not([class*='chip__']) {
+  min-height: 26px !important;
+  padding-inline: 10px !important;
+  background-color: transparent !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  color: var(--fg-dim) !important;
+  box-shadow: none !important;
+  font-size: var(--t-sm) !important;
+  letter-spacing: var(--tr);
+  transition: background-color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease),
+              color var(--dur) var(--ease);
+}
+
+[class*='legacy-chip']:hover [class*='legacy-chip__inner'],
+[class*='-chip']:not([class*='legacy-chip']):not([class*='chip-group']):not([class*='chip__']):hover {
+  background-color: var(--fill-hover) !important;
+  border-color: var(--fg-mute) !important;
+  color: var(--fg) !important;
+}
+
+/* the selected chip inverts — accent ground, panel-coloured text */
+[class*='chip__inner--selected'],
+[class*='-chip'][aria-checked='true'] {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--panel) !important;
+}
+
+/* ── library sidebar ─────────────────────────────────────────────── */
+
+/* system24 animates a list row by sliding it, not only by shading it: a
+   channel takes `margin-left: 10px` over --list-item-transition when its
+   wrapper is hovered. The library list is the direct analogue, so it gets the
+   same gesture and the same 10px. */
+.main-yourLibraryX-listItem {
+  position: relative;
+  min-height: var(--row-h-sidebar);
+  border-radius: 0 !important;
+  will-change: margin-left;
+  transition: background-color var(--dur) var(--ease),
+              margin-left var(--dur) var(--ease);
+}
+
+.main-yourLibraryX-listItem:hover {
+  background-color: var(--fill-hover) !important;
+  margin-left: 10px;
+}
+
+.main-yourLibraryX-listItem[aria-selected='true'] {
+  background-color: var(--fill-sel) !important;
+}
+
+.main-yourLibraryX-listItem[aria-selected='true'] [class*='encore-text'] {
+  color: var(--accent-hi) !important;
+}
+
+/* the same 4px marker the track list uses, so "selected" reads the same way
+   in both lists */
+.main-yourLibraryX-listItem::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--divider);
+  background-color: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-in) var(--ease);
+}
+
+.main-yourLibraryX-listItem:hover::before,
+.main-yourLibraryX-listItem[aria-selected='true']::before {
+  opacity: 1;
+}
+
+/* the row's own encore surface would paint over the selection fill */
+.main-yourLibraryX-listItem [class*='list-row__on-click'] {
+  background-color: transparent !important;
+  border-radius: 0 !important;
+}
+
+/* ── track list ──────────────────────────────────────────────────────
+   A terminal list: a ruled table header, flat rows, tabular numerals, and a
+   4px accent bar on the row you are pointing at. */
+
+.main-trackList-trackListHeader,
+.main-trackList-trackListHeaderRow {
+  background-color: transparent !important;
+  border-bottom: 1px solid var(--line) !important;
+  color: var(--fg-mute) !important;
+  font-size: var(--t-xs);
+  letter-spacing: var(--tr);
+}
+
+.main-trackList-column,
+.main-trackList-column [class*='encore-text'] {
+  font-size: var(--t-xs) !important;
+  letter-spacing: var(--tr);
+  color: var(--fg-mute) !important;
+}
+
+.main-trackList-trackListRow {
+  position: relative;
+  min-height: var(--row-h);
+  border-radius: 0 !important;
+  transition: background-color var(--dur) var(--ease);
+  /* Spotify marks the selected row with a hashed class we cannot name and
+     washes it in 30% white. !important is the only way past a selector whose
+     name changes every build. */
+  background-color: transparent !important;
+}
+
+.main-trackList-trackListRow:hover,
+.main-trackList-trackListRow[aria-selected='true'] {
+  background-color: var(--fill-hover) !important;
+}
+
+/* the system24 divider: 4px of accent on the row's leading edge */
+.main-trackList-trackListRow::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--divider);
+  background-color: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-in) var(--ease);
+}
+
+.main-trackList-trackListRow:hover::before,
+.main-trackList-trackListRow[aria-selected='true']::before {
+  opacity: 1;
+}
+
+/* The row that is actually playing keeps its marker lit, in the brighter
+   accent. Measured live: while audio is running spotify swaps the number span
+   in .main-trackList-rowMarker for an <img> of its equaliser — that swap is
+   the only structural signal, and unlike the build-hashed class beside it, it
+   is a hook that survives an update. */
+.main-trackList-trackListRow:has(.main-trackList-rowMarker img)::before {
+  opacity: 1;
+  background-color: var(--accent-hi);
+}
+
+/* spotify's equaliser gif is green; the theme has exactly one accent */
+.main-trackList-rowMarker img {
+  filter: grayscale(1) sepia(1) saturate(4) hue-rotate(-20deg);
+}
+
+.main-trackList-rowMainContentTitle {
+  font-size: var(--t-md) !important;
+}
+
+.main-trackList-rowMainContentSubTitle,
+.main-trackList-rowSectionVariable,
+.main-trackList-rowSectionVariable [class*='encore-text'] {
+  font-size: var(--t-sm) !important;
+  color: var(--fg-dim) !important;
+}
+
+.main-trackList-number,
+.main-trackList-duration,
+.main-trackList-rowSectionIndex,
+.main-trackList-rowSectionEnd {
+  font-size: var(--t-sm) !important;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}
+
+/* the column resize handles are invisible until you reach for one */
+.main-trackList-rowSeperator {
+  background-color: transparent;
+  transition: background-color var(--dur) var(--ease);
+}
+
+.main-trackList-rowSeperator:hover {
+  background-color: var(--line);
+}
+
+/* Explicit is a bracketed tag, not a rounded grey pill. Spotify fills it with
+   --text-subdued and rounds it; the label text inside is whatever the badge
+   means ("Explicit", "Trailer"), so keep the text and restyle the box. */
+.x-explicit-label {
+  background-color: transparent !important;
+  border: 1px solid var(--line);
+  border-radius: 0 !important;
+  color: var(--fg-mute) !important;
+  font-size: 9px !important;
+  letter-spacing: var(--tr);
+  text-transform: uppercase !important;
+  padding: 0 4px !important;
+  height: 15px;
+}
+
+/* ── artwork ─────────────────────────────────────────────────────────
+   Square. There is no art radius any more. */
+
+.main-image-image,
+.main-trackList-rowImage,
+.main-entityHeader-image,
+.main-cardImage-image,
+.cover-art,
+.cover-art-image,
+.main-avatar-image,
+img[class*='avatar'],
+.main-userWidget-box img,
+figure[class*='avatar'] {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ── entity header ───────────────────────────────────────────────────
+   No banner, no extracted colour. A fixed square of artwork with the metadata
+   stacked beside it — the layout a terminal file manager would use. */
+
+/* Match on the class *fragment*, not the whole name. Spotify versions these:
+   1.2.95 renamed `main-actionBarBackground-background` to
+   `playlist-playlist-actionBarBackground-background`, and the exact-name rule
+   silently stopped matching — which is how a
+   `linear-gradient(in oklch, rgba(99,19,0,.7), transparent)` wash of the
+   artwork's extracted colour came back under every play button. */
+[class*='entityHeader-backgroundColor'],
+[class*='entityHeader-overlay'],
+[class*='entityHeader-shadow'],
+[class*='actionBarBackground'] {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Home's filter chips are sticky, and Spotify leaves them transparent because
+   its own gradient normally sits behind them. With that gradient gone the
+   greeting scrolls straight through the chips and reads as garbled text, so
+   the bar has to carry the panel's own colour. */
+.main-home-filterChipsContainer {
+  background-color: var(--panel) !important;
+}
+
+.main-entityHeader-container,
+.main-entityHeader-headerDefault {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 24px var(--pad) 16px !important;
+}
+
+/* art and title stack are siblings inside .contentWrapper, not of the
+   container, so the gap belongs here or the title sits flush on the artwork */
+.main-entityHeader-contentWrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+/* A hard 180px square starves the title when all three panels are open, so
+   the container shrinks with the viewport. The image fills its container
+   rather than taking its own percentage, which would compound through both
+   levels and go off-square. */
+.main-entityHeader-imageContainer {
+  width: min(176px, 32%) !important;
+  min-width: 96px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  margin: 0 !important;
+}
+
+/* Spotify nests an auto-sized .profile-editImage-imageContainer between the
+   container and the <img>. Sizing only the two named classes leaves the
+   artwork resolving its 100% against a collapsed box — this has regressed
+   twice. Every level between the container and the image fills it. */
+.main-entityHeader-imageContainer * {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.main-entityHeader-image {
+  object-fit: cover;
+}
+
+/* the pretitle is the type of thing you are looking at — a bracketed tag */
+.main-entityHeader-pretitle {
+  color: var(--fg-mute) !important;
+  font-size: var(--t-xs) !important;
+  font-weight: 500;
+  letter-spacing: var(--tr-label);
+}
+
+.main-entityHeader-pretitle::before { content: '['; }
+.main-entityHeader-pretitle::after  { content: ']'; }
+
+/* The h1 carries an inline `font-size: 6rem; white-space: nowrap`, which
+   clips any title longer than the header is wide. Both need !important to
+   beat the inline style — a past regression, do not soften these. */
+.main-entityHeader-title,
+.main-entityHeader-titleInner,
+.main-entityHeader-title h1 {
+  font-family: var(--font-wide) !important;
+  font-size: clamp(18px, 2.4vw, var(--t-xl)) !important;
+  white-space: normal !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+  padding: 0 !important;
+}
+
+.main-entityHeader-subtitle,
+.main-entityHeader-metaData,
+.main-entityHeader-detailsText {
+  font-size: var(--t-sm) !important;
+  color: var(--fg-dim) !important;
+}
+
+/* ── cards and shortcuts ─────────────────────────────────────────────
+   Transparent at rest with an invisible edge that resolves under the cursor,
+   so a grid of cards reads as a grid of artwork rather than a grid of boxes. */
+
+[data-encore-id='card'],
+.main-card-cardContainer {
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: background-color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+
+[data-encore-id='card']:hover,
+.main-card-cardContainer:hover {
+  background-color: var(--fill-hover) !important;
+  border-color: var(--line) !important;
+}
+
+/* the image wrapper carries an inline --card-color extracted from the
+   artwork; letting it paint puts a different bright square behind every tile */
+.main-cardImage-imageWrapper,
+.main-card-imageContainer {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.view-homeShortcutsGrid-shortcut {
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  transition: background-color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+
+.view-homeShortcutsGrid-shortcut:hover {
+  background-color: var(--fill-hover) !important;
+  border-color: var(--line) !important;
+}
+
+.view-homeShortcutsGrid-imageWrapper,
+.view-homeShortcutsGrid-imageContainer,
+.view-homeShortcutsGrid-shortcut img {
+  border-radius: 0 !important;
+}
+
+/* ── now playing panel ───────────────────────────────────────────────
+   Spotify builds this panel out of filled cards stacked on each other, which
+   is the one place in the app that still reads as a phone. Strip the fill and
+   rule each section off from the one above it instead — the same table
+   language the track list uses. */
+
+.main-nowPlayingView-section {
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  border-top: 1px solid var(--line);
+  padding-inline: 0 !important;
+}
+
+/* the first section sits directly under the artwork and needs no rule */
+.main-nowPlayingView-nowPlayingWidget + .main-nowPlayingView-section {
+  border-top: none;
+}
+
+.main-nowPlayingView-sectionHeaderText,
+.main-nowPlayingView-sectionHeaderText * {
+  color: var(--fg-mute) !important;
+  font-size: var(--t-xs) !important;
+  font-weight: 500 !important;
+  letter-spacing: var(--tr-label);
+}
+
+.main-nowPlayingView-nowPlayingGrid img,
+.main-nowPlayingView-coverArt img,
+.main-nowPlayingView-contextItemInfo img {
+  border-radius: 0 !important;
+}
+
+/* the queue rows in this panel are list rows like any other */
+.main-nowPlayingView-queueItem li,
+.main-nowPlayingView-queueItem [role='button'] {
+  border-radius: 0 !important;
+}
+
+/* ── carousels ───────────────────────────────────────────────────────
+   The chip rows and shelf rows scroll behind a round chevron button that
+   floats over the last item. Square it and sit it on the panel ground so it
+   reads as a control rather than a bubble covering a word. */
+
+.search-searchCategory-carouselButton button,
+.spicetify-sc-chevronBtn button,
+.main-shelf-topContainer button {
+  background-color: var(--panel) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  color: var(--fg-dim) !important;
+  box-shadow: none !important;
+}
+
+.search-searchCategory-carouselButton button:hover,
+.spicetify-sc-chevronBtn button:hover {
+  background-color: var(--fill-hover) !important;
+  color: var(--fg) !important;
+}
+
+/* ── now playing bar ─────────────────────────────────────────────────
+   .Root__now-playing-bar is a grid area of the top container in its own
+   right, so it takes the panel frame directly and the inner bar just fills
+   it. Everything spotify put in between goes transparent. */
+
+.main-nowPlayingBar-container,
+.main-nowPlayingBar-nowPlayingBar {
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.main-nowPlayingBar-nowPlayingBar {
+  flex: 1 1 auto;
+  padding: 0 var(--pad) !important;
+  gap: var(--gap);
+}
+
+/* Paint only — do NOT set `display` here. Spotify sizes .player-controls at
+   width:100% against a block parent, so turning this group into a flex
+   container resolves that against an auto-width box and collapses the whole
+   transport to 0px. Known past regression. */
+.main-nowPlayingBar-left,
+.main-nowPlayingBar-center,
+.main-nowPlayingBar-right {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0;
+  padding: 0;
+}
+
+.main-nowPlayingBar-center .player-controls {
+  width: 100%;
+}
+
+/* clip the scrolling title to its dock — only this group, because the right
+   one holds the volume meter and the device picker, which have to paint and
+   open outside their box */
+.main-nowPlayingBar-left {
+  overflow: hidden;
+}
+
+.main-nowPlayingWidget-trackInfo .main-trackInfo-name a {
+  color: var(--fg) !important;
+  font-size: var(--t-md);
+}
+
+.main-nowPlayingWidget-trackInfo .main-trackInfo-artists a {
+  color: var(--fg-dim) !important;
+  font-size: var(--t-sm);
+}
+
+/* ── meters ──────────────────────────────────────────────────────────
+   The progress bar and the volume bar share this tree. system24's own
+   --custom-spotify-bar is a solid run, not a cell grid, so this is one
+   unbroken fill: accent up to the position, --line after it.
+
+   How it works: .progress-bar carries an inline `--progress-bar-transform:
+   <pct>%`, and custom properties inherit, so a two-stop gradient on a
+   descendant paints the whole meter from that one number.
+
+   Nothing here transitions. Spotify hands the bar a --progress-bar-duration
+   to glide with; a terminal redraws instead, so the meter steps once a second
+   and that is correct. */
+
+.playback-progressbar .x-progressBar-progressBarBg {
+  height: var(--meter-h) !important;
+  top: 50% !important;
+  margin-top: calc(var(--meter-h) / -2) !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.playback-progressbar .x-progressBar-progressBarBg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--accent-hi) 0 var(--progress-bar-transform, 0%),
+    var(--line) var(--progress-bar-transform, 0%) 100%
+  );
+}
+
+/* The slider areas are the old smooth fill. Hide the paint, never the box:
+   these elements carry spotify's own inline translateX(progress), and writing
+   `transform` on them with !important beats that inline style, pins the fill
+   at full width and makes every track read as finished. Opacity cannot do
+   that, and it leaves the hit box for seeking exactly where it was. */
+.playback-progressbar .x-progressBar-fillColor,
+.playback-progressbar .x-progressBar-progressFillColor {
+  opacity: 0 !important;
+  background: none !important;
+}
+
+.playback-progressbar .x-progressBar-sliderArea {
+  height: var(--meter-h) !important;
+  top: 50% !important;
+  margin-top: calc(var(--meter-h) / -2) !important;
+  transform: none !important;
+  border-radius: 0 !important;
+}
+
+/* the knob is a 2px full-height bar — a cursor sitting in the run, not a dot
+   riding on top of it. Positioned with margins, never a transform, so it
+   cannot collide with the inline transform spotify may set. */
+.playback-progressbar .progress-bar__slider {
+  display: block !important;
+  width: var(--bw) !important;
+  height: var(--meter-h) !important;
+  top: 50% !important;
+  margin-top: calc(var(--meter-h) / -2) !important;
+  margin-left: calc(var(--bw) / -2) !important;
+  background-color: var(--fg) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 0;
+  transition: opacity var(--dur-in) var(--ease);
+}
+
+.playback-progressbar:hover .progress-bar__slider,
+.playback-progressbar:active .progress-bar__slider,
+.playback-progressbar:focus-within .progress-bar__slider {
+  opacity: 1;
+}
+
+/* the timecodes are a bracketed pair around the meter, tabular so the digits
+   do not shuffle the bar sideways as they tick */
+.playback-bar__progress-time-elapsed,
+.main-playbackBarRemainingTime-container {
+  color: var(--fg-mute) !important;
+  font-size: var(--t-sm) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr);
+}
+
+.playback-bar__progress-time-elapsed::before { content: '['; }
+.main-playbackBarRemainingTime-container::after { content: ']'; }
+
+/* ── menus, modals, tooltips ─────────────────────────────────────────
+   Everything that floats gets the same 2px edge, because with no shadows that
+   edge is the whole of how a floating surface says it is in front. */
+
+.main-contextMenu-menu,
+.GenericModal,
+[class*='-popover']:not([class*='trigger']) {
+  background-color: var(--panel-2) !important;
+  border: var(--bw) solid var(--line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 4px !important;
+}
+
+.main-contextMenu-menuItem,
+.main-contextMenu-menuItemButton {
+  border-radius: 0 !important;
+  font-size: var(--t-sm) !important;
+  letter-spacing: var(--tr);
+  transition: background-color var(--dur) var(--ease);
+}
+
+/* Only the button is positioned, never the <li>. A submenu ("add to playlist",
+   "go to artist") is a tippy that Spotify appends *inside* the <li>, so a
+   positioned <li> becomes its containing block — and the menu <ul> above it
+   scrolls (`overflow: auto`), which then clips the flyout and turns the parent
+   menu into a horizontally scrolling box. Measured: scrollWidth 558 against a
+   288px client. Leaving the <li> static hands the containing block back to the
+   tippy wrapper outside the scroller, where the flyout belongs. */
+.main-contextMenu-menuItemButton {
+  position: relative;
+}
+
+.main-contextMenu-menuItemButton:hover,
+.main-contextMenu-menuItem:hover {
+  background-color: var(--fill-hover) !important;
+}
+
+/* the same 4px marker as the track list, so a menu row and a track row answer
+   the pointer in the same language */
+.main-contextMenu-menuItemButton::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--divider);
+  background-color: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-in) var(--ease);
+}
+
+.main-contextMenu-menuItemButton:hover::before {
+  opacity: 1;
+}
+
+/* The global search suggestions are a listbox, and Spotify fills its wrapper
+   with `--background-elevated-highlight` — which this palette maps to system24's
+   #38423B. That paints a slab two shades lighter than the popover across the
+   whole dropdown. The floating surface owns its background here, as it does for
+   menus and modals, so the wrapper gives it up. Options are exempt: their own
+   hover and selected fills are the point. */
+[role='listbox'] > *:not([role='option']) {
+  background-color: transparent !important;
+}
+
+[role='tooltip'],
+.main-contextMenu-tippy {
+  --generic-tooltip-background-color: var(--panel-2);
+  background-color: var(--panel-2) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  color: var(--fg) !important;
+  font-size: var(--t-sm) !important;
+  box-shadow: none !important;
+}
+
+/* ── scrollbars ──────────────────────────────────────────────────────
+   This build scrolls with OverlayScrollbars, not the native scrollbar, so
+   ::-webkit-scrollbar rules are dead code here — the real hooks are these.
+   A square handle on nothing: no track, no gutter, no corners. */
+
+.os-scrollbar {
+  --os-handle-bg: var(--line);
+  --os-handle-bg-hover: var(--fg-mute);
+  --os-handle-bg-active: var(--fg-mute);
+  --os-handle-border-radius: 0;
+  --os-size: 10px;
+  padding: 0;
+}
+
+.os-scrollbar-track {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.os-scrollbar-handle {
+  background-color: var(--line) !important;
+  border-radius: 0 !important;
+  transition: background-color var(--dur) var(--ease);
+}
+
+.os-scrollbar:hover .os-scrollbar-handle,
+.os-scrollbar-handle:hover {
+  background-color: var(--fg-mute) !important;
+}
+
+.os-scrollbar-vertical { width: 10px; }
+.os-scrollbar-horizontal { height: 10px; }
+
+/* ── icons ───────────────────────────────────────────────────────────
+   Spotify's own inline SVGs, kept. An earlier version of this theme replaced
+   every one of them at runtime with a glyph from an icon font, keyed on the
+   `d` attribute of the icon's first path. That mapping is unmaintainable —
+   a path changes, the entry stops matching, and the icon silently becomes
+   either the wrong picture or nothing at all. Spotify's own icons are always
+   the right picture for the control they sit on, and they cannot fall out of
+   sync with a build. So the swap is gone and the JS with it.
+
+   What is left is making them look like they belong: one weight, one colour,
+   inheriting from whatever control holds them, and none of spotify's own
+   accent greens. `currentColor` is what encore already fills with, so the
+   button rules above are what actually colour these. */
+
+svg[data-encore-id='icon'],
+.main-trackList-rowImagePlayIcon,
+.main-contextMenu-subMenuIcon {
+  fill: currentColor;
+  color: inherit;
+}
+
+/* The playing-track equaliser is a green gif, and it is the only green left
+   in the app. Push it onto the accent instead of letting it reintroduce
+   spotify's palette one row at a time. */
+.main-trackList-rowMarker img,
+.main-trackList-playingIcon {
+  filter: grayscale(1) sepia(1) saturate(4) hue-rotate(-18deg);
+}
+
+/* encore sizes decorative icons off these; hold them at terminal scale so an
+   icon never outgrows the line of text beside it */
+.main-nowPlayingBar-right svg,
+.player-controls__buttons svg,
+.main-globalNav-searchSection svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── interaction ─────────────────────────────────────────────────────
+   One place owning how the theme answers the pointer:
+
+     respond now   hover shortens the transition to --dur-in so the fill lands
+                   on the same frame as the cursor, while the fade back out
+                   keeps the slower --dur and a swept list does not strobe
+     press is a state  a control with no :active gives nothing back between the
+                   click and whatever spotify does next, which is what reads as
+                   a dead UI. the press fill is instant — a 60ms fade on a 90ms
+                   click is a fade you never see
+     point at it   cursor: pointer on everything that behaves like a button
+
+   These sit near the end on purpose: :hover and :active on the same element
+   have equal specificity, so the press has to come last. */
+
+.main-trackList-trackListRow:hover,
+.main-yourLibraryX-listItem:hover,
+.main-contextMenu-menuItemButton:hover,
+.main-contextMenu-menuItem:hover,
+[data-encore-id='card']:hover,
+.view-homeShortcutsGrid-shortcut:hover,
+#search-dropdown [role='row']:hover,
+[class*='legacy-chip']:hover [class*='legacy-chip__inner'] {
+  transition-duration: var(--dur-in);
+}
+
+.main-trackList-trackListRow,
+.main-yourLibraryX-listItem,
+.main-contextMenu-menuItemButton,
+.main-contextMenu-menuItem,
+.view-homeShortcutsGrid-shortcut,
+#search-dropdown [role='row'],
+[data-encore-id='card'],
+[class*='legacy-chip'],
+.main-trackList-column {
+  cursor: pointer;
+}
+
+.main-trackList-trackListRow:active,
+.main-yourLibraryX-listItem:active,
+.main-contextMenu-menuItemButton:active,
+.main-contextMenu-menuItem:active,
+[data-encore-id='card']:active,
+.view-homeShortcutsGrid-shortcut:active,
+#search-dropdown [role='row']:active,
+[class*='legacy-chip']:active [class*='legacy-chip__inner'] {
+  background-color: var(--fill-press) !important;
+  transition-duration: 0s;
+}
+
+/* a control that cannot be used should say so before it is clicked */
+button:disabled,
+[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Artist and album names inside a row are links, and system24 paints a link
+   with --text-brand, which midnight maps to --accent-1 — the pale end of the
+   accent, not the accent itself. They stay dim until pointed at, the way a
+   channel name does. */
+.main-trackList-rowMainContentSubTitle a:hover,
+.main-trackInfo-artists a:hover,
+.main-entityHeader-subtitle a:hover,
+.main-entityHeader-metaData a:hover,
+.main-nowPlayingWidget-trackInfo a:hover {
+  color: var(--accent-text) !important;
+  text-decoration: underline;
+}
+
+/* ── focus ───────────────────────────────────────────────────────────
+   A real outline, not a box-shadow ring: a ring follows the element's own
+   radius, and with everything square that is the wrong shape by definition.
+   The offset keeps the 2px clear of the element's own edge. */
+
+*:focus-visible {
+  outline: var(--bw) solid var(--accent) !important;
+  outline-offset: 2px;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

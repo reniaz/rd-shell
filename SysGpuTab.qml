@@ -18,7 +18,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        spacing: 10
+        spacing: Caelus.spaceLoose
 
         SysCard {
             title: SysMon.gpuName !== "" ? SysMon.gpuName : "Graphics card"
@@ -28,8 +28,8 @@ Item {
                 Text {
                     text: Format.temp(SysMon.gpuTemp)
                     color: Colors.heat(SysMon.gpuTemp, SysMon.gpuWarm, SysMon.gpuHot, Colors.sysColor)
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
             ]
 
@@ -74,8 +74,8 @@ Item {
                 Text {
                     text: Format.temp(SysMon.igpuTemp)
                     color: Colors.heat(SysMon.igpuTemp, SysMon.cpuWarm, SysMon.cpuHot, Colors.sysColor)
-                    font.family: "caelusevka"
-                    font.pixelSize: 13
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
                 }
             ]
 
