@@ -135,6 +135,17 @@ Item {
         }
     }
 
+    // Same one-screen rule and for the same reason as the launcher: the
+    // keybind overview takes the keyboard exclusively too.
+    PopupLoader {
+        open: Keybinds.open && root.modelData.name === root.overlayScreen
+
+        KeybindOverview {
+            screen: root.modelData
+            onDismissed: Keybinds.open = false
+        }
+    }
+
     // The same one-screen rule as the power menu: the switcher takes the keyboard
     // exclusively, so two of them would fight over it, and a strip of wallpapers
     // is only wanted on the screen you are looking at. It closes itself through

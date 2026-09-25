@@ -124,6 +124,7 @@ What each bind is for:
 | `Ctrl+Shift+Space` | Cycle keyboard layout — this is what the keyboard pill and its OSD react to |
 | `Ctrl+Alt+Up` | Area screenshot via `screenshot.sh`, copies to clipboard |
 | `Super + H` | Keybind cheat sheet via `keybinds.sh` — rofi, themed like the launcher, built from `hyprctl binds` |
+| `Super + K` | Keybind overview inside the bar (`KeybindOverview.qml`) — type to filter by action or keys (`shift s`), `Enter` or a click runs the selected bind |
 
 **Super+C is not bound on this machine**, even though older docs in this repo
 claim it opens the Claude panel. The Claude and system panels have no bind of
@@ -198,7 +199,7 @@ Other scripts, bound from Hyprland rather than polled:
 |---|---|
 | `scripts/mic-toggle.sh` | mic pill click, `Ctrl+Shift+M`, `XF86AudioMicMute` |
 | `scripts/screenshot.sh` | `Ctrl+Alt+Up` (area capture, copies to clipboard) |
-| `scripts/keybinds.sh` | `Super+H` (rofi cheat sheet of every Hyprland bind; needs `rofi` and `jq`) |
+| `scripts/keybinds.sh` | `Super+H` (rofi cheat sheet of every Hyprland bind; needs `rofi` and `jq`); `--tsv` feeds the `Super+K` overview |
 
 Everything above needs its command on `PATH`; `install.sh` checks each one and
 tells you which package provides it. `hyprctl` is used by the workspace dots,

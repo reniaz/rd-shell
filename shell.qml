@@ -55,6 +55,15 @@ ShellRoot {
         }
     }
 
+    // Bound to Super+K in hyprland.lua: qs ipc -c rd-shell call keybinds toggle
+    IpcHandler {
+        target: "keybinds"
+
+        function toggle(): void {
+            Keybinds.toggle();
+        }
+    }
+
     // Bound to Super+N in hyprland.lua: qs ipc -c rd-shell call notifications toggle
     IpcHandler {
         target: "notifications"

@@ -6,14 +6,22 @@
 # workspace loops generate. The Lua config dispatches through `__lua`, whose
 # dispatcher name and argument say nothing useful, so each bind carries a
 # `description` in hyprland.lua and that is what is shown here.
+#
+#   keybinds.sh          the rofi sheet (SUPER+H)
+#   keybinds.sh --tsv    just the rows, "<combo>\t<action>\t<ref>" -- what the
+#                        bar's own overview (KeybindOverview.qml, SUPER+K)
+#                        reads, so both lists decode `hyprctl binds` in this
+#                        one place. <ref> is the bind's Lua callback (see
+#                        `ref` below), empty for a bind the overview cannot run
 set -euo pipefail
 
+MODE=${1:-}
 PIDFILE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rofi-keybinds.pid"
 
 # Second press closes the sheet instead of stacking another copy on top of it.
 # rofi removes the file on a clean exit; a killed one leaves it behind, so the
 # pid is only believed when it still belongs to a rofi.
-if [ -s "$PIDFILE" ] && [ "$(cat "/proc/$(cat "$PIDFILE")/comm" 2>/dev/null)" = "rofi" ]; then
+if [ "$MODE" != --tsv ] && [ -s "$PIDFILE" ] && [ "$(cat "/proc/$(cat "$PIDFILE")/comm" 2>/dev/null)" = "rofi" ]; then
     kill "$(cat "$PIDFILE")" 2>/dev/null || true
     exit 0
 fi
@@ -43,8 +51,18 @@ rows=$(hyprctl -j binds | jq -r '
     def action:
         if (.description // "") != "" then .description
         else ("\(.dispatcher) \(.arg // "")" | rtrimstr(" ")) end;
-    .[] | [ ((mods + [keyname]) | join(" + ")), action ] | @tsv
+    # A bind in this Lua config dispatches through `__lua`, and its arg is the
+    # callback'"'"'s slot in the Lua registry -- what lets the overview run it with
+    # `hyprctl eval`. Mouse binds (drag to move/resize) have nothing to run
+    # without the drag itself, so they get no ref.
+    def ref: if .dispatcher == "__lua" and (.mouse | not) then .arg else "" end;
+    .[] | [ ((mods + [keyname]) | join(" + ")), action, ref ] | @tsv
 ')
+
+if [ "$MODE" = --tsv ]; then
+    printf '%s\n' "$rows"
+    exit 0
+fi
 
 # Both columns are padded to the widest bind, which lines up because caelusevka
 # is monospaced. Pango markup means the text has to be escaped first.

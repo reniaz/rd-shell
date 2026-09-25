@@ -427,6 +427,8 @@ hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd(app_launcher), { description = "A
 -- This cheat sheet. The script reads the descriptions above back out of
 -- `hyprctl binds`, so a new bind shows up in it as soon as it is described.
 hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("~/.config/hypr/scripts/keybinds.sh"), { description = "Show this keybind list" })
+-- The same list inside the bar, with a search field (KeybindOverview.qml).
+hl.bind(mainMod .. " + K", hl.dsp.exec_cmd("qs ipc -c rd-shell call keybinds toggle"), { description = "Keybind overview (search)" })
 hl.bind("CTRL + SHIFT + M", hl.dsp.exec_cmd("~/.config/hypr/scripts/mic-toggle.sh"), { description = "Mute / unmute the microphone" })
 -- Cycle the keyboard layout (us <-> de). "all" keeps every keyboard on the same
 -- layout; switching only the main one leaves the others behind. Hyprland emits
@@ -705,7 +707,7 @@ hl.layer_rule({
 -- transparent gaps to protect here, only the rounded corners.
 hl.layer_rule({
     name  = "quickshell-osd-blur",
-    match = { namespace = "^qs-(audioosd|brightnessosd|contrastosd|kbosd|launcher)$" },
+    match = { namespace = "^qs-(audioosd|brightnessosd|contrastosd|kbosd|launcher|keybinds)$" },
 
     blur         = true,
     ignore_alpha = 0.2,
