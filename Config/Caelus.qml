@@ -55,7 +55,15 @@ Singleton {
     // answer was tonal-spot every time -- it is the scheme Material You itself
     // defaults to, and the only one that reliably produces a usable neutral
     // surface ramp from an arbitrary wallpaper. The others are kept reachable
-    // by editing this line rather than by a control nobody moved twice.
+    // by editing this line rather than by a control nobody moved twice. The
+    // settings popup's "Wallpaper colours" toggle is the one exception: it
+    // is a binary on/off, not a picker, and when on, scripts/matugen-scheme.sh
+    // overrides this line's answer -- normally to `content`, which keeps a
+    // wallpaper's own colours instead of inventing a secondary/tertiary hue,
+    // or to `monochrome` (white/grey, no hue at all) when the wallpaper
+    // itself has no real colour to keep, so an achromatic wallpaper doesn't
+    // quietly pick up matugen's own blue fallback instead. Config/Caelus.qml
+    // itself stays fixed at tonal-spot either way.
     readonly property string scheme: "tonal-spot"
 
     // matugen's `-m/--mode` -- light, dark or smart (matugen picks from the

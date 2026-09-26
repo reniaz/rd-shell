@@ -5,8 +5,11 @@ import qs.Services
 
 // The live half of roadmap §7.6: a small, hand-picked surface over the
 // settings a person actually reaches for. The dynamic colour switch was
-// taken off the card -- colour simply follows the wallpaper -- so the one
-// toggle left here is the desktop widgets layer, above the power section.
+// taken off the card -- colour simply follows the wallpaper whenever dynamic
+// colour is on. Whether that colour keeps the wallpaper's own chroma or is
+// reshaped into today's tonal-spot scheme is still a real choice, so that
+// gets its own toggle, above the desktop widgets layer and the power
+// section.
 // The card and the click-outside dismissal both belong to BarPopup, same as
 // every other popup on this bar.
 //
@@ -86,6 +89,70 @@ BarPopup {
                 color: Colors.fg
                 font.family: Caelus.fontFamily
                 font.pixelSize: Caelus.sizeLead
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Colors.popupBorder
+        }
+
+        // Whether matugen keeps the wallpaper's own colours instead of
+        // reshaping them into today's tonal-spot scheme -- the binary on/off
+        // the user asked for, not a scheme picker (Caelus.qml's scheme stays
+        // fixed either way). Same glyph-swap idiom as every toggle on this
+        // card, with a one-line caption under the label naming which way it
+        // currently sits since the two states are not self-explanatory the
+        // way "on"/"off" usually is here. Only meaningful while dynamic
+        // colour is actually on -- Settings.dynamicColour is what gates
+        // whether the shell recolours from the wallpaper at all -- so the
+        // whole row dims and stops answering clicks when that is off, same
+        // as this shell dims anything else a dependency has turned moot.
+        RowLayout {
+            id: wallpaperColoursRow
+
+            Layout.fillWidth: true
+            spacing: Caelus.space
+            opacity: Settings.dynamicColour ? 1 : 0.4
+
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
+
+            Text {
+                text: Settings.wallpaperColours ? "toggle_on" : "toggle_off"
+                color: Settings.wallpaperColours ? Colors.popupAccent : Colors.fgMuted
+                font.family: Caelus.symbolFamily
+                font.pixelSize: Caelus.sizeTitle
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    enabled: Settings.dynamicColour
+                    cursorShape: Settings.dynamicColour ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: Settings.wallpaperColours = !Settings.wallpaperColours
+                }
+            }
+
+            ColumnLayout {
+                spacing: 0
+
+                Text {
+                    text: "Wallpaper colours"
+                    color: Colors.fg
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
+                }
+
+                Text {
+                    text: Settings.wallpaperColours
+                        ? "Colours taken straight from the wallpaper"
+                        : "Today's colours (default)"
+                    color: Colors.fgMuted
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
+                }
             }
 
             Item { Layout.fillWidth: true }

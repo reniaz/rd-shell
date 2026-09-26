@@ -41,3 +41,22 @@ you edit the file.
 |---|---|
 | surfaces, accent, label text, island edge, network/keyboard/media/notification pills | matugen roles outright |
 | volume (green), mic and power (red), `ok`/`warn`/`error`, the 12 chart slots | hue kept, saturation/brightness borrowed |
+
+## Wallpaper colours
+
+The settings popup's **Wallpaper colours** toggle (`settings.json`'s
+`wallpaperColours`, off by default) changes which matugen scheme dynamic
+colour renders with. Off, matugen runs its usual `tonal-spot` scheme, which
+invents a secondary/tertiary hue rather than staying inside the wallpaper's
+own colour — this is also why a black-and-white wallpaper still gives the
+bar a blue accent with the toggle off: matugen can't extract a colour from
+an image that has none, so it falls back to its own default blue regardless
+of scheme. On, `scripts/matugen-scheme.sh` swaps in matugen's `content`
+scheme instead, which keeps the full chroma of the wallpaper's own source
+colour and picks an analogous (not complementary) tertiary hue, so the theme
+reads as *this wallpaper's* palette rather than Material's reinterpretation
+of it — unless the wallpaper is itself achromatic (or near enough that
+matugen can't find real chroma in it either), in which case it renders
+`monochrome` instead: white/grey/black only, so an accent-less wallpaper
+gets an accent-less theme rather than that same invented blue. Same
+restart-the-render behaviour as flipping dynamic colour itself.

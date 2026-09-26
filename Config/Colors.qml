@@ -166,6 +166,9 @@ Singleton {
     readonly property color volumeIcon: volumeColor
     readonly property color micIcon: micColor
     readonly property color networkIcon: netColor
+    // Off is muted chrome, not an alert: a switched-off radio is a choice.
+    readonly property color bluetoothIcon: fgDim
+    readonly property color bluetoothOff: fgMuted
     readonly property color keyboardIcon: keyboardColor
     readonly property color mediaIcon: mediaColor
     readonly property color powerIcon: powerColor

@@ -10,6 +10,12 @@ The `✦` pill on the left of the bar opens `SettingsPopup.qml`. It holds:
   whichever control keyboard focus is on right now (a launcher row, a
   toggle, the slider handle, …). Off by default; every focusable control in
   the shell already carries the ring, gated on this one setting.
+- **Wallpaper colours** — off by default. On, dynamic colour keeps the
+  wallpaper's own colours (matugen's `content` scheme) instead of the usual
+  `tonal-spot`, which invents a secondary/tertiary hue — or, for a
+  black-and-white wallpaper that has no colour of its own to keep,
+  `monochrome` (white/grey accent) instead of matugen's own blue fallback.
+  See [Theming](../theming/README.md#wallpaper-colours).
 
 Everything the popup can set is backed by a single file,
 `settings.json`, next to `shell.qml` in `~/.config/quickshell/rd-shell/` —
@@ -23,7 +29,8 @@ need to exist; every property has its own default:
   "desktopWidgets": true,
   "uiScale": 1.0,
   "highContrast": false,
-  "focusRing": false
+  "focusRing": false,
+  "wallpaperColours": false
 }
 ```
 
@@ -35,6 +42,7 @@ need to exist; every property has its own default:
 | `uiScale` | `1.0` | The UI scale slider described above. |
 | `highContrast` | `false` | The high-contrast toggle described above. |
 | `focusRing` | `false` | The visible-focus-ring toggle described above. |
+| `wallpaperColours` | `false` | The wallpaper-colours toggle described above; resolved by `scripts/matugen-scheme.sh` into matugen's `content` scheme (`monochrome` for a wallpaper with no real colour) instead of `Config/Caelus.qml`'s fixed `tonal-spot`. |
 
 There's no UI-sounds toggle any more — the feature (and
 `Services/UiSound.qml`) has been removed outright, not just hidden.

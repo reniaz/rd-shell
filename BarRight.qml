@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Bluetooth
 import qs.Config
 import qs.Services
 
@@ -203,6 +205,63 @@ RowLayout {
 
                 onWheel: wheel => Audio.setVolume(Audio.volume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05))
             }
+        }
+    }
+
+    // Only on a machine that has an adapter: no adapter (or no bluez), no
+    // pill, and the row keeps no spacing for it. Settings.bluetoothPill
+    // hides it by hand on a machine that has one but never uses it. Icon
+    // only -- the glyph already says off / on / a device connected.
+    Pill {
+        id: bluetoothPill
+
+        readonly property BluetoothAdapter adapter: Bluetooth.defaultAdapter
+        readonly property bool powered: adapter?.enabled ?? false
+        readonly property bool linked: powered && (adapter?.devices.values.some(d => d.connected) ?? false)
+
+        visible: adapter !== null && Settings.bluetoothPill
+        pressed: bluetoothArea.pressed
+
+        // bluez refuses to power an rfkill soft-blocked adapter, so turning
+        // one on lifts the block first and powers it once it leaves Blocked.
+        property bool _enableWhenUnblocked: false
+
+        function toggle() {
+            if (bluetoothPill.powered) {
+                bluetoothPill.adapter.enabled = false;
+            } else if (bluetoothPill.adapter.state === BluetoothAdapterState.Blocked) {
+                bluetoothPill._enableWhenUnblocked = true;
+                Quickshell.execDetached(["rfkill", "unblock", "bluetooth"]);
+            } else {
+                bluetoothPill.adapter.enabled = true;
+            }
+        }
+
+        Connections {
+            target: bluetoothPill.adapter
+
+            function onStateChanged() {
+                if (!bluetoothPill._enableWhenUnblocked || bluetoothPill.adapter.state === BluetoothAdapterState.Blocked) return;
+                bluetoothPill._enableWhenUnblocked = false;
+                if (!bluetoothPill.powered) bluetoothPill.adapter.enabled = true;
+            }
+        }
+
+        icon: !powered ? "bluetooth_disabled" : linked ? "bluetooth_connected" : "bluetooth"
+        iconColor: powered ? Colors.bluetoothIcon : Colors.bluetoothOff
+
+        MouseArea {
+            id: bluetoothArea
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: Qt.PointingHandCursor
+
+            // Left switches the adapter on or off; right opens KDE's
+            // Bluetooth settings for pairing, the same way the network
+            // pill hands off to NetworkManager's.
+            onClicked: mouse => mouse.button === Qt.RightButton
+                ? Quickshell.execDetached(["kcmshell6", "kcm_bluetooth"])
+                : bluetoothPill.toggle()
         }
     }
 

@@ -20,7 +20,7 @@ CACHE="$HOME/.cache/rd-shell/preview"
 MATUGEN=/usr/bin/matugen
 TEMPLATE="$DIR/matugen/colors.json"
 
-pair=$("$DIR/scripts/matugen-scheme.sh" 2>/dev/null || true)
+pair=$("$DIR/scripts/matugen-scheme.sh" "$img" 2>/dev/null || true)
 scheme=${pair%% *}
 mode=${pair##* }
 [ -n "$scheme" ] || scheme=tonal-spot

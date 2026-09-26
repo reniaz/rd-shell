@@ -55,6 +55,19 @@ Singleton {
     // Default false: nothing anywhere draws a focus outline until someone
     // turns this on.
     property alias focusRing: adapter.focusRing
+    // Shows the bar's Bluetooth pill (it still hides on its own when there is
+    // no adapter). Deliberately not in SettingsPopup.qml: it is a set-once
+    // choice for a machine that has an adapter but never uses it, so it is
+    // set by hand here in settings.json ("bluetoothPill": false).
+    property alias bluetoothPill: adapter.bluetoothPill
+
+    // Settings popup -> Wallpaper colours. Off (default) is exactly today's
+    // behaviour: matugen runs Config/Caelus.qml's own scheme (tonal-spot),
+    // which invents a secondary/tertiary hue rather than staying inside the
+    // source colour. On, scripts/matugen-scheme.sh reads this back out of
+    // settings.json and swaps in a scheme whose colours stay the wallpaper's
+    // own instead.
+    property alias wallpaperColours: adapter.wallpaperColours
 
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
@@ -80,6 +93,11 @@ Singleton {
     property bool _ready: false
 
     onDynamicColourChanged: if (root._ready) reapplyDebounce.restart()
+
+    // Same reasoning as dynamicColour above: the scheme matugen renders with
+    // is baked into the last render, so flipping this needs the same
+    // re-render to be seen rather than waiting for the next wallpaper pick.
+    onWallpaperColoursChanged: if (root._ready) reapplyDebounce.restart()
 
     // matugen reads settings.json, and JsonAdapter writes it a moment after the
     // property changes. Re-rendering immediately would read the old scheme back
@@ -134,6 +152,8 @@ Singleton {
             property real uiScale: 1.0
             property bool highContrast: false
             property bool focusRing: false
+            property bool bluetoothPill: true
+            property bool wallpaperColours: false
         }
     }
 }

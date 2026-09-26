@@ -36,6 +36,13 @@ One bar per monitor (`BarWindow.qml`), split into three groups.
   way.
 - **Volume pill** — opens a volume slider/popup (`MediaVolume.qml`,
   `VolumeSlider.qml`), same mute slash/swing as the mic pill.
+- **Bluetooth pill** — only shown when the machine has a Bluetooth adapter.
+  The icon shows off / on / a device connected; left-click turns the adapter
+  on or off, right-click opens KDE's Bluetooth settings for pairing
+  (`kcmshell6 kcm_bluetooth`, package `bluedevil`). Turning on a
+  soft-blocked adapter lifts the rfkill block first. To hide the pill on a
+  machine that has an adapter you never use, set `"bluetoothPill": false` in
+  `~/.config/quickshell/rd-shell/settings.json` (not in the settings popup).
 - **Network pill** — online/offline; opens `NetworkPopup.qml` with live
   down/up speed, byte counters and a 60s sparkline.
 - **Notification bell** — see [Notifications](notifications.md).

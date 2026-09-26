@@ -335,6 +335,17 @@ else
     missing+=(plasma-nm)
 fi
 
+# Same for the Bluetooth pill's right-click (kcm_bluetooth, from bluedevil) --
+# only asked for on a machine that has an adapter; without one the pill hides.
+if compgen -G '/sys/class/bluetooth/hci*' >/dev/null; then
+    if compgen -G '/usr/lib*/qt6/plugins/plasma/kcms/*/kcm_bluetooth.so' >/dev/null; then
+        ok "kcm_bluetooth"
+    else
+        fail "kcm_bluetooth (package bluedevil)"
+        missing+=(bluedevil)
+    fi
+fi
+
 # libva-nvidia-driver only matters -- and only installs cleanly -- on a box
 # that actually has the card; nvidia-smi has no Fedora package at all (it
 # ships with cuda-devel) so it is deliberately not probed for either.

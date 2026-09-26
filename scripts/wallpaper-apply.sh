@@ -223,7 +223,12 @@ mgmode=dark            # <- hand-edit for a quick stopgap with no QML
 # this script's own positional parameters are still the arguments it was
 # invoked with, and overwriting them here would quietly change what the rest
 # of the file sees.
-mgpair=$("$SCRIPTS/matugen-scheme.sh" 2>/dev/null || true)
+#
+# $img (resolved above, from either argument or --restore's state file) is
+# passed through so matugen-scheme.sh can tell an achromatic wallpaper apart
+# from a colourful one -- only load-bearing when the wallpaper-colours toggle
+# is on; otherwise it's read and ignored.
+mgpair=$("$SCRIPTS/matugen-scheme.sh" "$img" 2>/dev/null || true)
 if [ -n "$mgpair" ]; then
     mgscheme=${mgpair%% *}
     mgmode=${mgpair##* }

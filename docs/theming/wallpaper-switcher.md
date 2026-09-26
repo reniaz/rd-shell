@@ -51,7 +51,14 @@ render.
 `scripts/wallpaper-preview.sh` renders a throwaway matugen pass per swatch,
 using the exact same scheme/mode resolution as the real apply
 (`scripts/matugen-scheme.sh`) — a preview computed a different way than the
-apply would produce mismatched colours, which is worse than no preview.
+apply would produce mismatched colours, which is worse than no preview. That
+includes the settings popup's [Wallpaper colours](../the-shell/settings.md)
+toggle: the swatches show the `content` scheme (or `monochrome`, for a
+wallpaper with no real colour of its own), not `tonal-spot`, whenever it's
+on — each swatch is checked against its own image, so a coverflow mixing
+colourful and black-and-white wallpapers renders each correctly rather than
+all-or-nothing. Its on-disk cache is keyed on the scheme and mode too, so flipping
+the toggle can never serve a stale swatch rendered under the other one.
 
 ## Adding wallpapers
 

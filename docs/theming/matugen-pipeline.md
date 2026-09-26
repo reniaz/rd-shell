@@ -2,8 +2,10 @@
 
 Every wallpaper switch runs `scripts/wallpaper-apply.sh`, which calls
 [matugen](https://github.com/InioX/matugen) twice against the chosen image
-(`--prefer saturation`, a fixed scheme/mode resolved by
-`scripts/matugen-scheme.sh`):
+(`--prefer saturation`, a scheme/mode resolved by `scripts/matugen-scheme.sh`
+— normally `Config/Caelus.qml`'s fixed `tonal-spot`, or `content` when the
+settings popup's [Wallpaper colours](../the-shell/settings.md) toggle is on,
+or `monochrome` if that toggle is on and the wallpaper itself is achromatic):
 
 1. **`matugen/bar.toml`** first — renders only the bar's own template
    (`Config/Wal.qml` reads the result). Kept as a separate, first run so no

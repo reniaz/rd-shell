@@ -289,6 +289,24 @@ Singleton {
             previewDebounce.restart();
     }
 
+    // Dropped whenever the scheme itself changes, not only the wallpaper --
+    // toggling Settings.wallpaperColours is exactly that, and every cached
+    // answer above was computed under whichever scheme was live at the time.
+    // Left in place they would go on showing the wrong swatches for any card
+    // already scrolled past. wallpaper-preview.sh's own on-disk cache is
+    // keyed to survive this by itself; this in-memory one is not, and is only
+    // ever cleared by hand.
+    Connections {
+        target: Settings
+
+        function onWallpaperColoursChanged() {
+            wp._previewCache = {};
+            wp._previewRoles = null;
+            if (wp.previewPath !== "")
+                previewDebounce.restart();
+        }
+    }
+
     FileView {
         path: `${Quickshell.env("HOME")}/.cache/rd-shell/wallpaper`
         watchChanges: true
