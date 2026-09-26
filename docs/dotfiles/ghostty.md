@@ -82,3 +82,11 @@ Either way, ghostty refuses to start in a working directory that doesn't
 exist — `install.sh` creates
 `~/.local/state/ghostty/new-window` up front so the first terminal of a
 fresh install doesn't fail on a missing directory.
+
+The other half is `scripts/ghostty-new-window.bash`, which `~/.bashrc`
+sources (`install.sh` appends that one line). A shell that starts inside
+Ghostty *in* that marker directory is a new window: it `cd`s to `~` and runs
+fetchit. A split inherits its parent's working directory, which is never the
+marker, so it opens quietly where you were. Without the `~/.bashrc` line, new
+windows stay in `~/.local/state/ghostty/new-window` and show no fetchit — run
+`./install.sh` again to add it.

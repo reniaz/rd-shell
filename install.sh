@@ -920,6 +920,24 @@ else
     warn "starship not installed — ~/.bashrc left untouched"
 fi
 
+# Super+Q opens every Ghostty window in $GHOSTTY_STATE as a marker; this hook
+# moves the new shell to ~ and runs fetchit there. The hook itself lives in
+# the repo (scripts/ghostty-new-window.bash) so a `git pull` updates it;
+# ~/.bashrc only gets the one line that sources it. An older hand-written
+# copy of the same block (it tests the same marker dir) counts as wired.
+step "Ghostty new-window hook"
+NEWWIN_HOOK="$HOME/.config/quickshell/$CONFIG/scripts/ghostty-new-window.bash"
+if [ -f "$BASHRC" ] && grep -qE 'ghostty/new-window|ghostty-new-window\.bash' "$BASHRC"; then
+    ok "~/.bashrc already wires the new-window hook"
+else
+    [ -f "$BASHRC" ] && cp -p "$BASHRC" "$BASHRC.bak-$(date +%Y%m%d-%H%M%S)"
+    {
+        printf '\n# New Ghostty window (Super+Q): start in ~ and run fetchit.\n'
+        printf '[ -f "%s" ] && . "%s"\n' "${NEWWIN_HOOK/#$HOME/\$HOME}" "${NEWWIN_HOOK/#$HOME/\$HOME}"
+    } >> "$BASHRC"
+    ok "~/.bashrc: appended the new-window hook"
+fi
+
 # --- terminal defaults -------------------------------------------------------
 # Only written if absent: anything that already set its own $TERMINAL or
 # default-terminal entry made a deliberate choice this script should not

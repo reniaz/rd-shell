@@ -135,6 +135,12 @@ already wired — the theming itself is matugen's job, via
 wallpaper switch (see [matugen (config reference)](../dotfiles/matugen.md));
 this step only makes bash read the result.
 
+It also appends one line to `~/.bashrc` that sources
+`scripts/ghostty-new-window.bash` from the repo, so a new `Super+Q`
+Ghostty window starts in `~` and runs fetchit (see
+[ghostty](../dotfiles/ghostty.md)).
+Skipped if `~/.bashrc` already has it.
+
 ### 15. Terminal defaults
 
 Writes `~/.config/environment.d/terminal.conf` and

@@ -19,7 +19,8 @@ narrow file edits, so nothing here should surprise you.
 ~/.config/btop/btop.conf              -- color_theme key set to "matugen"
 ~/.config/environment.d/terminal.conf, ~/.config/xdg-terminals.list
                                        -- ghostty set as default terminal
-~/.bashrc                             -- one starship-init line appended (only if starship is installed)
+~/.bashrc                             -- one starship-init line appended (only if starship is installed),
+                                         one line sourcing scripts/ghostty-new-window.bash
 ~/.local/bin/starship                 -- installed here if no Fedora/COPR package covered it
 ~/.config/vesktop/settings/settings.json
                                        -- .plugins.XSOverlay merged in (only if the file already existed)
@@ -68,9 +69,10 @@ via `hyprpm`, `swaync`/`dunst`/`mako` masked, `pipewire`/`wireplumber`/
    COPR packages) and `dnf`/`hyprpm` are the right tools to remove them if you
    want them gone, not this script.
 7. **Starship**: remove the appended `eval "$(starship init bash)"` block
-   from `~/.bashrc` (and delete `~/.local/bin/starship` too, if you want it
-   gone — it's the one binary `install.sh` puts there directly rather than
-   through `dnf`, since Fedora has no package for it).
+   and the `ghostty-new-window.bash` line from `~/.bashrc` (and delete
+   `~/.local/bin/starship` too, if you want it gone — it's the one binary
+   `install.sh` puts there directly rather than through `dnf`, since Fedora
+   has no package for it).
 8. **Vencord XSOverlay plugin**: turn it back off in Vesktop → Settings →
    Vencord → Plugins if you don't want the call banner, or restore
    `~/.config/vesktop/settings/settings.json` from the
