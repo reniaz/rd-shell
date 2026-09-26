@@ -14,34 +14,45 @@ already-masked daemons and already-enabled services all print `ok` and are
 left alone; only what actually changed (a new dotfile, an updated Hyprland
 bind script, a package that's now required) does anything.
 
-{% hint style="warning" %}
-**`git pull` itself can refuse, or conflict, before you even get to
-`install.sh`.** The whole repo is what's symlinked into
-`~/.config/quickshell/rd-shell`, and `hyprland.lua` and the ghostty config are
-symlinked the same way — so editing either one *through* its `~/.config` link
-(monitor names/positions in `hyprland.lua`, most commonly, since it has no
-separate override file — see below) edits a file this clone tracks. If this
-update also touched that file, `git pull` errors with `Your local changes to
-the following files would be overwritten by merge` and applies nothing, or
-merges but leaves `<<<<<<<`/`>>>>>>>` conflict markers sitting in the file.
-`install.sh` refuses to run (rather than symlink a config full of conflict
-markers into `~/.config/hypr`) if it finds any.
+## If `git pull` complains
 
-Either way:
-
-```bash
-git stash            # shelve your edits
-git pull              # now a clean fast-forward
-git stash pop         # reapply them
+```
+error: Your local changes to the following files would be overwritten by merge:
+        hypr/hyprland.lua
+Please commit your changes or stash them before you merge.
+Aborting
 ```
 
-If `stash pop` reports a conflict, open the file, resolve the
-`<<<<<<<`/`=======`/`>>>>>>>` markers by hand — keep your machine-specific
-lines, take the incoming version of everything else — then `git add <file>`
-and `git stash drop`. Then run `./install.sh` as usual.
-{% endhint %}
+The whole repo is symlinked into `~/.config/quickshell/rd-shell`, and
+`hyprland.lua` and the ghostty config are symlinked the same way — so editing
+one *through* its `~/.config` link (monitor names/positions in `hyprland.lua`,
+most commonly) edits a file this clone tracks. When an update changes that same
+file, `git pull` stops and applies nothing. Shelve your edits, pull, and put
+them back:
 
-Things worth knowing about re-running:
+```bash
+git diff             # what you changed, for reference
+git stash            # set your edits aside
+git pull             # now a clean fast-forward
+git stash pop        # put your edits back on top
+./install.sh
+```
+
+If `git stash pop` reports a conflict, open the file it names. Each conflict
+shows the new version between `<<<<<<<` and `=======`, and your edit between
+`=======` and `>>>>>>>`. Keep the lines you want, delete the three marker
+lines, then:
+
+```bash
+git reset -q         # clear the conflict state, keep the file as you fixed it
+git stash drop       # the stash is applied, drop it
+./install.sh
+```
+
+`install.sh` refuses to run while any tracked file still has conflict markers
+in it, rather than link a broken config into `~/.config/hypr`.
+
+## Things worth knowing about re-running
 
 - If a target path was a plain file the *last* time you ran it, it's now a
   symlink — re-running won't re-back-up anything, it just confirms the link
@@ -57,8 +68,7 @@ Things worth knowing about re-running:
 - `dotfiles/fetchit/init.lua`'s hand-typed OS/GPU lines and `hyprland.lua`'s
   monitor names are **not** re-generated — if you edited them for your
   machine, re-running `install.sh` doesn't touch them again (they're plain
-  linked files, not templates; see the warning above for what that means for
-  `git pull`). Keybinds are different and don't have this problem: the
+  linked files, not templates; see [If `git pull` complains](#if-git-pull-complains)). Keybinds are different and don't have this problem: the
   in-app keybind manager writes `~/.config/hypr/keybind-overrides.lua`,
   outside the repo, and `Local/binds.lua` is gitignored, so neither ever conflicts — see [keybinds](../keybinds.md).
 - If an edit you made through a symlink seems to have vanished after

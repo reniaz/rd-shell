@@ -19,7 +19,7 @@
 | Bar/GTK/Qt agree but the lock screen doesn't | `hyprlock-colors.conf` not regenerated yet | `scripts/wallpaper-apply.sh --lock` |
 | Discord call banner never shows | XSOverlay plugin off, Vesktop not restarted since it was turned on, port 42070 already taken, or another real XSOverlay app is running | enable/check the plugin (Vencord → Plugins → XSOverlay) and restart Vesktop; `ss -ltnp '( sport = :42070 )'` shows what's holding the port — a real XSOverlay VR overlay app wants it too, so only run one at a time; see [Notifications](the-shell/notifications.md) and [vesktop](dotfiles/vesktop.md#call-banner-xsoverlay-plugin) |
 | Sticky note key does nothing | the focused workspace isn't empty | `Super+S` only creates a note over an empty workspace, by design |
-| `git pull` refuses with "local changes... would be overwritten by merge", or `install.sh` refuses with conflict markers | `hyprland.lua`/the ghostty config were edited through their `~/.config` symlink, so the edit landed in this tracked clone | see [Updating / re-running](installation/updating.md) |
+| `git pull` refuses with "local changes... would be overwritten by merge", or `install.sh` refuses with conflict markers | `hyprland.lua`/the ghostty config were edited through their `~/.config` symlink, so the edit landed in this tracked clone | see [If `git pull` complains](installation/updating.md#if-git-pull-complains) |
 
 ## Reading the shell's own log
 
