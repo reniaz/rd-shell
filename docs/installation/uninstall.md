@@ -19,6 +19,8 @@ narrow file edits, so nothing here should surprise you.
 ~/.config/btop/btop.conf              -- color_theme key set to "matugen"
 ~/.config/environment.d/terminal.conf, ~/.config/xdg-terminals.list
                                        -- ghostty set as default terminal
+~/.bashrc                             -- one starship-init line appended (only if starship is installed)
+~/.local/bin/starship                 -- installed here if no Fedora/COPR package covered it
 $XDG_RUNTIME_DIR/rd-shell.log         -- shell's own log
 ~/.cache/qs-bar/                      -- claude-global.sh's transcript cache
 ~/.cache/rd-shell/                    -- rendered matugen colours (bar, firefox, gtk, lock)
@@ -63,6 +65,10 @@ via `hyprpm`, `swaync`/`dunst`/`mako` masked, `pipewire`/`wireplumber`/
    they're not this rice's alone to remove (Papirus, adw-gtk3, Bibata, the
    COPR packages) and `dnf`/`hyprpm` are the right tools to remove them if you
    want them gone, not this script.
+7. **Starship**: remove the appended `eval "$(starship init bash)"` block
+   from `~/.bashrc` (and delete `~/.local/bin/starship` too, if you want it
+   gone — it's the one binary `install.sh` puts there directly rather than
+   through `dnf`, since Fedora has no package for it).
 
 There's no single command that undoes all of the above — `install.sh` is
 one-directional by design, the same way it's safe to re-run: it only ever

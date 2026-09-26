@@ -22,7 +22,8 @@ Singleton {
 
     // hyprshutdown closes every client gracefully, then exits Hyprland. It does not
     // power the machine off itself, so restart/shutdown ride on --post-cmd.
-    function lock() { Quickshell.execDetached(["hyprlock"]); }
+    // Same path as Super+L: the shell lock screen, hyprlock as fallback.
+    function lock() { Quickshell.execDetached([Quickshell.shellPath("scripts/lock.sh")]); }
 
     function logout() { _run([]); }
     function reboot() { _run(["--post-cmd", "systemctl reboot"]); }

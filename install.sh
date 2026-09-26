@@ -222,6 +222,7 @@ wget:wget2-wget:opt
 git:git:req
 grim:grim:req
 slurp:slurp:req
+swappy:swappy:opt
 wl-copy:wl-clipboard:req
 ghostty:ghostty:req
 flatpak:flatpak:opt
@@ -246,6 +247,7 @@ pw-link:pipewire-utils:opt
 ddcutil:ddcutil:opt
 xdg-open:xdg-utils:opt
 canberra-gtk-play:libcanberra-gtk3:opt
+qalc:qalculate:opt
 brightnessctl:brightnessctl:opt
 playerctl:playerctl:opt
 hyprpicker:hyprpicker:opt
@@ -837,6 +839,50 @@ elif [ -f "$REPO/dotfiles/cava/config" ]; then
     ok "seeded $CAVA_CONF (replaced by the first colour render below)"
 else
     warn "$REPO/dotfiles/cava/config missing — cava starts unthemed until a wallpaper switch"
+fi
+
+# starship itself: no Fedora package and no COPR here carries it either
+# (checked with `dnf5 repoquery starship`), so — same no-sudo, own-installer
+# pattern as papirus-folders/spicetify above — it comes from the official
+# install.sh, pinned to $HOME/.local/bin, the same user bin dir the rest of
+# this installer already assumes is on PATH.
+step "Starship (binary)"
+if command -v starship >/dev/null 2>&1; then
+    ok "starship"
+elif ask "install starship from starship.rs (curl installer, no sudo, into ~/.local/bin)?"; then
+    mkdir -p "$HOME/.local/bin"
+    if curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir "$HOME/.local/bin" >/dev/null 2>&1; then
+        ok "installed to $HOME/.local/bin/starship"
+    else
+        fail "starship install failed — install it yourself from starship.rs"
+    fi
+else
+    warn "without it the prompt stays bash's default"
+fi
+
+# Starship prompt. The matugen template/output wiring is already covered by
+# the App dotfiles loop above (dotfiles/matugen/templates/starship.toml ->
+# ~/.config/matugen/templates/starship.toml) and by [templates.starship] in
+# dotfiles/matugen/config.toml itself; the only piece install.sh needs to add
+# by hand is enabling starship in bash, since ~/.bashrc is a real per-user
+# file this script never links or owns wholesale. Guarded and idempotent,
+# same shape as the btop.conf color_theme check above: skip if already
+# wired, append (with a backup) if bash init has content, otherwise this is
+# a machine without starship installed and nothing is written.
+step "Starship prompt"
+BASHRC="$HOME/.bashrc"
+if [ -f "$BASHRC" ] && grep -q 'starship init bash' "$BASHRC"; then
+    ok "~/.bashrc already wires starship"
+elif command -v starship >/dev/null 2>&1; then
+    [ -f "$BASHRC" ] && cp -p "$BASHRC" "$BASHRC.bak-$(date +%Y%m%d-%H%M%S)"
+    {
+        printf '\n# Starship prompt, matugen-themed (~/.config/starship.toml is a matugen\n'
+        printf '# output -- see [templates.starship] in ~/.config/matugen/config.toml).\n'
+        printf 'command -v starship >/dev/null && eval "$(starship init bash)"\n'
+    } >> "$BASHRC"
+    ok "~/.bashrc: appended starship init"
+else
+    warn "starship not installed — ~/.bashrc left untouched"
 fi
 
 # --- terminal defaults -------------------------------------------------------

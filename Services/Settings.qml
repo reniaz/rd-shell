@@ -36,6 +36,26 @@ Singleton {
     // nobody asked to be off.
     property alias desktopWidgets: adapter.desktopWidgets
 
+    // Idea 9 (Accessibility settings pane): three more presentation-layer
+    // toggles, same alias-onto-the-adapter pattern as dynamicColour and
+    // desktopWidgets above, so each is its own source of truth and each
+    // carries a default that leaves the shell exactly as it looks today.
+    //
+    // Global scale multiplier Config/Caelus.qml applies to its font-size and
+    // spacing tokens. Default 1.0 is the identity case: every token reads
+    // exactly the literal it reads today, so a machine that has never opened
+    // the popup renders pixel-identical. Range 0.85-1.5 is the slider's job
+    // (SettingsPopup.qml), not enforced here.
+    property alias uiScale: adapter.uiScale
+    // Swaps Config/Colors.qml's text/muted/border/surface tokens for
+    // stronger-contrast variants derived from the same matugen/caelus
+    // palette. Default false is identical to today's colours.
+    property alias highContrast: adapter.highContrast
+    // Gates FocusRing.qml's visibility everywhere one is instantiated.
+    // Default false: nothing anywhere draws a focus outline until someone
+    // turns this on.
+    property alias focusRing: adapter.focusRing
+
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
     // rather than in some second, hidden location a person would have to be
@@ -111,6 +131,9 @@ Singleton {
             property bool dynamicColour: true
             property string sysTab: "cpu"
             property bool desktopWidgets: true
+            property real uiScale: 1.0
+            property bool highContrast: false
+            property bool focusRing: false
         }
     }
 }

@@ -17,3 +17,10 @@ keybind = ctrl+shift+w=close_surface
 # new windows come from Hyprland (super+Q), which marks them for fetchit;
 # the in-app action cannot, so it would open a window that stays silent.
 keybind = ctrl+shift+n=unbind
+
+# Cursor-trail shader (idea 14, sahaj-b/ghostty-cursor-shaders, MIT) -- a
+# comet-like glow trail that follows the cursor, coloured from the same
+# matugen `primary` hue as cursor-color above. Toggle by deleting/renaming
+# shaders/cursor-trail.conf (see that file's own header); the leading `?`
+# here means a missing file is not an error.
+config-file = ?shaders/cursor-trail.conf

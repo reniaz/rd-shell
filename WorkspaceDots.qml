@@ -181,7 +181,13 @@ Item {
         // it on the last one.
         Behavior on x {
             enabled: root.activeSlot !== null
-            NumberAnimation { duration: Motion.base; easing.type: Motion.enter; easing.overshoot: Motion.enterOvershoot }
+            // A true spring rather than an eased curve: unlike the
+            // NumberAnimation this replaced, SpringAnimation tracks a live
+            // target, so switching workspaces again before the pill has
+            // finished sliding redirects it smoothly instead of restarting
+            // a fresh curve from wherever the old one had got to. Tokens in
+            // Config/Motion.qml.
+            SpringAnimation { spring: Motion.dotSpring; damping: Motion.dotDamping; epsilon: Motion.dotSpringEpsilon }
         }
         // Width is deliberately not animated here. The slot it copies is
         // already running its own Motion.base ramp on implicitWidth, so a
@@ -207,6 +213,16 @@ Item {
                 required property HyprlandWorkspace modelData
                 readonly property bool active: slot.modelData?.id === root.monitor?.activeWorkspace?.id
                 readonly property bool occupied: Workspaces.windowCount(slot.modelData?.id ?? -1) > 0
+
+                // Straight off HyprlandWorkspace itself (Quickshell.Hyprland
+                // already tracks this per workspace; Workspaces.dotsFor()
+                // only filters and sorts the same objects, it does not
+                // strip anything off them). Needs no clearing of its own:
+                // Hyprland drops `urgent` the moment the workspace is
+                // focused, and this is a live binding to that same
+                // property, so `slot.active` going true and `slot.urgent`
+                // going false arrive together for free.
+                readonly property bool urgent: slot.modelData?.urgent ?? false
 
                 // Only ever on the dot you are looking at. A count on an inactive
                 // workspace would be describing somewhere you are not, and the
@@ -276,6 +292,41 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
                     Behavior on color { ColorAnimation { duration: Motion.fast } }
+                }
+
+                // Pulses while Hyprland has this workspace marked urgent --
+                // a window asking for attention with nothing in the row
+                // reacting to it otherwise. A ring rather than a fill: the
+                // dot underneath already carries its own meaning (occupied,
+                // active, badge count) and a fill would compete with that
+                // instead of sitting alongside it. `Colors.error` rather
+                // than the accent: this is the same "something needs you"
+                // colour NotificationCard.qml's own critical toasts use
+                // (`Colors.notifCritical` is `error` too), not the
+                // "you are here" one `indicator` above already owns.
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Caelus.radiusPill
+                    color: "transparent"
+                    border.width: Caelus.borderWidth
+                    border.color: Colors.error
+                    visible: slot.urgent && !slot.active
+                    opacity: 0
+
+                    // InOutSine, not the enter/exit curves above: this is a
+                    // steady back-and-forth rather than something arriving
+                    // or leaving, and Motion.pulse exists for exactly that
+                    // ("only for a repeating pulse", Config/Motion.qml).
+                    // `running` restarts it from `from:` on every fresh
+                    // bout of urgency rather than resuming mid-cycle, so a
+                    // workspace that goes urgent, is cleared, and goes
+                    // urgent again always starts its pulse the same way.
+                    SequentialAnimation on opacity {
+                        running: slot.urgent && !slot.active
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0; to: 0.85; duration: Motion.slow; easing.type: Motion.pulse }
+                        NumberAnimation { from: 0.85; to: 0.15; duration: Motion.slow; easing.type: Motion.pulse }
+                    }
                 }
 
                 // The category glyph. A plain Text rather than a clipped

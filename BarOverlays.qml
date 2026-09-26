@@ -303,6 +303,15 @@ Item {
         KeyboardLayoutOsd { screen: root.modelData }
     }
 
+    // Same one-screen gate as every other keybind/service-driven OSD above:
+    // Caps/Num Lock is a per-keyboard fact, not a per-monitor one, so
+    // without this every screen would flash its own copy of the same card.
+    PopupLoader {
+        open: LockKeys.osdVisible && root.modelData.name === root.overlayScreen
+
+        LockKeysOsd { screen: root.modelData }
+    }
+
     // osdWatch is BarOsdWatch.qml's stand-in for the osdVisible flag Audio.qml
     // does not raise; see the comment there.
     PopupLoader {
@@ -350,6 +359,11 @@ Item {
 
         NotificationPopups { screen: root.modelData }
     }
+
+    // Idea 38's incoming-call banner is not a popup any more -- the bar's
+    // own clock island morphs into it in place (BarCenter.qml), the way
+    // St0rmosu/dynamic-island-hyprland's own reference does it, rather than
+    // a card dropping out from under the pill. Nothing to load here.
 
     // Held open by the service and not by this loader alone, because Escape, the
     // pill, the panel's own close button and the IPC handler can all shut it and

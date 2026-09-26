@@ -127,10 +127,24 @@ RowLayout {
             // the whole question, and a second monitor's pill has its own answer.
             property bool open: false
 
-            icon: Audio.micMuted ? "mic_off" : "mic"
-            label: Audio.micPercent + "%"
-            iconColor: Colors.micIcon
             visible: Audio.micReady
+            // Pill's own icon/label pair swapped out for a RowLayout that
+            // holds MuteGlyph in the icon's place instead -- the label Text
+            // below is otherwise identical to Pill's own.
+            content: RowLayout {
+                spacing: 7
+                MuteGlyph {
+                    glyph: "mic"
+                    muted: Audio.micMuted
+                    color: Colors.micIcon
+                }
+                Text {
+                    text: Audio.micPercent + "%"
+                    color: Colors.fg
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: 16
+                }
+            }
 
             MouseArea {
                 id: micArea
@@ -160,9 +174,22 @@ RowLayout {
             // the whole question, and a second monitor's pill has its own answer.
             property bool open: false
 
-            icon: Audio.muted == false ? "volume_up" : "volume_off"
-            label: Audio.percent + "%"
-            iconColor: Colors.volumeIcon
+            // Pill's own icon/label pair swapped out the same way the mic
+            // pill's is, just above.
+            content: RowLayout {
+                spacing: 7
+                MuteGlyph {
+                    glyph: "volume_up"
+                    muted: Audio.muted
+                    color: Colors.volumeIcon
+                }
+                Text {
+                    text: Audio.percent + "%"
+                    color: Colors.fg
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: 16
+                }
+            }
 
             MouseArea {
                 id: volumeArea

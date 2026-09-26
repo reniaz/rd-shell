@@ -18,6 +18,7 @@ backed up.
 | [bat](bat.md) | `dotfiles/bat/` | `~/.config/bat/` |
 | [fetchit](fetchit.md) | `dotfiles/fetchit/` | `~/.config/fetchit/` |
 | [spicetify](spicetify.md) | `dotfiles/spicetify/` | `~/.config/spicetify/` |
+| [starship](starship.md) | `dotfiles/matugen/templates/starship.toml` | `~/.config/starship.toml` (matugen render output) |
 | [vesktop](vesktop.md) | `dotfiles/vesktop/` | `~/.config/vesktop/` |
 | [GTK / Qt / KDE](gtk-qt-kde.md) | — (written by `install.sh`, not linked) | `~/.config/gtk-{3,4}.0/`, `kdeglobals`, `kcminputrc` |
 | [Cursor, icons & fonts](cursor-icons-fonts.md) | `assets/fonts/`, `assets/fontconfig/` | `~/.local/share/fonts/`, `~/.local/share/icons/`, `~/.config/fontconfig/conf.d/` |

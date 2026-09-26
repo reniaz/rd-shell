@@ -67,4 +67,48 @@ Singleton {
     // Motion.spatialCurve`, which is why the trailing 1,1 endpoint is spelled
     // out -- QML wants the full control-point list, not just the two handles.
     readonly property var spatialCurve: [0.38, 1.21, 0.22, 1, 1, 1]
+
+    // ── spring, workspace-dot indicator ──────────────────────
+    // A true spring for the one slide in the bar that has to redirect
+    // mid-flight rather than merely finish quickly: the travelling indicator
+    // in WorkspaceDots.qml, retargeted every time you switch workspaces
+    // again before the last switch has settled. `SpringAnimation` is driven
+    // by a live target property rather than a fire-and-forget curve, so the
+    // smooth-redirect half of that is already built in -- these three
+    // numbers are only about the pull toward wherever the target currently
+    // is. Tuned by feel against `base`+`enter`+`enterOvershoot` above (the
+    // curve this replaces on the same property) to land in roughly the same
+    // window, not to read as slower or as a new kind of motion.
+    readonly property real dotSpring: 3.2
+    // Damping this low is what keeps a hint of overshoot in the settle --
+    // the same reason `enter`/`enterOvershoot` exist above -- without also
+    // letting it oscillate back and forth, which is what a spring this
+    // stiff reads as "buggy" rather than "springy" past about half this.
+    readonly property real dotDamping: 0.45
+    // How near the target `SpringAnimation` has to get before it calls
+    // itself at rest and stops driving the property every frame. Left
+    // above the 0.01 default: a pill a fraction of a pixel from its target
+    // is not visibly different from one sitting on it, and stopping there
+    // sooner is one less idle animation ticking after every switch.
+    readonly property real dotSpringEpsilon: 0.25
+
+    // ── spring, mute-toggle bell swing ────────────────────────
+    // A sibling of dotSpring above, not a reuse of it: that one pulls a
+    // position across pixels, this one pulls a rotation across degrees, and
+    // the two domains landed on different feels by ear. Drives MuteGlyph's
+    // `rotation` the same way dotSpring drives the workspace indicator's
+    // `x` -- a live target kicked away from rest and retargeted back to it
+    // before the swing has settled, so the underdamped spring rings past
+    // zero once on its own instead of easing straight to a stop. See
+    // MuteGlyph.qml.
+    readonly property real bellSpring: 4.5
+    // Noticeably lower than dotDamping: a struck bell reads as struck only
+    // if it visibly overshoots past rest and swings back before settling,
+    // where the dot only ever wanted a *hint* of overshoot on a value that
+    // was easing to a stop anyway.
+    readonly property real bellDamping: 0.28
+    // Degrees, not pixels, so the same "close enough to stop ticking" idea
+    // as dotSpringEpsilon needs its own scale -- a tenth of a degree is
+    // already imperceptible on a 16-20px glyph.
+    readonly property real bellSpringEpsilon: 0.1
 }

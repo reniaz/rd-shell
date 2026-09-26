@@ -87,6 +87,18 @@ Singleton {
             // Not while the panel is open: the user is already looking at the
             // list, so counting there would leave a stale badge behind on close.
             if (!root.panelOpen) root.unseen++;
+            // DiscordCall.consider() takes over the one arrival that looks
+            // like an incoming Vesktop call (idea 38) before DND is even
+            // consulted -- a call ringing is not the chatter DND is aimed
+            // at, so it must survive DND the same as a hotkey or an allowed
+            // app does below. Taking it over here, before the toast stack
+            // is ever touched, is also what keeps the rich banner and this
+            // plain toast from both showing for the same call. Anything
+            // else -- ordinary chat, or a call arriving while already on
+            // one -- it hands straight back, unchanged, to the normal
+            // DND-gated toast path.
+            if (DiscordCall.consider(n)) return;
+
             // filter first: a replaced notification arrives as the same object, so
             // a blind prepend stacks visual duplicates of one notification
             if (!root.dnd || root.bypassesDnd(n)) {

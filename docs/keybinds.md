@@ -21,6 +21,19 @@ was checked.
 [Fresh install](installation/fresh-install.md) for setting those to your own
 monitor names.
 
+## Rebinding
+
+The Edit toggle in `Super+K`'s own overview (`KeybindOverview.qml`) lets you
+capture a new chord for any bind with a ref and write it, live, with no
+manual editing of `hyprland.lua`. A clash with an existing bind is shown
+before you save, and Save replaces it. Overrides are written to
+`~/.config/hypr/keybind-overrides.lua`, loaded by `hyprland.lua` itself
+(`pcall(dofile, ...)` near the end of the file, so a missing or broken
+overrides file never breaks the rest of the config) — `Services/Keybinds.qml`
+does the write, reload and rollback (`hyprctl reload` +
+`hyprctl configerrors`) round trip. "Reset to defaults" in the same panel
+deletes that file and reloads.
+
 ## Apps & windows
 
 | Combo | Action |
@@ -71,7 +84,9 @@ monitor names.
 | `Super+N` | Notification panel |
 | `Super+M` | Power menu |
 | `Super+L` | Lock the session |
+| `Super+S` | New sticky note (empty workspace only) |
 | `Ctrl+Alt+↑` | Screenshot a region |
+| `Ctrl+Alt+↓` | Screenshot a region, then annotate it in swappy |
 
 The Claude panel has no bind of its own — open it from its pill, or bind
 `qs ipc -c rd-shell call claude toggle` yourself.

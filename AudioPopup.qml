@@ -32,7 +32,6 @@ BarPopup {
             value: root.capture ? Audio.micVolume : Audio.volume
             muted: root.capture ? Audio.micMuted : Audio.muted
             icon: root.capture ? "mic" : "volume_down"
-            mutedIcon: root.capture ? "mic_off" : "volume_off"
             onMoved: v => root.capture ? Audio.setMicVolume(v) : Audio.setVolume(v)
             onToggled: root.capture ? Audio.toggleMicMute() : Audio.toggleMute()
             onStepped: delta => {

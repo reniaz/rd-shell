@@ -12,16 +12,21 @@ Item {
     implicitWidth: glyph.implicitWidth
     implicitHeight: glyph.implicitHeight
 
-    Text {
+    MuteGlyph {
         id: glyph
 
-        text: Notifications.dnd ? "notifications_off" : "notifications"
+        // The literal bell this idea's swing/slash was written for: swings
+        // on leaving do-not-disturb, snaps a red slash across on entering
+        // it, and keeps the same "notifications" glyph throughout rather
+        // than swapping to "notifications_off" -- consistent with every
+        // other MuteGlyph call site.
+        glyph: "notifications"
+        muted: Notifications.dnd
         // Resting is neutral like every other piece of bar chrome; the only
         // colour the bell is allowed to show is the do-not-disturb state and
         // the unread badge below, both of which mean something is true right now.
         color: Notifications.dnd ? Colors.notifDndOn : Colors.notifIcon
-        font.family: Caelus.symbolFamily
-        font.pixelSize: 16
+        size: 16
     }
 
     Rectangle {

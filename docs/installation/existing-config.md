@@ -60,6 +60,7 @@ the generic one above:
 | `<firefox profile>/chrome/userChrome.css`, `userContent.css` | overwritten with a two-line import stub, unless already exactly that stub | `<file>.bak-YYYYmmdd-HHMMSS` if something else was there |
 | `~/.config/hypr/hyprland.conf` | copied to its backup, left in place and unused — **not** loaded once you're on `hyprland.lua` (see the warning above) | `hyprland.conf.bak-YYYYmmdd-HHMMSS`, only if it looked like your own config rather than the distro's stub |
 | `~/.config/environment.d/terminal.conf`, `~/.config/xdg-terminals.list` | only written if absent | none needed (never overwrites) |
+| `~/.bashrc` | one `eval "$(starship init bash)"` block appended, only if `starship init bash` isn't already there and `starship` is installed (or gets installed by this run); rest of the file untouched | `.bashrc.bak-YYYYmmdd-HHMMSS` (copy), only if the block had to be added and the file already existed |
 
 Nothing else under your `$HOME` is touched. In particular, `~/.config/hypr`
 keeps whatever else lives there (HyprMod's state, generated lock colours,

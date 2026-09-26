@@ -10,8 +10,9 @@ RowLayout {
 
     property real value: 0            // 0..1
     property bool muted: false
-    property string icon: "volume_down"      // glyph when not muted
-    property string mutedIcon: "volume_off"
+    // The glyph, shown unchanged whether muted or not -- muting no longer
+    // swaps it for an "_off" variant, only overlays MuteGlyph's red slash.
+    property string icon: "volume_down"
     property color accent: Colors.popupAccent
     property bool showPercent: true
 
@@ -28,13 +29,13 @@ RowLayout {
 
     spacing: Caelus.space
 
-    Text {
+    MuteGlyph {
         id: iconText
 
-        text: root.muted ? root.mutedIcon : root.icon
+        glyph: root.icon
+        muted: root.muted
         color: root.muted ? Colors.audioMeta : root.accent
-        font.family: Caelus.symbolFamily
-        font.pixelSize: Caelus.sizeLead
+        size: Caelus.sizeLead
 
         MouseArea {
             anchors.fill: parent

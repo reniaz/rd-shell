@@ -84,6 +84,14 @@ apply_border() {
      border_active = { colors = {'rgb($p)','rgb($c)'}, angle = 45 },\
      border_inactive = 'rgba(${o:-595959}66)' },\
      groupbar = { col = { active = 'rgb($p)', inactive = 'rgba(${o:-595959}66)' } } } })" >/dev/null 2>&1 || true
+                # hyprexpo's overview tile border, in its own eval so a
+                # machine without the plugin loaded (unknown config key)
+                # can't take the window-border eval above down with it.
+                # Single stop, same as hyprland.lua's own comment on this
+                # key notes -- a 45deg angle is meaningless on a flat tile
+                # border, so no second colour to carry over here.
+                "$HYPRCTL" eval "hl.config({ plugin = { hyprexpo = {\
+     border_color_current = 'rgb($p)' } } })" >/dev/null 2>&1 || true
             fi
         else
             # The literals from hyprland.lua's general and group blocks, verbatim.
@@ -94,6 +102,10 @@ apply_border() {
      border_active = { colors = {'rgb(b86e38)'}, angle = 45 },\
      border_inactive = 'rgba(595959aa)' },\
      groupbar = { col = { active = 'rgb(b86e38)', inactive = 'rgba(595959aa)' } } } })" >/dev/null 2>&1 || true
+            # Same separate-eval treatment, reset to hyprland.lua's own
+            # hyprexpo literal.
+            "$HYPRCTL" eval "hl.config({ plugin = { hyprexpo = {\
+     border_color_current = 'rgb(b86e38)' } } })" >/dev/null 2>&1 || true
         fi
     fi
 }

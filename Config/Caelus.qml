@@ -184,12 +184,12 @@ Singleton {
     // One ladder, used for both gaps between things and padding inside them.
     // `space` is the default; reach for a neighbour only when the default
     // visibly crowds or strands.
-    readonly property int spaceTight: 4
-    readonly property int spaceSnug: 6
-    readonly property int space: 8
-    readonly property int spaceLoose: 10
-    readonly property int spaceWide: 12
-    readonly property int spaceEdge: 14
+    readonly property real spaceTight: 4 * uiScale
+    readonly property real spaceSnug: 6 * uiScale
+    readonly property real space: 8 * uiScale
+    readonly property real spaceLoose: 10 * uiScale
+    readonly property real spaceWide: 12 * uiScale
+    readonly property real spaceEdge: 14 * uiScale
 
     // ── type ─────────────────────────────────────────────────
     // Single families, not lists: Qt 6.11's QML `font` value type registers no
@@ -201,10 +201,28 @@ Singleton {
     readonly property string fontFamily: "caelusevka"
     readonly property string symbolFamily: "Material Symbols Rounded"
 
-    readonly property int sizeLabel: 12
-    readonly property int sizeBody: 13
-    readonly property int sizeLead: 15
-    readonly property int sizeTitle: 18
+    // ── ui scale (idea 9: Accessibility settings pane) ─────────
+    // One multiplier over the type and spacing ladders just below, so raising
+    // it enlarges text and the room around it together instead of one moving
+    // faster than the other and the rhythm between them drifting. Read the
+    // same way `dynamicColour` is, at the top of this file: through
+    // Settings.uiScale once that singleton has landed in the tree, falling
+    // back to identity everywhere it has not -- and Settings.qml's own
+    // JsonAdapter default is the same 1.0 this falls back to, so the two
+    // never disagree. Deliberately does NOT reach barHeight, barInset or any
+    // other bar-geometry token: those set the compositor's reserved strip and
+    // exclusive zone, and a slider that resizes those out from under Hyprland
+    // is a bug, not an accessibility feature. Radii are left alone too --
+    // shape, not something a person reads at a size. Only the type sizes and
+    // spacing ladder below -- what popups actually set font.pixelSize and
+    // Layout.spacing/margins from -- scale, and only for the popups that read
+    // them; the bar keeps its footprint fixed at any scale.
+    readonly property real uiScale: typeof Settings !== "undefined" ? Settings.uiScale : 1.0
+
+    readonly property real sizeLabel: 12 * uiScale
+    readonly property real sizeBody: 13 * uiScale
+    readonly property real sizeLead: 15 * uiScale
+    readonly property real sizeTitle: 18 * uiScale
 
     // ── bar geometry ─────────────────────────────────────────
     // `barHeight` is the strip the compositor reserves; the islands inside it

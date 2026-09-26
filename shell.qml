@@ -117,4 +117,12 @@ ShellRoot {
             Wallpapers.togglePanel();
         }
     }
+
+    // Native WlSessionLock lock screen (idea 15) -- reachable over IPC only
+    // (target "lock": lock(), test(seconds), status()), never bound to a key.
+    // hyprlock stays the real default for Super+L and hypridle; this is
+    // opt-in until it has proven itself. Not a Variants block: WlLock.qml's
+    // own WlSessionLock creates one surface per screen internally. See
+    // WlLock.qml for the safety invariant this depends on.
+    WlLock {}
 }

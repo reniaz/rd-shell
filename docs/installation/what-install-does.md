@@ -13,10 +13,13 @@ passed. If an NVIDIA card is detected, also offers RPM Fusion free/nonfree.
 
 Checks a table of `command → package → required|optional` entries (things
 like `qs`/`quickshell`, `hyprctl`/`hyprland`, `nmcli`/`NetworkManager`,
-`matugen`/`matugen`, `jq`, `wl-copy`, `playerctl`, `ddcutil`, `flatpak`, and
-more), plus a handful of packages with no binary to probe for
-(`xdg-desktop-portal-hyprland`, `polkit-kde`, `plasma-integration`,
-`adw-gtk3-theme`, `plasma-nm`). This is also where the toolchain nvim's
+`matugen`/`matugen`, `jq`, `wl-copy`, `playerctl`, `ddcutil`, `flatpak`,
+`qalc`/`qalculate` (the launcher's calculator), `swappy`/`swappy`
+(screenshot annotation), and more), plus a handful of packages with no
+binary to probe for (`xdg-desktop-portal-hyprland`, `polkit-kde` — the
+authentication agent `hyprland.lua` now autostarts, so `pkexec`/GUI-admin
+prompts work under Hyprland — `plasma-integration`, `adw-gtk3-theme`,
+`plasma-nm`). This is also where the toolchain nvim's
 bundled plugins need is installed, all as optional dependencies:
 `nodejs22`+`nodejs22-npm-bin`, `python3-pip`, `unzip`, `ripgrep`, `fd-find`,
 `gcc`+`gcc-c++`+`make`, `golang` (see [nvim](../dotfiles/nvim.md#toolchain-and-plugins)
@@ -58,6 +61,12 @@ whole `~/.config/ghostty` directory, and relinks the three scripts
 (`keybinds.sh`, `mic-toggle.sh`, `screenshot.sh`) that `hyprland.lua` calls by
 their `~/.config/hypr/scripts/` path. Creates the ghostty working-directory
 state dir so `Super+Q` doesn't fail on a directory that doesn't exist yet.
+
+The session-lock fallback script (`scripts/lock.sh`, `Super+L`) and the
+ghostty cursor-trail shader (`hypr/dotfiles/ghostty/shaders/`) need no extra
+step of their own here — both already live inside directories the two links
+above cover (the whole-repo symlink and the ghostty directory symlink,
+respectively).
 
 If Hyprland already auto-generated (or you hand-wrote) a
 `~/.config/hypr/hyprland.conf`, it's backed up here (copied, original left
@@ -115,19 +124,30 @@ and only a seed for a fresh machine: `dotfiles/cava/config` is copied in
 only if nothing is at that path yet; an existing file (yours, or from an
 earlier install) is left alone. See [cava](../dotfiles/cava.md#how-its-installed).
 
-### 14. Terminal defaults
+### 14. Starship
+
+`starship` has no Fedora or COPR package, so if it isn't already on `PATH`
+this offers to install it from its own curl installer at starship.rs into
+`~/.local/bin` (no sudo). Once it's there, one `eval "$(starship init
+bash)"` line is appended to `~/.bashrc` (backed up first) unless it's
+already wired — the theming itself is matugen's job, via
+`[templates.starship]` rendering `~/.config/starship.toml` on every
+wallpaper switch (see [matugen (config reference)](../dotfiles/matugen.md));
+this step only makes bash read the result.
+
+### 15. Terminal defaults
 
 Writes `~/.config/environment.d/terminal.conf` and
 `~/.config/xdg-terminals.list` to point default-terminal lookups at ghostty —
 only if neither file already exists.
 
-### 15. Wallpapers
+### 16. Wallpapers
 
 Clones `LainOS-wallpapers` into `~/Pictures/wall/LainOS-wallpapers` (opt-in,
 ~290MB) and copies this repo's own `wallpapers/` on top without overwriting
 anything already there.
 
-### 16. hyprexpo plugin
+### 17. hyprexpo plugin
 
 Installs the plugin's build dependencies (`cmake`, `meson`, `ninja-build`,
 `pkgconf`, `gcc-c++`, `hyprland-devel`) first, then adds and enables the
@@ -137,45 +157,45 @@ Prints the manual command otherwise. A build failure prints the exact path
 to `hyprpm`'s own build log (`~/.cache/qs-bar-build/hyprexpo.log`) instead of
 just failing silently.
 
-### 17. Notification daemon
+### 18. Notification daemon
 
 Masks `swaync`, `dunst` and `mako` (whichever are installed) so the shell can
 own the `org.freedesktop.Notifications` D-Bus name — stopping alone isn't
 enough since all three are D-Bus activated.
 
-### 18. Audio
+### 19. Audio
 
 Enables and starts `pipewire.socket`, `pipewire-pulse.socket` and
 `wireplumber.service`, then patches a PipeWire drop-in the Iriun Webcam
 package ships (missing a `nofail` flag) that can otherwise crash-loop the
 whole audio stack at boot.
 
-### 19. Idle
+### 20. Idle
 
 Offers to enable `hypridle.service` (locks after 5 minutes, blanks displays
 after 10 — `hypridle.conf` is inert without the daemon running).
 
-### 20. First colour render
+### 21. First colour render
 
 Runs `scripts/wallpaper-apply.sh` against the fallback wallpaper so the bar,
 app themes and lock screen colours all exist before first launch instead of
 pointing at files matugen hasn't written yet.
 
-### 21. KDE colour scheme
+### 22. KDE colour scheme
 
 Applies the first Matugen KDE colour scheme via `plasma-apply-colorscheme`,
 if the render above produced one and it isn't already active. Every
 subsequent wallpaper switch handles this itself through
 `[templates.kde]`'s own `post_hook` — see [matugen (config reference)](../dotfiles/matugen.md).
 
-### 22. bat theme
+### 23. bat theme
 
 Builds `bat`'s theme cache (`bat cache --build`) once the matugen render has
 produced `~/.config/bat/themes/matugen.tmTheme`, so `--theme=matugen`
 resolves immediately instead of waiting for the next wallpaper switch. See
 [bat](../dotfiles/bat.md).
 
-### 23. Spotify + spicetify
+### 24. Spotify + spicetify
 
 Installs Spotify as a **per-user** flatpak (adding the `flathub` remote
 `--user` first if needed — per-user so spicetify can patch its files
@@ -188,14 +208,14 @@ switch are printed instead (also in the end-of-run Summary). See
 [spicetify](../dotfiles/spicetify.md) for the full detail, including the
 exact `spicetify config` keys and the post-update caveat.
 
-### 24. Firefox
+### 25. Firefox
 
 If a Firefox profile is found, links the profile's `chrome/rd-shell` to the
 repo's `firefox/`, writes the `userChrome.css`/`userContent.css` import
 stubs, and enables `toolkit.legacyUserProfileCustomizations.stylesheets` in
 `user.js`.
 
-### 25. Summary
+### 26. Summary
 
 Prints the machine-specific edits you still need to make by hand — see
 [Fresh install](fresh-install.md#after-the-script-finishes) for the list.

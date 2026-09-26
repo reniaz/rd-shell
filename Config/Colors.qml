@@ -1,6 +1,7 @@
 pragma Singleton
 import Quickshell
 import QtQuick
+import qs.Services
 
 // Palette derived from ~/.config/vesktop/themes/system24-caelus.theme.css
 // (system24 "caelus" by refact0r / dacctal). CSS hsl() values are resolved to
@@ -14,6 +15,16 @@ Singleton {
     // is false, so turning it back off -- or never turning it on -- puts
     // today's bar back exactly.
     readonly property bool dynamic: Caelus.dynamicColour && Wal.known
+
+    // Idea 9 (Accessibility settings pane). Off by default -- identical to
+    // today. Read the same way `dynamic` above is: through Settings once
+    // that singleton exists, falling back to off everywhere it does not.
+    // On, it pushes the text/muted/border/surface tokens below a step
+    // further apart with Qt.lighter()/Qt.darker() over whichever colour --
+    // the static caelus hex or the live matugen one -- is already active,
+    // rather than a second set of hardcoded literals that would fall out of
+    // step with dynamic mode the next time the wallpaper changes.
+    readonly property bool highContrast: typeof Settings !== "undefined" ? Settings.highContrast : false
 
     // ── accents ──────────────────────────────────────────────
     // The hex after the colon is the revert: it is caelus.palette transcribed
@@ -60,9 +71,20 @@ Singleton {
     // buttons and pill icons sitting on top of a surface, not a tone of the
     // surface ladder itself, so wallpaper colour has no business reaching it.
     readonly property color bg: "#000000"          // popup buttons, pill icons
-    readonly property color surface: root.dynamic ? Wal.surface : "#1b1d1c"     // theme --bg-4
-    readonly property color surfaceRaised: root.dynamic ? Wal.surfaceRaised : "#222623" // theme --bg-3
-    readonly property color surfaceHover: root.dynamic ? Wal.surfaceHover : "#38423b"  // theme --bg-1
+    // High contrast pulls surface a step darker -- away from the near-white
+    // text sitting on it -- and pulls the hover/border tone (surfaceHover,
+    // just below) a step lighter -- away from surface -- so both the
+    // text-on-panel and the border-on-panel ratios widen at once, using the
+    // colour already active (static or matugen) rather than a second literal.
+    readonly property color surface: root.highContrast
+        ? Qt.darker(root.dynamic ? Wal.surface : "#1b1d1c", 1.25)
+        : (root.dynamic ? Wal.surface : "#1b1d1c")     // theme --bg-4
+    readonly property color surfaceRaised: root.highContrast
+        ? Qt.darker(root.dynamic ? Wal.surfaceRaised : "#222623", 1.15)
+        : (root.dynamic ? Wal.surfaceRaised : "#222623") // theme --bg-3
+    readonly property color surfaceHover: root.highContrast
+        ? Qt.lighter(root.dynamic ? Wal.surfaceHover : "#38423b", 1.4)
+        : (root.dynamic ? Wal.surfaceHover : "#38423b")  // theme --bg-1
 
     // ── text ─────────────────────────────────────────────────
     // fgDim and fgMuted stay static like every other semantic tone below --
@@ -79,8 +101,15 @@ Singleton {
     // range that it keeps roughly 5:1 contrast against a light surface too
     // (measured), so the "reads as caelus regardless" comment above still
     // holds for it specifically, just not for fgDim.
-    readonly property color fgDim: root.dynamic ? Wal.onSurfaceVariant : "#cfbeb4"       // theme --text-3
-    readonly property color fgMuted: "#746863"     // theme --text-5
+    // Both lightened a step under high contrast, same reasoning as surface
+    // and surfaceHover just above: fgMuted at 3.5:1 and fgDim's job as "the
+    // second-brightest text tone" are exactly the two labels a contrast mode
+    // exists to help, so both move towards `fg` rather than gaining a second,
+    // unrelated literal.
+    readonly property color fgDim: root.highContrast
+        ? Qt.lighter(root.dynamic ? Wal.onSurfaceVariant : "#cfbeb4", 1.12)
+        : (root.dynamic ? Wal.onSurfaceVariant : "#cfbeb4")       // theme --text-3
+    readonly property color fgMuted: root.highContrast ? Qt.lighter("#746863", 1.45) : "#746863"     // theme --text-5
 
     // ── status ───────────────────────────────────────────────
     // Meaning lives in the hue, style lives in everything else. Green is

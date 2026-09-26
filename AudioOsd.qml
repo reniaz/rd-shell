@@ -58,22 +58,21 @@ PanelWindow {
             anchors.fill: parent
             spacing: Caelus.spaceWide
 
-            Text {
-                // volume_mute is a different glyph from volume_off on
+            MuteGlyph {
+                // volume_mute is a different glyph from volume_down/up on
                 // purpose: 0% still means the sink is live and would be heard
-                // the moment it is turned up, muted means it would not be
-                // wherever the level sits.
-                text: root.mic
-                    ? (root.muted ? "mic_off" : "mic")
-                    : root.muted ? "volume_off"
-                        : root.percent === 0 ? "volume_mute"
+                // the moment it is turned up. Muted no longer swaps to
+                // volume_off/mic_off either -- the level-held glyph stays and
+                // MuteGlyph's slash overlays it, so the glyph and the bar
+                // below agree on the same held level at a glance.
+                glyph: root.mic
+                    ? "mic"
+                    : root.percent === 0 ? "volume_mute"
                         : root.percent < 50 ? "volume_down" : "volume_up"
+                muted: root.muted
                 color: root.muted ? Colors.fgMuted : root.tint
-                font.family: Caelus.symbolFamily
-                font.pixelSize: 20
+                size: 20
                 Layout.alignment: Qt.AlignVCenter
-
-                Behavior on color { ColorAnimation { duration: Motion.fast } }
             }
 
             Rectangle {

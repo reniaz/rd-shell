@@ -25,6 +25,13 @@ PanelWindow {
     readonly property var results: Keybinds.results
     property int index: 0
 
+    // Idea 10: edit mode turns Enter/click from "run this bind" into
+    // "capture a new chord for it" -- KeybindManager.qml is the capture
+    // dialog itself, this only decides when it opens and shows the
+    // Edit/Reset controls and their status line.
+    property bool editMode: false
+    property string resetStatus: ""
+
     // Back to the top on every keystroke: unlike the launcher there is no
     // "the row you were about to pick" to keep, and the best match is first.
     onResultsChanged: root.index = 0
@@ -45,11 +52,40 @@ PanelWindow {
         Keybinds.run(bind);
     }
 
+    // A mouse-drag bind (SUPER + LMB/RMB) carries no ref -- nothing the
+    // overrides mechanism can re-invoke -- so it is left out of edit mode
+    // rather than offered a rebind control that can never save.
+    function startEdit(i) {
+        const bind = root.results[i];
+        if (!bind || !/^[0-9]+$/.test(bind.ref ?? "")) return;
+        manager.startCapture(bind);
+    }
+
+    function resetToDefaults() {
+        root.resetStatus = "Resetting…";
+        Keybinds.resetOverrides();
+    }
+
     function close() {
         search.text = "";
         Keybinds.query = "";
         root.index = 0;
+        root.editMode = false;
+        root.resetStatus = "";
+        if (manager.capturing) manager.cancel();
         root.dismissed();
+    }
+
+    Connections {
+        target: Keybinds
+
+        function onSaveFinished(ok, error) {
+            // Only the reset flow reports through this label -- a rebind's
+            // own result shows inside KeybindManager.qml's own dialog, which
+            // is still open (or just closed itself) when this fires.
+            if (root.resetStatus === "") return;
+            root.resetStatus = ok ? "Reset" : error;
+        }
     }
 
     anchors { top: true; bottom: true; left: true; right: true }
@@ -161,7 +197,8 @@ PanelWindow {
                                 break;
                             case Qt.Key_Return:
                             case Qt.Key_Enter:
-                                root.activate(root.index);
+                                if (root.editMode) root.startEdit(root.index);
+                                else root.activate(root.index);
                                 break;
                             default:
                                 return;
@@ -188,6 +225,51 @@ PanelWindow {
                         ? `${root.results.length}/${Keybinds.binds.length}`
                         : `${Keybinds.binds.length}`
                     color: Colors.fgMuted
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
+                }
+
+                // Idea 10: the edit-mode toggle. "Reset to defaults" and its
+                // status only show up once inside edit mode -- there is
+                // nothing to reset from the read-only view, and the label
+                // would just be clutter there.
+                Text {
+                    text: root.editMode ? "done" : "edit"
+                    color: root.editMode ? Colors.popupAccent : Colors.fgMuted
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
+
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.editMode = !root.editMode;
+                            if (!root.editMode) root.resetStatus = "";
+                        }
+                    }
+                }
+
+                Text {
+                    visible: root.editMode
+                    text: "Reset to defaults"
+                    color: Colors.fgMuted
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
+
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.resetToDefaults()
+                    }
+                }
+
+                Text {
+                    visible: root.editMode && root.resetStatus.length > 0
+                    text: root.resetStatus
+                    color: root.resetStatus === "Reset" || root.resetStatus === "Resetting…"
+                        ? Colors.fgMuted : Colors.error
                     font.family: Caelus.fontFamily
                     font.pixelSize: Caelus.sizeLabel
                 }
@@ -276,6 +358,17 @@ PanelWindow {
                             font.pixelSize: Caelus.sizeBody
                             elide: Text.ElideRight
                         }
+
+                        // Edit mode's own affordance -- a mouse-drag bind has
+                        // no ref (see root.startEdit) so it gets no pencil,
+                        // the same rows a click cannot rebind either.
+                        Text {
+                            visible: root.editMode && !!row.modelData.ref
+                            text: "edit"
+                            color: Colors.popupAccent
+                            font.family: Caelus.symbolFamily
+                            font.pixelSize: Caelus.sizeBody
+                        }
                     }
 
                     MouseArea {
@@ -283,7 +376,7 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: row.modelData.ref ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onEntered: root.index = row.index
-                        onClicked: root.activate(row.index)
+                        onClicked: root.editMode ? root.startEdit(row.index) : root.activate(row.index)
                     }
                 }
 
@@ -297,5 +390,15 @@ PanelWindow {
                 }
             }
         }
+    }
+
+    // The capture dialog for whichever row startEdit() picked -- covers the
+    // whole window (scrim included) so Escape/click-outside on it can never
+    // be mistaken for this window's own close().
+    KeybindManager {
+        id: manager
+
+        anchors.fill: parent
+        onClosed: search.forceActiveFocus()
     }
 }

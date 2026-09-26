@@ -22,8 +22,9 @@ the script:
    `golang`, `python3-pip`, `unzip`).
 3. Builds `fetchit` (the terminal greeting) and, if you say yes,
    `wayvibes` from source — neither has a Fedora package.
-4. Installs Material Symbols Rounded, the bundled `caelusevka` font, and the
-   Bibata cursor theme.
+4. Installs Material Symbols Rounded, the bundled `caelusevka` font, the
+   Bibata cursor theme, and `starship` (its own curl installer, since
+   Fedora has no package for it).
 5. Symlinks the repo into place and links every config file, nvim included,
    then runs nvim's plugin manager headless so the first real launch isn't a
    plugin download (see [What install.sh does](what-install-does.md) for the

@@ -9,10 +9,10 @@ git pull
 `install.sh` is idempotent — every step checks its own state before changing
 anything, so re-running it after a `git pull` is the normal way to pick up
 config changes. Already-correct symlinks,
-already-set gsettings keys, already-masked daemons and already-enabled
-services all print `ok` and are left alone; only what actually changed (a new
-dotfile, an updated Hyprland bind script, a package that's now required) does
-anything.
+already-set gsettings keys, an already-wired `~/.bashrc` (starship),
+already-masked daemons and already-enabled services all print `ok` and are
+left alone; only what actually changed (a new dotfile, an updated Hyprland
+bind script, a package that's now required) does anything.
 
 Things worth knowing about re-running:
 

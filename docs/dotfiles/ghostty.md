@@ -28,6 +28,16 @@ is left at ghostty's own defaults; nothing here overrides them:
 `window-save-state` are all absent from the file, i.e. left at whatever
 ghostty ships as its own default for each.
 
+## Cursor-trail shader
+
+`config-file = ?shaders/cursor-trail.conf` (the leading `?` makes a missing
+shader file a no-op rather than a config error) loads
+[sahaj-b/ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders)
+(MIT), under `hypr/dotfiles/ghostty/shaders/`: a short-lived glow trail
+follows the cursor as it moves or blinks. Delete or rename
+`shaders/cursor-trail.conf` to turn it off without touching `config.ghostty`
+itself.
+
 ## `themes/`
 
 - `caelus` — the static caelus palette, usable by hand (`theme = caelus`)

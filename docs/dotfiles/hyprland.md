@@ -19,8 +19,34 @@ and generated lock colours that aren't this repo's to own:
 three only if installed — nothing here installs them), a `tuned-adm` profile,
 `wayvibes` (if built, with a soundpack path that's specific to this machine),
 `launch.sh` (which brings the audio graph up before `qs` itself — see
-[Fresh install](../installation/fresh-install.md)), the cursor theme, and a
-`hyprpm reload -n` to load the `hyprexpo` plugin into the running session.
+[Fresh install](../installation/fresh-install.md)), the cursor theme, a
+polkit authentication agent (below), and a `hyprpm reload -n` to load the
+`hyprexpo` plugin into the running session.
+
+## Polkit agent
+
+`/usr/libexec/kf6/polkit-kde-authentication-agent-1` is started explicitly
+from `exec-once` — nothing else registers as this session's polkit
+authentication agent under Hyprland (its own `.desktop` autostart entry is
+KDE-only, and `polkitd` on its own only brokers permission, it never draws a
+dialog), so without this line every `pkexec`/GUI-admin prompt hangs or fails
+silently. It reads `QT_QPA_PLATFORMTHEME=kde`, so its dialog already follows
+the matugen-driven KDE colour scheme.
+
+## Session-lock restore
+
+`misc.allow_session_lock_restore = true` lets `hyprlock` take over a session
+another lock client already holds — the fallback `scripts/lock.sh` (see
+[Lock screen](../the-shell/lock-screen.md)) depends on this to hand off from
+the shell's own lock to `hyprlock` if the former dies.
+
+## Keybind overrides loader
+
+`pcall(dofile, os.getenv("HOME") .. "/.config/hypr/keybind-overrides.lua")`
+near the end of the file loads whatever `Super+K`'s in-shell keybind editor
+has written — see [Keybinds → Rebinding](../keybinds.md#rebinding). Wrapped
+in `pcall` so a missing or broken overrides file never breaks the rest of
+`hyprland.lua`.
 
 ## Live wallpaper follow on reload
 

@@ -27,6 +27,44 @@ Singleton {
         root.open = !root.open;
     }
 
+    // The model itself, watched separately from the index built off it: a
+    // desktop-entry install/removal burst (a package manager unpacking a
+    // dozen .desktop files, a flatpak update) changes this several times in
+    // under a second, and rebuilding the index -- filter, map, lowercase,
+    // split into words -- on every one of those changes is wasted work the
+    // launcher never needed to do that many times over. `onValuesChanged`
+    // below collapses a burst into a single rebuild through `_debounce`.
+    property var _values: DesktopEntries.applications.values
+
+    // Built imperatively by `_rebuildIndex()` rather than as a binding on
+    // `_values`, which is exactly what let this stop rebuilding on every
+    // change in the first place.
+    property var _index: []
+
+    // True once `_index` has been built at least once. Guards the debounce:
+    // the very first population has to land immediately -- a launcher that
+    // opens empty because its first desktop-entry burst is still sitting in
+    // a timer is worse than the rebuild cost this whole debounce exists to
+    // avoid -- so only the second and later changes ever wait on the timer.
+    property bool _everBuilt: false
+
+    on_ValuesChanged: {
+        if (!root._everBuilt) root._rebuildIndex();
+        else root._debounce.restart();
+    }
+
+    Component.onCompleted: if (!root._everBuilt) root._rebuildIndex();
+
+    Timer {
+        id: _debounceTimer
+        // Long enough that an install/removal burst of several dozen
+        // .desktop files collapses into one rebuild; short enough that the
+        // list is never visibly stale to someone watching it settle.
+        interval: 220
+        onTriggered: root._rebuildIndex()
+    }
+    property alias _debounce: _debounceTimer
+
     // One entry per visible app, with its searchable text lowercased and
     // split into words up front. This only changes when apps are installed
     // or removed; `query` changes on every keystroke -- so the cost that
@@ -36,31 +74,34 @@ Singleton {
     // one cheap comparison against a real requirement, not a guess about
     // what the model does internally, and it costs nothing if the model
     // was already filtering it.
-    readonly property var _index: DesktopEntries.applications.values
-        .filter(e => !e.noDisplay)
-        .map(e => {
-            const name = (e.name ?? "").toLowerCase();
-            return {
-                entry: e,
-                displayName: e.name ?? "",
-                name,
-                // Split on anything that is not a letter or digit, so a
-                // word-boundary match finds "the second word" of a name
-                // and not just its start -- "image" finds "GNU Image
-                // Manipulation Program" as a word hit rather than only a
-                // substring one.
-                words: name.split(/[^a-z0-9]+/).filter(w => w.length > 0),
-                // Every field a launcher search reasonably covers: the name
-                // again (so a haystack hit still counts once a name-only
-                // check has already failed), the short description, the
-                // parsed command, and whatever keywords the entry declares
-                // for exactly this purpose.
-                haystack: [e.name, e.genericName, e.execString, ...(e.keywords ?? [])]
-                    .filter(s => s)
-                    .join(" ")
-                    .toLowerCase()
-            };
-        })
+    function _rebuildIndex() {
+        root._everBuilt = true;
+        root._index = root._values
+            .filter(e => !e.noDisplay)
+            .map(e => {
+                const name = (e.name ?? "").toLowerCase();
+                return {
+                    entry: e,
+                    displayName: e.name ?? "",
+                    name,
+                    // Split on anything that is not a letter or digit, so a
+                    // word-boundary match finds "the second word" of a name
+                    // and not just its start -- "image" finds "GNU Image
+                    // Manipulation Program" as a word hit rather than only a
+                    // substring one.
+                    words: name.split(/[^a-z0-9]+/).filter(w => w.length > 0),
+                    // Every field a launcher search reasonably covers: the name
+                    // again (so a haystack hit still counts once a name-only
+                    // check has already failed), the short description, the
+                    // parsed command, and whatever keywords the entry declares
+                    // for exactly this purpose.
+                    haystack: [e.name, e.genericName, e.execString, ...(e.keywords ?? [])]
+                        .filter(s => s)
+                        .join(" ")
+                        .toLowerCase()
+                };
+            });
+    }
 
     readonly property var results: root._search(root.query)
 

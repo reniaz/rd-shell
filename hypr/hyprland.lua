@@ -75,6 +75,15 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("wayvibes ~/Documents/Soundpacks/nk-cream -v 2 --mouse ~/Documents/Soundpacks/mp_corsair/ --mouse-volume 0.5 --background")
     hl.exec_cmd("~/.config/quickshell/rd-shell/launch.sh")
     hl.exec_cmd("hyprctl setcursor Bibata-Original-Classic 36")
+    -- Nothing else registers as the session's polkit authentication agent
+    -- (polkitd on its own only brokers, it never draws a dialog), so every
+    -- pkexec/GUI-admin prompt used to hang or fail silently. This binary's
+    -- own .desktop autostart entry is OnlyShowIn=KDE, hence the explicit
+    -- exec-once here instead of relying on plasma-polkit-agent.service (a
+    -- static unit pulled in by plasma-core.target, which never runs under
+    -- Hyprland). It already reads QT_QPA_PLATFORMTHEME=kde below, so its
+    -- dialog picks up the matugen-driven KDE colour scheme for free.
+    hl.exec_cmd("/usr/libexec/kf6/polkit-kde-authentication-agent-1")
     -- `hyprpm enable` only marks a plugin as wanted; nothing loads it into a
     -- fresh session but this. Loading one re-parses this file, which is what
     -- lets the plugin_loaded("hyprexpo") block below apply its options.
@@ -378,6 +387,9 @@ hl.config({
     misc = {
         force_default_wallpaper = 0,    -- Set to 0 or 1 to disable the anime mascot wallpapers
         disable_hyprland_logo   = true, -- If true disables the random hyprland logo / anime girl background. :(
+        -- Lets hyprlock take over a lock whose client died (scripts/lock.sh's
+        -- fallback when the shell's own lock screen crashes while locked).
+        allow_session_lock_restore = true,
     },
 })
 
@@ -425,8 +437,11 @@ hl.bind(mainMod .. " + Q", hl.dsp.exec_cmd(terminal), { description = "Terminal 
 local closeWindowBind = hl.bind(mainMod .. " + W", hl.dsp.window.close(), { description = "Close window" })
 -- closeWindowBind:set_enabled(false)
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("qs ipc -c rd-shell call power toggle"), { description = "Power menu" })
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("hyprlock"), { description = "Lock the session" })
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("~/.config/quickshell/rd-shell/scripts/lock.sh"), { description = "Lock the session" })
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc -c rd-shell call notifications toggle"), { description = "Notification panel" })
+-- Keybind-only on purpose: click-to-create kept making stray notes. The shell
+-- ignores it unless the focused workspace is empty.
+hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("qs ipc -c rd-shell call stickynotes create"), { description = "New sticky note (empty workspace)" })
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager), { description = "File manager (dolphin)" })
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }), { description = "Float / tile window" })
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu), { description = "Launcher (hyprlauncher)" })
@@ -539,6 +554,7 @@ hl.bind(mainMod .. " + SHIFT + right", move_window("right"), { description = "Mo
 hl.bind(mainMod .. " + SHIFT + up",    move_window("up"),    { description = "Move window up" })
 hl.bind(mainMod .. " + SHIFT + down",  move_window("down"),  { description = "Move window down" })
 hl.bind("CTRL + ALT + up", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh area"), { description = "Screenshot a region" })
+hl.bind("CTRL + ALT + down", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh annotate"), { description = "Screenshot a region, then annotate it in swappy" })
 hl.bind("CTRL + ALT + F", hl.dsp.exec_cmd("qs ipc -c rd-shell call wallpaper toggle"), { description = "Wallpaper switcher" })
 
 -- Switch workspaces with mainMod + [0-9]
@@ -812,3 +828,8 @@ require("hyprland-gui")
 -- it has any: binds for things this repo does not ship. pcall, so a checkout
 -- without the file (every fresh clone) loads exactly as if this were absent.
 pcall(dofile, os.getenv("HOME") .. "/.config/quickshell/rd-shell/Local/binds.lua")
+
+-- User keybind overrides written at runtime by the in-shell keybind manager.
+-- Missing or broken file must never break this config: pcall + dofile, same
+-- pattern as the Local/binds.lua load above.
+pcall(dofile, os.getenv("HOME") .. "/.config/hypr/keybind-overrides.lua")

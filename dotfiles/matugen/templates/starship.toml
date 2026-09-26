@@ -1,0 +1,85 @@
+# Rendered by matugen ([templates.starship] in ~/.config/matugen/config.toml)
+# on every wallpaper switch. Output goes to ~/.config/starship.toml, which
+# starship reads fresh on every prompt draw -- no reload/signal needed (see
+# that template entry's own comment for why there is no post_hook here).
+#
+# Palette follows the same harmonized-hue convention as the ghostty ANSI
+# mapping and bat/gtk templates (~/.config/matugen/config.toml's own header):
+# accent/status -> primary, ok/versions split across the six fixed hues so a
+# git-dirty prompt and a language badge never read as the same colour.
+"$schema" = 'https://starship.rs/config-schema.json'
+
+palette = "matugen"
+
+# Single line in the shape of the stock Fedora prompt, [user@host dir]$,
+# with git state added. NOTE: every root key must stay above
+# [palettes.matugen] -- TOML attaches a bare key to the last opened table.
+add_newline = false
+
+format = """
+[\\[](outline)$username[@](outline)$hostname $directory[\\]](outline) \
+$git_branch$git_status$cmd_duration$character"""
+
+[palettes.matugen]
+primary = "{{colors.primary.default.hex}}"
+on_primary = "{{colors.on_primary.default.hex}}"
+red = "{{colors.red.default.hex}}"
+green = "{{colors.green.default.hex}}"
+yellow = "{{colors.yellow.default.hex}}"
+blue = "{{colors.blue.default.hex}}"
+magenta = "{{colors.magenta.default.hex}}"
+cyan = "{{colors.cyan.default.hex}}"
+outline = "{{colors.outline.default.hex}}"
+on_surface_variant = "{{colors.on_surface_variant.default.hex}}"
+
+[username]
+show_always = true
+style_user = "bold primary"
+style_root = "bold red"
+format = "[$user]($style)"
+
+[hostname]
+ssh_only = false
+style = "bold primary"
+format = "[$hostname]($style)"
+
+[directory]
+style = "bold blue"
+truncation_length = 0
+truncate_to_repo = false
+home_symbol = "~"
+read_only = " "
+read_only_style = "red"
+format = "[$path]($style)[$read_only]($read_only_style)"
+
+[git_branch]
+symbol = ""
+style = "bold magenta"
+format = "[$symbol$branch]($style)"
+
+[git_status]
+# Classic git-prompt marks glued to the branch: * unstaged, + staged,
+# ! conflict, arrows = commits ahead/behind the upstream.
+style = "bold yellow"
+format = '([$all_status$ahead_behind]($style)) '
+conflicted = "!"
+modified = "*"
+deleted = "*"
+renamed = "*"
+typechanged = "*"
+staged = "+"
+untracked = ""
+stashed = ""
+ahead = " ⇡${count}"
+behind = " ⇣${count}"
+diverged = " ⇡${ahead_count}⇣${behind_count}"
+
+[cmd_duration]
+min_time = 2000
+style = "outline"
+format = "[$duration]($style) "
+
+[character]
+success_symbol = '[\$](bold green)'
+error_symbol = '[\$](bold red)'
+vimcmd_symbol = '[\$](bold green)'

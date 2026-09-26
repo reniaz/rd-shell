@@ -149,6 +149,14 @@ input_path = '~/.config/matugen/templates/bat.tmTheme'
 output_path = '~/.config/bat/themes/matugen.tmTheme'
 post_hook = 'bat cache --build >/dev/null 2>&1 || true'
 
+# Starship prompt. No post_hook, unlike bat/btop/ghostty above -- starship
+# has no cache or running instance to signal, it just re-reads
+# ~/.config/starship.toml from disk on every prompt it draws, so this file
+# lands fresh in time for the very next prompt with nothing else to do.
+[templates.starship]
+input_path = '~/.config/matugen/templates/starship.toml'
+output_path = '~/.config/starship.toml'
+
 # Qt/KDE apps (Dolphin, Ark, kdialog, any file-open dialog in an app run
 # with QT_QPA_PLATFORMTHEME=kde) read colours from the *active* KDE colour
 # scheme in kdeglobals, not from a file matugen can just overwrite in place --

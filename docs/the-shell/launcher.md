@@ -2,7 +2,18 @@
 
 ## App launcher (`Launcher.qml`)
 
-Shell-native, search-as-you-type app launcher. `Super+Space`.
+Shell-native, search-as-you-type app launcher. `Super+Space`. The result list
+scrolls with a thin, auto-hiding `ThinScrollBar.qml` once matches run past
+the visible rows.
+
+## Calculator (`Services/Calc.qml`)
+
+A query that looks like arithmetic gets a synthetic result row above the app
+matches — `calculate` icon, `expression = result` — instead of any app entry.
+Backed by `qalc -t` (the `qalculate` package), so unit and currency
+conversion work too: `5 km to mi`, `sqrt(2)`, `=2^10`. `Enter` on that row
+copies the result to the clipboard rather than launching anything. One
+debounced process per answer, not per keystroke.
 
 ## hyprlauncher
 

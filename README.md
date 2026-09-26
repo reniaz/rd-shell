@@ -22,7 +22,8 @@ wallpaper colours (`dotfiles/`), the author's wallpapers, and one installer
 (`install.sh`) for a fresh box.
 
 **Stack at a glance:** Hyprland · Quickshell · matugen · ghostty ·
-hyprlauncher · fetchit · btop · cava · nvim · yazi · vesktop · spicetify.
+hyprlauncher · fetchit · btop · cava · nvim · yazi · vesktop · spicetify ·
+starship.
 
 GitHub: [reniaz/rd-shell](https://github.com/reniaz/rd-shell) ·
 **Full docs: [the wiki](docs/README.md)**
@@ -37,13 +38,16 @@ GitHub: [reniaz/rd-shell](https://github.com/reniaz/rd-shell) ·
 ## What it does
 
 Bar with a workspace/media/system-monitor/clock/Claude/network/notification
-pill layout, a QML-native launcher plus a searchable keybind overview
-(`Super+K`), a fullscreen wallpaper switcher that drives dynamic colour
-end-to-end (bar, Hyprland borders, GTK, Qt/KDE, icons, cursor, `bat`,
-Firefox), grouped notifications with DND, a system monitor popup backed by a
-persistent Python sampler, a hover-revealed edge bar for DDC brightness on
-desktop displays, and desktop widgets (a clock and a Spotify now-playing
-card) drawn under every window.
+pill layout, a QML-native launcher (with an inline `qalc` calculator) plus a
+searchable, rebindable keybind overview (`Super+K`), a fullscreen wallpaper
+switcher that drives dynamic colour end-to-end (bar, Hyprland borders, GTK,
+Qt/KDE, icons, cursor, `bat`, Firefox, starship), grouped notifications with
+DND — and a Discord/Vesktop incoming-call banner that shows even under it — a
+system monitor popup backed by a persistent Python sampler, a hover-revealed
+edge bar for DDC brightness on desktop displays, desktop widgets (a clock, a
+Spotify now-playing card, and handwritten-style sticky notes) drawn under
+every window, a native lock screen with a `hyprlock` fallback, and
+accessibility options (UI scale, high contrast, a visible focus ring).
 
 Full tour: **[The shell](docs/the-shell/README.md)**.
 

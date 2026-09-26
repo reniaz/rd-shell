@@ -45,6 +45,16 @@ Editing `enabledThemes` directly in `settings.json` works too, but that file
 also holds Vesktop's own account/session state — safer to use the in-app
 toggle than to hand-edit the file.
 
+## Incoming-call banner
+
+The bar's clock island morphs into a call banner for an incoming Vesktop
+call — see [Notifications → Discord call
+banner](../the-shell/notifications.md) for how it's detected and what Join
+and Decline actually do (both are real Discord keyboard shortcuts sent
+straight to the Vesktop window, nothing this rice invents). It relies on
+Vesktop showing its own desktop notification for the call, so it needs
+Vesktop's own notification setting left on.
+
 ## Installing Vesktop itself
 
 `vesktop` is autostarted from `hyprland.lua` if present, but **not**

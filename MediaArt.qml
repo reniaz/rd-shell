@@ -113,19 +113,28 @@ Item {
     MultiEffect {
         anchors.fill: parent
         source: artImage
-        visible: art.ready
+        // Faded rather than toggled, so a picture that finishes loading
+        // after the glyph is already up (a caller's avatar, a new track)
+        // cross-fades in instead of popping.
+        opacity: art.ready ? 1 : 0
+        visible: opacity > 0
         maskEnabled: true
         maskSource: circleMask
         maskThresholdMin: 0.5
         maskSpreadAtMin: 0.04
+
+        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
     }
 
     Text {
         anchors.centerIn: parent
-        visible: !art.ready
+        opacity: art.ready ? 0 : 1
+        visible: opacity > 0
         text: art.fallbackGlyph
         color: art.glyphColor
         font.family: Caelus.symbolFamily
         font.pixelSize: Caelus.sizeTitle
+
+        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
     }
 }

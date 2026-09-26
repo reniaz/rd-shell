@@ -43,6 +43,17 @@ BarPopup {
         function onDismissed() { Power.menuOpen = false; }
     }
 
+    // Idea 9 (Accessibility settings pane): maps a 0..1 drag/wheel ratio onto
+    // the slider's real range and snaps it to the step the brief asks for,
+    // so the drag handler below stays a one-liner. Clamped at both ends
+    // first -- a fast wheel notch or a drag past the track's edge must land
+    // on the range's own limit, not spill past it.
+    function setUiScale(ratio) {
+        const clamped = Math.max(0, Math.min(1, ratio));
+        const raw = 0.85 + clamped * (1.5 - 0.85);
+        const stepped = Math.round(raw / 0.05) * 0.05;
+        Settings.uiScale = Math.max(0.85, Math.min(1.5, stepped));
+    }
 
     ColumnLayout {
         id: body
@@ -109,6 +120,208 @@ BarPopup {
 
             Text {
                 text: "Desktop widgets"
+                color: Colors.fg
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Colors.popupBorder
+        }
+
+        // Idea 9: a dedicated accessibility pane. Every toggle below repeats
+        // the desktop-widgets glyph-swap idiom above -- a Material Symbol
+        // that names the current state rather than a separate switch widget
+        // -- and each is wrapped in a plain focusable Item so Tab reaches it
+        // and FocusRing has something real to outline; this is also the
+        // section that setting exists for.
+        Text {
+            text: "Accessibility"
+            color: Colors.fgMuted
+            font.family: Caelus.fontFamily
+            font.pixelSize: Caelus.sizeLabel
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Caelus.space
+
+            Item {
+                id: scaleFocus
+
+                implicitWidth: scaleIcon.implicitWidth
+                implicitHeight: scaleIcon.implicitHeight
+                activeFocusOnTab: true
+
+                Text {
+                    id: scaleIcon
+
+                    text: "text_increase"
+                    color: Colors.fgMuted
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
+                }
+
+                FocusRing {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    show: scaleFocus.activeFocus
+                }
+            }
+
+            Text {
+                text: "UI scale"
+                color: Colors.fg
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Text {
+                text: Settings.uiScale.toFixed(2) + "×"
+                color: Colors.fgMuted
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeLabel
+            }
+        }
+
+        Rectangle {
+            id: scaleTrack
+
+            Layout.fillWidth: true
+            implicitHeight: 6
+            radius: Caelus.radiusPill
+            color: Colors.popupBorder
+
+            readonly property real ratio: (Settings.uiScale - 0.85) / (1.5 - 0.85)
+
+            Rectangle {
+                width: Math.round(scaleTrack.width * scaleTrack.ratio)
+                height: parent.height
+                radius: parent.radius
+                color: Colors.popupAccent
+            }
+
+            FocusRing {
+                anchors.fill: parent
+                anchors.margins: -6
+                radius: Caelus.radiusPill
+                show: scaleTrackFocus.activeFocus
+            }
+
+            Item {
+                id: scaleTrackFocus
+
+                anchors.fill: parent
+                activeFocusOnTab: true
+
+                Keys.onLeftPressed: root.setUiScale(scaleTrack.ratio - 0.05 / (1.5 - 0.85))
+                Keys.onRightPressed: root.setUiScale(scaleTrack.ratio + 0.05 / (1.5 - 0.85))
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.topMargin: -8
+                    anchors.bottomMargin: -8
+                    cursorShape: Qt.PointingHandCursor
+                    onPressed: mouse => { scaleTrackFocus.forceActiveFocus(); root.setUiScale(mouse.x / width); }
+                    onPositionChanged: mouse => { if (pressed) root.setUiScale(mouse.x / width); }
+                    onWheel: wheel => root.setUiScale(scaleTrack.ratio + (wheel.angleDelta.y > 0 ? 1 : -1) * 0.05 / (1.5 - 0.85))
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Caelus.space
+
+            Item {
+                id: contrastFocus
+
+                implicitWidth: contrastIcon.implicitWidth
+                implicitHeight: contrastIcon.implicitHeight
+                activeFocusOnTab: true
+
+                Keys.onReturnPressed: Settings.highContrast = !Settings.highContrast
+                Keys.onSpacePressed: Settings.highContrast = !Settings.highContrast
+
+                Text {
+                    id: contrastIcon
+
+                    text: Settings.highContrast ? "toggle_on" : "toggle_off"
+                    color: Settings.highContrast ? Colors.popupAccent : Colors.fgMuted
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
+
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { contrastFocus.forceActiveFocus(); Settings.highContrast = !Settings.highContrast; }
+                    }
+                }
+
+                FocusRing {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    show: contrastFocus.activeFocus
+                }
+            }
+
+            Text {
+                text: "High contrast"
+                color: Colors.fg
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Caelus.space
+
+            Item {
+                id: focusRingFocus
+
+                implicitWidth: focusRingIcon.implicitWidth
+                implicitHeight: focusRingIcon.implicitHeight
+                activeFocusOnTab: true
+
+                Keys.onReturnPressed: Settings.focusRing = !Settings.focusRing
+                Keys.onSpacePressed: Settings.focusRing = !Settings.focusRing
+
+                Text {
+                    id: focusRingIcon
+
+                    text: Settings.focusRing ? "toggle_on" : "toggle_off"
+                    color: Settings.focusRing ? Colors.popupAccent : Colors.fgMuted
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
+
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { focusRingFocus.forceActiveFocus(); Settings.focusRing = !Settings.focusRing; }
+                    }
+                }
+
+                FocusRing {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    show: focusRingFocus.activeFocus
+                }
+            }
+
+            Text {
+                text: "Visible focus ring"
                 color: Colors.fg
                 font.family: Caelus.fontFamily
                 font.pixelSize: Caelus.sizeBody

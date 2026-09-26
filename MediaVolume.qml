@@ -43,12 +43,13 @@ Item {
     readonly property real _volume: root._stream?.audio?.volume ?? 0
     readonly property bool _muted: root._stream?.audio?.muted ?? false
 
-    // A plain two-way split on level, muted collapsing both to volume_off.
-    // VolumeSlider's own icon/mutedIcon pair never needed a third state
-    // because a full row was always in view; sitting collapsed to a single
-    // glyph most of the time, this is the only volume readout there is
-    // until the slider is out, so it earns the level split MediaPopup's row
-    // leaves to a caller.
+    // A plain two-way split on level; muted no longer collapses this to
+    // volume_off, since MuteGlyph overlays its slash on whichever of the two
+    // is showing rather than swapping the glyph. MediaPopup's own row never
+    // needed the split because a full row was always in view; sitting
+    // collapsed to a single glyph most of the time, this is the only volume
+    // readout there is until the slider is out, so it earns the split
+    // MediaPopup's row leaves to a caller.
     readonly property string _icon: root._volume >= 0.5 ? "volume_up" : "volume_down"
 
     // Set for the whole span of a press from the scrub overlay below --
@@ -164,7 +165,7 @@ Item {
     // Its own MouseArea rather than the slider's: with no stream the slider
     // never appears at all, and this is what a click or a wheel notch over
     // a dimmed player's control has to land on instead.
-    Text {
+    MuteGlyph {
         id: glyph
 
         // Right, not left: the control grows leftward out of its right
@@ -173,18 +174,17 @@ Item {
         // it, instead of sliding along with the growing left edge.
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        text: root._muted ? "volume_off" : root._icon
+        glyph: root._icon
+        muted: root._muted
         color: root._muted ? Colors.mediaMeta : Colors.mediaActive
         // Dimmed and fixed, not merely faded to nothing, while there is no
         // stream to turn down -- MediaButton's own `available` does the
         // same with the same 0.35. Faded to nothing instead once the
         // slider is what is actually shown, so the two never draw at once.
         opacity: root._adjustable ? (root.expanded ? 0 : 1) : 0.35
-        font.family: Caelus.symbolFamily
-        font.pixelSize: 16
+        size: 16
 
         Behavior on opacity { NumberAnimation { duration: Motion.fast } }
-        Behavior on color { ColorAnimation { duration: Motion.fast } }
 
         MouseArea {
             anchors.fill: parent
@@ -224,7 +224,6 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         icon: root._icon
-        mutedIcon: "volume_off"
         accent: Colors.mediaActive
         value: root._volume
         muted: root._muted

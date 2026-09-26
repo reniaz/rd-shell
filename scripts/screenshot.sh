@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Capture a screenshot, put it on the clipboard AND on disk, then offer to open
 # it. Bound to CTRL+ALT+up in hyprland.lua; the optional argument is the target
-# (area|active|output|screen) and defaults to a region selection.
+# (area|annotate|active|output|screen) and defaults to a region selection.
+# CTRL+ALT+down runs "annotate": the same region grab as "area", opened in
+# swappy afterwards so the saved/copied/notified file is whatever comes out of
+# that editing session.
 #
 # The capture happens BEFORE anything else is on screen, and the region is then
 # cropped out of those pixels rather than grabbed live. That ordering is the
@@ -51,7 +54,7 @@ case "$TARGET" in
 screen) geo="" ;;
 output) geo=$(hyprctl monitors -j | jq -r '.[]|select(.focused)|"\(.x),\(.y) \(.width)x\(.height)"') ;;
 active) geo=$(hyprctl activewindow -j | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"') ;;
-area)
+area | annotate)
     # Freeze the screen to drag against. -r renders the inactive displays too so
     # a multi-monitor selection is frozen everywhere, and -z drops the colour
     # picker's zoom lens, which is the only part of hyprpicker we do not want.
@@ -74,7 +77,7 @@ area)
         -c "${accent}ff" \
         -F "$(fc-match -f '%{family}' caelusevka 2>/dev/null || echo sans)") || exit 0
     ;;
-*) echo "usage: screenshot.sh [area|active|output|screen]" >&2; exit 2 ;;
+*) echo "usage: screenshot.sh [area|annotate|active|output|screen]" >&2; exit 2 ;;
 esac
 
 if [ -z "$geo" ]; then
@@ -87,6 +90,19 @@ else
     pos=${geo%% *}
     size=${geo##* }
     magick "$TMP" -crop "${size}+${pos%,*}+${pos#*,}" +repage "$FILE"
+fi
+
+# "annotate" opens the already-saved, already-cropped FILE in swappy rather
+# than handing it a live grim -g/slurp pipe of its own -- that would be a
+# second, un-frozen capture, exactly the kind of screen-changed-mid-drag or
+# stray-cursor-surface problem the freeze-then-crop design above exists to
+# avoid. -o writes swappy's current canvas back to FILE when the window
+# closes, whichever way it closes (Save, Copy, or plain quit), so the
+# clipboard copy and notification below always reflect what the user last
+# saw on screen, annotated or not. Runs in the foreground: the rest of the
+# script -- clipboard, notification -- waits for the editing session to end.
+if [ "$TARGET" = annotate ] && command -v swappy >/dev/null 2>&1; then
+    swappy -f "$FILE" -o "$FILE" || true
 fi
 
 wl-copy --type image/png <"$FILE"

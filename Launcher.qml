@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Config
 import qs.Services
@@ -35,17 +36,27 @@ PanelWindow {
     property bool _entered: false
     readonly property bool shown: root._entered && root.open
 
-    readonly property var results: Apps.results
+    readonly property var _appResults: Apps.results
+
+    // The calculator's synthetic row (idea 5) rides at index 0, ahead of
+    // every app match, whenever Calc has an answer for the current query.
+    // Folded into the same array move()/activate() already walk rather than
+    // kept as a parallel case, so neither has to know a calc row exists as
+    // anything other than "row 0 sometimes".
+    readonly property var rows: Calc.hasResult
+        ? [{ calc: true }].concat(root._appResults.map(entry => ({ calc: false, entry })))
+        : root._appResults.map(entry => ({ calc: false, entry }))
+
     property int index: 0
 
     // Clamped rather than reset to 0 on every keystroke: narrowing ten
     // matches down to three should keep the selection where it lands if
     // that row is still in range, not always snap back to the top.
-    onResultsChanged: root.index = Math.min(root.index, Math.max(0, root.results.length - 1))
+    onRowsChanged: root.index = Math.min(root.index, Math.max(0, root.rows.length - 1))
 
     function move(delta) {
-        if (root.results.length === 0) return;
-        root.index = (root.index + delta + root.results.length) % root.results.length;
+        if (root.rows.length === 0) return;
+        root.index = (root.index + delta + root.rows.length) % root.rows.length;
     }
 
     // Takes the index explicitly rather than reading root.index, the same
@@ -53,10 +64,11 @@ PanelWindow {
     // through here, and a click should launch the row it landed on even if
     // hover happened to race the button press.
     function activate(i) {
-        const entry = root.results[i];
-        if (!entry) return;
+        const row = root.rows[i];
+        if (!row) return;
         root.index = i;
-        Apps.launch(entry);
+        if (row.calc) Calc.copyResult();
+        else Apps.launch(row.entry);
         root.close();
     }
 
@@ -66,6 +78,7 @@ PanelWindow {
     function close() {
         search.text = "";
         Apps.query = "";
+        Calc.submit("");
         root.index = 0;
         root.dismissed();
     }
@@ -187,7 +200,10 @@ PanelWindow {
                         // reaches TextInput's normal behaviour afterwards.
                         focus: true
 
-                        onTextEdited: Apps.query = search.text
+                        onTextEdited: {
+                            Apps.query = search.text;
+                            Calc.submit(search.text);
+                        }
 
                         Keys.onPressed: event => {
                             switch (event.key) {
@@ -237,8 +253,10 @@ PanelWindow {
                     + (root.visibleRows - 1) * Caelus.spaceTight
                 clip: true
                 spacing: Caelus.spaceTight
-                model: root.results
+                model: root.rows
                 currentIndex: root.index
+
+                ScrollBar.vertical: ThinScrollBar {}
 
                 // The keyboard is what drives `index`, not this view -- all
                 // this has to do is keep whichever row that is on screen as
@@ -253,6 +271,7 @@ PanelWindow {
                     required property int index
 
                     readonly property bool selected: row.index === root.index
+                    readonly property bool isCalc: row.modelData?.calc === true
 
                     width: list.width
                     height: root.rowHeight
@@ -260,6 +279,16 @@ PanelWindow {
                     color: row.selected ? Colors.surfaceHover : "transparent"
 
                     Behavior on color { ColorAnimation { duration: Motion.fast } }
+
+                    // Visible only when the a11y toggle is on (Settings.focusRing,
+                    // gated inside FocusRing itself) -- the keyboard-selected row
+                    // gets the same visible-focus overlay every other focusable
+                    // control in this shell does.
+                    FocusRing {
+                        anchors.fill: parent
+                        show: row.selected
+                        radius: Caelus.radiusCard
+                    }
 
                     RowLayout {
                         id: line
@@ -271,15 +300,30 @@ PanelWindow {
                         anchors.rightMargin: Caelus.spaceWide
                         spacing: Caelus.spaceWide
 
+                        // The synthetic calculator row (idea 5): same icon +
+                        // text shape every other row uses, a calculator glyph
+                        // in place of an app icon and "expression = result"
+                        // in place of a name.
+                        Text {
+                            visible: row.isCalc
+                            text: "calculate"
+                            color: Colors.popupAccent
+                            font.family: Caelus.symbolFamily
+                            font.pixelSize: Caelus.sizeTitle
+                        }
+
                         IconImage {
+                            visible: !row.isCalc
                             implicitSize: 22
-                            source: Apps.iconSource(row.modelData)
+                            source: row.isCalc ? "" : Apps.iconSource(row.modelData?.entry)
                             asynchronous: true
                         }
 
                         Text {
                             Layout.fillWidth: true
-                            text: row.modelData?.name ?? ""
+                            text: row.isCalc
+                                ? `${Calc.expression} = ${Calc.result}`
+                                : (row.modelData?.entry?.name ?? "")
                             color: Colors.fg
                             font.family: Caelus.fontFamily
                             font.pixelSize: Caelus.sizeLead

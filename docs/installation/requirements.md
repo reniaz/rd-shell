@@ -14,7 +14,9 @@
 - **A network connection** — for package installs, two from-source builds
   (`fetchit`, optionally `wayvibes`), the `hyprexpo` plugin build, the
   Material Symbols Rounded font, the Bibata cursor theme, the Papirus icon
-  theme, the wallpaper clone, nvim's plugin sync, and the Spotify flatpak.
+  theme, the wallpaper clone, nvim's plugin sync, the Spotify flatpak, and
+  `starship` — no Fedora/COPR package carries it, so it comes from its own
+  installer at starship.rs into `~/.local/bin`.
 - **`flatpak`, with the `flathub` remote reachable** — installed as a
   regular (optional) dependency if missing; the `flathub` remote is added
   `--user` automatically if it isn't already there. Used to install Spotify
