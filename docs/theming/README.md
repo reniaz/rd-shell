@@ -60,3 +60,20 @@ matugen can't find real chroma in it either), in which case it renders
 `monochrome` instead: white/grey/black only, so an accent-less wallpaper
 gets an accent-less theme rather than that same invented blue. Same
 restart-the-render behaviour as flipping dynamic colour itself.
+
+### Keeping nvim and bat coloured under monochrome
+
+A monochrome render is the right call for chrome — the bar, GTK, Qt/KDE,
+window borders, the lock screen, even the terminal's ANSI palette and btop's
+meters — but it also flattens nvim's and bat's own syntax highlighting to a
+handful of greys, since both read their string/keyword/function/etc colours
+off the same six roles a monochrome scheme collapses. The settings popup's
+**Keep app colours** toggle (`settings.json`'s `keepAppColours`, **on** by
+default) exists for just those two: while it's on, nvim and bat render with
+the fixed hued scheme instead of following chrome into monochrome, so code
+and `bat`'s output stay legible even on a wallpaper with no colour of its
+own. Off follows the wallpaper everywhere, nvim and bat included. Only
+matters while wallpaper colours is on *and* has actually resolved to
+monochrome — a colourful wallpaper, or the toggle off, already gives every
+template real hue, nvim and bat included, so there's nothing for this to
+change. See [The matugen pipeline](matugen-pipeline.md#three-runs-not-two).

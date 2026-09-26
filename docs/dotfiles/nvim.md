@@ -65,3 +65,17 @@ for where this sits relative to config linking.
   Wired up by `init.lua` (`require("matugen_watch")` +
   `pcall(vim.cmd.colorscheme, "matugen")`) — no manual step needed now that
   `init.lua` ships with the repo.
+
+`colorscheme.lua`'s own `[templates.nvim]` entry lives in `matugen/hue.toml`,
+not `dotfiles/matugen/config.toml` — rendered in a third pass, after every
+other app, with a scheme of its own (shared with `bat`'s theme) so an
+achromatic wallpaper doesn't flatten `@string`/`@function`/etc to grey along
+with chrome. See [The matugen pipeline → Why a third
+run](../theming/matugen-pipeline.md#why-a-third-run-for-just-nvim-and-bat).
+`c.bg`/`c.fg` above (`colors.surface`/`colors.on_surface`) are the one
+exception: `scripts/wallpaper-apply.sh` overwrites those and the rest of the
+neutral roles with chrome's own monochrome values before this template
+renders, whenever the hue pass actually swapped schemes — so the editor still
+sits on the same background as the terminal right next to it, even though
+its syntax groups are hued. Only happens in that one case; every other run
+computes `bg`/`fg` from this template's own scheme like everything else.

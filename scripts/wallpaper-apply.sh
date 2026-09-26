@@ -21,6 +21,12 @@ set -euf
 PGREP=/usr/bin/pgrep
 MATUGEN=/usr/bin/matugen
 BARMG="$HOME/.config/quickshell/rd-shell/matugen/bar.toml"
+# Beside BARMG, same reasoning: the repo path (via the ~/.config symlink),
+# not dotfiles/, so a git pull alone -- no install.sh re-run -- is enough for
+# this to render. Holds nvim's and bat's own syntax highlighting -- the two
+# templates that must not always follow chrome into scheme-monochrome -- see
+# its own header.
+HUEMG="$HOME/.config/quickshell/rd-shell/matugen/hue.toml"
 JQ=/usr/bin/jq
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/rd-shell"
 STATE="$CACHE/wallpaper"
@@ -234,6 +240,20 @@ if [ -n "$mgpair" ]; then
     mgmode=${mgpair##* }
 fi
 
+# Scheme for the third, hue-only pass (matugen/hue.toml -- see HUEMG above).
+# Same call, `--hue` flag: matugen-scheme.sh resolves exactly as above and
+# then, only when that resolved to monochrome, swaps in the fixed hued
+# scheme unless settings.json's "keepAppColours" says not to -- see its own
+# header. Defaults to mgscheme/mgmode (i.e. this pass mirrors chrome) if the
+# script fails, the same non-fatal fallback the block above uses.
+mghuescheme=$mgscheme
+mghuemode=$mgmode
+mghuepair=$("$SCRIPTS/matugen-scheme.sh" --hue "$img" 2>/dev/null || true)
+if [ -n "$mghuepair" ]; then
+    mghuescheme=${mghuepair%% *}
+    mghuemode=${mghuepair##* }
+fi
+
 # `--prefer saturation` is required, not cosmetic. Where an image offers more
 # than one candidate source colour matugen asks the user to choose, and with
 # no terminal attached -- which is always the case here, since this script is
@@ -247,16 +267,65 @@ fi
 # whatever matugen happens to pick when the flag is absent is not something
 # this script gets to be surprised by again.
 #
-# Two runs, the bar's own first: matugen/bar.toml holds only the bar's
-# template, and ~/.config/matugen/config.toml the apps' (terminal, btop, cava,
-# yazi, Vesktop, Spotify). One run stops at the first template that fails, in
-# an order that changes every run, so sharing one would let any broken app
-# theme sometimes keep the bar on the old colours. A run costs ~50 ms.
+# Three runs, the bar's own first: matugen/bar.toml holds only the bar's
+# template; ~/.config/matugen/config.toml every other app (GTK, Qt/KDE,
+# icons, Vesktop, Spotify, cava, Firefox, ghostty, btop, yazi, starship);
+# matugen/hue.toml just nvim and bat, rendered with $mghuescheme/$mghuemode
+# rather than $mgscheme/$mgmode -- the two only differ when the wallpaper is
+# achromatic and "keep app colours" is on, which is the whole reason this is
+# a third run and not two more templates in the second. Each run stops at
+# the first template that fails, in an order that changes every run, so
+# sharing one would let any broken app theme sometimes keep the others on
+# stale colours. A run costs ~50 ms.
+#
+# Seamless backgrounds: nvim and bat read the very same surface/outline/etc
+# roles ghostty's own background does (see docs/dotfiles/nvim.md), so when
+# the hue pass actually swaps to a different scheme than chrome's -- the one
+# case $mghuescheme and $mgscheme disagree -- rendering matugen/hue.toml with
+# that scheme alone would give nvim and bat a *different* background than
+# the terminal sitting right next to them, not just different syntax hues.
+# `-j hex` on chrome's own run below dumps the exact roles it just rendered
+# with (no extra matugen call -- confirmed against 4.2.0's source that the
+# dump runs before templates and never touches what they see); jq keeps only
+# the neutral ones -- background, every surface/outline variant, the
+# inverse surface pair, shadow, scrim -- never primary/secondary/tertiary/
+# error or the roles derived from them (surface_tint, inverse_primary), which
+# is exactly what must stay hued -- and `--import-json` hands that back to
+# the hue pass, which merges it over its own computed roles before rendering.
+# Every other case leaves $huejsonargs empty (and any stale import file
+# removed), so the hue pass renders precisely as it did before this existed;
+# a missing jq does the same, on purpose.
+CHROMEJSON="$CACHE/chrome-colors.json"
+HUEIMPORT="$CACHE/hue-import.json"
+huejsonargs=
+rm -f "$HUEIMPORT"
 if [ -x "$MATUGEN" ]; then
     "$MATUGEN" image "$img" --prefer saturation --type "scheme-$mgscheme" \
         --mode "$mgmode" -c "$BARMG" -q >/dev/null 2>&1 || true
     "$MATUGEN" image "$img" --prefer saturation --type "scheme-$mgscheme" \
-        --mode "$mgmode" -q >/dev/null 2>&1 || true
+        --mode "$mgmode" -j hex -q >"$CHROMEJSON" 2>/dev/null || true
+
+    if [ "$mghuescheme" != "$mgscheme" ] && [ -x "$JQ" ] && [ -s "$CHROMEJSON" ]; then
+        if "$JQ" '{colors: (.colors | {
+                background, on_background,
+                surface, surface_dim, surface_bright, surface_container,
+                surface_container_low, surface_container_lowest,
+                surface_container_high, surface_container_highest,
+                surface_variant,
+                on_surface, on_surface_variant,
+                outline, outline_variant,
+                inverse_surface, inverse_on_surface,
+                shadow, scrim
+            })}' "$CHROMEJSON" >"$HUEIMPORT.tmp" 2>/dev/null; then
+            mv -f "$HUEIMPORT.tmp" "$HUEIMPORT"
+            huejsonargs="--import-json $HUEIMPORT"
+        else
+            rm -f "$HUEIMPORT.tmp"
+        fi
+    fi
+
+    "$MATUGEN" image "$img" --prefer saturation --type "scheme-$mghuescheme" \
+        --mode "$mghuemode" -c "$HUEMG" $huejsonargs -q >/dev/null 2>&1 || true
 fi
 
 

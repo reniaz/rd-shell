@@ -69,6 +69,19 @@ Singleton {
     // own instead.
     property alias wallpaperColours: adapter.wallpaperColours
 
+    // Settings popup -> Keep app colours, directly under wallpaperColours.
+    // Only matters once that toggle resolves to matugen's scheme-monochrome
+    // (an achromatic wallpaper) -- otherwise every scheme already has real
+    // hue and there's nothing to keep. On (default) is the behaviour the
+    // user actually asked for: nvim and bat's own syntax highlighting (see
+    // matugen/hue.toml) keep a hued scheme even while everything else --
+    // the bar, GTK, Qt/KDE, borders, lock, the terminal's ANSI palette,
+    // btop, yazi, starship -- goes grey to match the wallpaper. Off follows
+    // the wallpaper everywhere, nvim and bat included. scripts/matugen-
+    // scheme.sh's `--hue` mode is what actually reads this back out of
+    // settings.json.
+    property alias keepAppColours: adapter.keepAppColours
+
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
     // rather than in some second, hidden location a person would have to be
@@ -98,6 +111,10 @@ Singleton {
     // is baked into the last render, so flipping this needs the same
     // re-render to be seen rather than waiting for the next wallpaper pick.
     onWallpaperColoursChanged: if (root._ready) reapplyDebounce.restart()
+
+    // Same reasoning again: matugen/hue.toml's own scheme is baked into the
+    // last render too, so this needs the same re-render as the two above.
+    onKeepAppColoursChanged: if (root._ready) reapplyDebounce.restart()
 
     // matugen reads settings.json, and JsonAdapter writes it a moment after the
     // property changes. Re-rendering immediately would read the old scheme back
@@ -154,6 +171,7 @@ Singleton {
             property bool focusRing: false
             property bool bluetoothPill: true
             property bool wallpaperColours: false
+            property bool keepAppColours: true
         }
     }
 }

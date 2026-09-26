@@ -3,6 +3,18 @@
 # in here: it lives in the repo as matugen/bar.toml and is rendered in a run of
 # its own first, so that no template in this file can ever stop the bar from
 # following the wallpaper -- see the header of that file for why.
+#
+# Every template except nvim's and bat's own syntax highlighting, which moved
+# to the sibling matugen/hue.toml next to matugen/bar.toml: those are the two
+# the user asked to keep a real, hued scheme even on an achromatic wallpaper
+# with the "Wallpaper colours" toggle on. Everything still in this file --
+# including ghostty's ANSI palette and btop's meters, which read from the
+# same six custom hues below -- follows the resolved scheme exactly like the
+# bar does, monochrome included, on the theory that the terminal and system
+# monitor going grey together with everything else is a smaller loss than a
+# scheme picker would be. Rendered second, after the bar, and before
+# matugen/hue.toml's own run -- see scripts/wallpaper-apply.sh and
+# docs/theming/matugen-pipeline.md.
 
 # Required by matugen even when empty: it fails the whole run with
 # "missing field `config`" rather than defaulting.
@@ -16,7 +28,11 @@
 # same theme without ever converging. Each renders the usual role ladder
 # (`red`, `on_red`, `red_container`, `on_red_container`) at the tones of the
 # current --mode, which is what keeps them legible on `surface` in light mode
-# too.
+# too. nvim and bat (matugen/hue.toml) read the very same six roles for their
+# own syntax highlighting -- duplicated there rather than shared, since
+# matugen has no config-include mechanism. Keep both tables byte-identical:
+# a `red` that means one colour in the terminal and a different one in nvim
+# would be a worse inconsistency than either going grey together.
 [config.custom_colors]
 red = { color = "#e5534b", blend = true }
 green = { color = "#57ab5a", blend = true }
@@ -116,18 +132,9 @@ post_hook = 'for p in $(pgrep -x cava); do c=$(tr "\0" " " < /proc/$p/cmdline 2>
 input_path = '~/.config/yazi/matugen/theme.toml'
 output_path = '~/.config/yazi/theme.toml'
 
-# Neovim colorscheme, generated as a real colors/*.lua so `:colorscheme
-# matugen` works like any other scheme. No post_hook: nvim's own
-# lua/matugen_watch.lua (required from init.lua) watches this output file
-# with vim.uv.fs_event and re-sources it live in every running instance,
-# but only while "matugen" is the active colorscheme -- a user who ran
-# `:colorscheme gruvbox-material` (the built-in fallback, still fully
-# configured) is left alone. init.lua tries `:colorscheme matugen` after
-# setup and falls back to gruvbox-material automatically if this file is
-# missing or fails to load.
-[templates.nvim]
-input_path = '~/.config/nvim/matugen/colorscheme.lua'
-output_path = '~/.config/nvim/colors/matugen.lua'
+# Neovim's colorscheme moved to matugen/hue.toml -- syntax highlighting needs
+# several hues to tell things apart, so it must not always follow chrome
+# into scheme-monochrome. See that file's own header.
 
 # Firefox chrome/content colours. Firefox only re-reads chrome/userChrome.css
 # and userContent.css at startup, so a running Firefox picks this up on its
@@ -139,15 +146,7 @@ output_path = '~/.config/nvim/colors/matugen.lua'
 input_path = '~/.config/matugen/templates/firefox-colors.css'
 output_path = '~/.cache/rd-shell/firefox-colors.css'
 
-# bat theme. bat has no file-watch/reload -- each invocation is a fresh
-# process that reads the compiled theme cache, so the only "live update"
-# needed is recompiling that cache after the .tmTheme changes. Fast
-# (~0.3s measured), never fails loudly (redirected + || true), and touches
-# no running app.
-[templates.bat]
-input_path = '~/.config/matugen/templates/bat.tmTheme'
-output_path = '~/.config/bat/themes/matugen.tmTheme'
-post_hook = 'bat cache --build >/dev/null 2>&1 || true'
+# bat's own theme moved to matugen/hue.toml, same reasoning as nvim above.
 
 # Starship prompt. No post_hook, unlike bat/btop/ghostty above -- starship
 # has no cache or running instance to signal, it just re-reads

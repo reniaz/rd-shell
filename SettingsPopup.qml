@@ -158,6 +158,63 @@ BarPopup {
             Item { Layout.fillWidth: true }
         }
 
+        // Whether nvim and bat -- the two templates in matugen/hue.toml that
+        // read syntax/ANSI colours -- keep a hued scheme even once the row
+        // above resolves to matugen's scheme-monochrome (an achromatic
+        // wallpaper). Meaningless unless wallpaper colours is actually on and
+        // has actually landed on monochrome, but this row can't tell
+        // colourful-wallpaper monochrome-toggle-off apart from an achromatic
+        // one without re-running matugen just to check, so it dims and stops
+        // answering clicks whenever either dependency above is off -- same
+        // idiom as that row, one level down.
+        RowLayout {
+            id: keepAppColoursRow
+
+            Layout.fillWidth: true
+            spacing: Caelus.space
+            opacity: (Settings.dynamicColour && Settings.wallpaperColours) ? 1 : 0.4
+
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
+
+            Text {
+                text: Settings.keepAppColours ? "toggle_on" : "toggle_off"
+                color: Settings.keepAppColours ? Colors.popupAccent : Colors.fgMuted
+                font.family: Caelus.symbolFamily
+                font.pixelSize: Caelus.sizeTitle
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    enabled: Settings.dynamicColour && Settings.wallpaperColours
+                    cursorShape: (Settings.dynamicColour && Settings.wallpaperColours)
+                        ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: Settings.keepAppColours = !Settings.keepAppColours
+                }
+            }
+
+            ColumnLayout {
+                spacing: 0
+
+                Text {
+                    text: "Keep app colours"
+                    color: Colors.fg
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
+                }
+
+                Text {
+                    text: Settings.keepAppColours
+                        ? "nvim and bat keep syntax colours"
+                        : "nvim and bat follow the wallpaper too"
+                    color: Colors.fgMuted
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeLabel
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 1

@@ -2,7 +2,7 @@
 
 This page is the config reference for [matugen](https://github.com/InioX/matugen)
 itself — every template's exact paths and reload command. For the concept
-(why two runs, what "dynamic colour" means, which surfaces follow the
+(why three runs, what "dynamic colour" means, which surfaces follow the
 wallpaper) see [Theming → The matugen pipeline](../theming/matugen-pipeline.md);
 this page doesn't repeat that, only the mechanics.
 
@@ -10,35 +10,68 @@ this page doesn't repeat that, only the mechanics.
 
 - `matugen/bar.toml` (repo root) — the bar-only config, rendered in a run of
   its own, first. `[templates.rd-shell]` is its only entry.
-- `dotfiles/matugen/config.toml` — every app template, linked to
-  `~/.config/matugen/config.toml`. Rendered second, once the bar's own run
-  has already succeeded or failed on its own.
+- `dotfiles/matugen/config.toml` — every app template except nvim's and
+  bat's (below), linked to `~/.config/matugen/config.toml`. Rendered second,
+  once the bar's own run has already succeeded or failed on its own.
+- `matugen/hue.toml` (repo root, not under `dotfiles/`) — just
+  `[templates.nvim]` and `[templates.bat]`, rendered third, with a scheme of
+  their own so an achromatic wallpaper doesn't flatten their syntax
+  highlighting to grey along with everything else — see
+  [Scheme, mode, and `--prefer saturation`](#scheme-mode-and---prefer-saturation)
+  below.
 - `dotfiles/matugen/templates/*` — template bodies for apps that don't keep
   their own `matugen/` subfolder (`gtk-colors.css`, `kde-colors.colors`,
   `firefox-colors.css`, `bat.tmTheme`, `papirus-accent.txt`). Apps with more
   going on keep their template next to their other config instead — see each
-  app's own dotfiles page for its actual template path.
+  app's own dotfiles page for its actual template path. `bat.tmTheme` stays
+  here even though `[templates.bat]` itself now lives in `matugen/hue.toml` —
+  only the config entry moved, not the template body.
 
 ## Every `[templates.*]` entry
 
-| Entry | `input_path` → `output_path` | `post_hook` | Reload |
-|---|---|---|---|
-| `[templates.rd-shell]`¹ | `~/.config/quickshell/rd-shell/matugen/colors.json` → `~/.cache/rd-shell/matugen.json` | — | live — `Config/Wal.qml`'s `FileView` watches the output |
-| `[templates.ghostty]` | `~/.config/ghostty/matugen/theme` → `~/.config/ghostty/themes/matugen` | `busctl` call to ghostty's `reload-config` D-Bus action | live |
-| `[templates.btop]` | `~/.config/btop/matugen/matugen.theme` → `~/.config/btop/themes/matugen.theme` | `pkill -USR2 -x btop \|\| true` | live |
-| `[templates.cava]` | `~/.config/cava/matugen/config` → `~/.config/cava/config` | `SIGUSR2` to any bare `cava` PID (skips `-p ...` instances, so the bar's own cava is never touched) | live, terminal instance only |
-| `[templates.yazi]` | `~/.config/yazi/matugen/theme.toml` → `~/.config/yazi/theme.toml` | — | next launch — yazi's own IPC needs `$YAZI_ID`, unreachable from a hook |
-| `[templates.nvim]` | `~/.config/nvim/matugen/colorscheme.lua` → `~/.config/nvim/colors/matugen.lua` | — | live — nvim's own `lua/matugen_watch.lua` watches the output, not matugen |
-| `[templates.vesktop]` | `~/.config/vesktop/themes/matugen/caelus-accent.css` → `~/.config/vesktop/themes/caelus-accent.theme.css` | — | live — Vencord watches its themes folder |
-| `[templates.spotify]` | `~/.config/spicetify/Themes/caelus24/matugen/caelus-accent.css` → `~/.cache/caelus24/caelus-accent.css` | copies the render into Spotify's `xpui` folder | live — `theme.js` polls the copied file every 2s; see [spicetify](spicetify.md) |
-| `[templates.firefox]` | `~/.config/matugen/templates/firefox-colors.css` → `~/.cache/rd-shell/firefox-colors.css` | — | next Firefox start — chrome/content CSS parses once |
-| `[templates.bat]` | `~/.config/matugen/templates/bat.tmTheme` → `~/.config/bat/themes/matugen.tmTheme` | `bat cache --build` | next invocation — see [bat](bat.md) |
-| `[templates.kde]` | `~/.config/matugen/templates/kde-colors.colors` → `~/.local/share/color-schemes/Matugen.colors` | copies to `Matugen2.colors`, applies whichever of the two names isn't currently active with `plasma-apply-colorscheme` | live |
-| `[templates.papirus-accent]` | `~/.config/matugen/templates/papirus-accent.txt` → `~/.cache/rd-shell/papirus-accent.txt` | runs `scripts/papirus-accent.sh` detached (`setsid -f`) | next icon lookup |
-| `[templates.gtk]` | `~/.config/matugen/templates/gtk-colors.css` → `~/.cache/rd-shell/gtk-colors.css` | — | next launch — neither GTK3 nor GTK4 watches `gtk.css` |
+| Entry | Config file | `input_path` → `output_path` | `post_hook` | Reload |
+|---|---|---|---|---|
+| `[templates.rd-shell]`¹ | `matugen/bar.toml` | `~/.config/quickshell/rd-shell/matugen/colors.json` → `~/.cache/rd-shell/matugen.json` | — | live — `Config/Wal.qml`'s `FileView` watches the output |
+| `[templates.ghostty]` | `dotfiles/matugen/config.toml` | `~/.config/ghostty/matugen/theme` → `~/.config/ghostty/themes/matugen` | `busctl` call to ghostty's `reload-config` D-Bus action | live |
+| `[templates.btop]` | `dotfiles/matugen/config.toml` | `~/.config/btop/matugen/matugen.theme` → `~/.config/btop/themes/matugen.theme` | `pkill -USR2 -x btop \|\| true` | live |
+| `[templates.cava]` | `dotfiles/matugen/config.toml` | `~/.config/cava/matugen/config` → `~/.config/cava/config` | `SIGUSR2` to any bare `cava` PID (skips `-p ...` instances, so the bar's own cava is never touched) | live, terminal instance only |
+| `[templates.yazi]` | `dotfiles/matugen/config.toml` | `~/.config/yazi/matugen/theme.toml` → `~/.config/yazi/theme.toml` | — | next launch — yazi's own IPC needs `$YAZI_ID`, unreachable from a hook |
+| `[templates.nvim]`² | `matugen/hue.toml` | `~/.config/nvim/matugen/colorscheme.lua` → `~/.config/nvim/colors/matugen.lua` | — | live — nvim's own `lua/matugen_watch.lua` watches the output, not matugen |
+| `[templates.vesktop]` | `dotfiles/matugen/config.toml` | `~/.config/vesktop/themes/matugen/caelus-accent.css` → `~/.config/vesktop/themes/caelus-accent.theme.css` | — | live — Vencord watches its themes folder |
+| `[templates.spotify]` | `dotfiles/matugen/config.toml` | `~/.config/spicetify/Themes/caelus24/matugen/caelus-accent.css` → `~/.cache/caelus24/caelus-accent.css` | copies the render into Spotify's `xpui` folder | live — `theme.js` polls the copied file every 2s; see [spicetify](spicetify.md) |
+| `[templates.firefox]` | `dotfiles/matugen/config.toml` | `~/.config/matugen/templates/firefox-colors.css` → `~/.cache/rd-shell/firefox-colors.css` | — | next Firefox start — chrome/content CSS parses once |
+| `[templates.bat]`² | `matugen/hue.toml` | `~/.config/matugen/templates/bat.tmTheme` → `~/.config/bat/themes/matugen.tmTheme` | `bat cache --build` | next invocation — see [bat](bat.md) |
+| `[templates.kde]` | `dotfiles/matugen/config.toml` | `~/.config/matugen/templates/kde-colors.colors` → `~/.local/share/color-schemes/Matugen.colors` | copies to `Matugen2.colors`, applies whichever of the two names isn't currently active with `plasma-apply-colorscheme` | live |
+| `[templates.papirus-accent]` | `dotfiles/matugen/config.toml` | `~/.config/matugen/templates/papirus-accent.txt` → `~/.cache/rd-shell/papirus-accent.txt` | runs `scripts/papirus-accent.sh` detached (`setsid -f`) | next icon lookup |
+| `[templates.gtk]` | `dotfiles/matugen/config.toml` | `~/.config/matugen/templates/gtk-colors.css` → `~/.cache/rd-shell/gtk-colors.css` | — | next launch — neither GTK3 nor GTK4 watches `gtk.css` |
 
 ¹ In `matugen/bar.toml`, not `dotfiles/matugen/config.toml` — the one
 template run separately so no app template below it can ever block the bar.
+
+² In `matugen/hue.toml`, not `dotfiles/matugen/config.toml` — the two
+templates that keep a hued scheme under [Keep app
+colours](../the-shell/settings.md), rather than following chrome into
+`scheme-monochrome` on an achromatic wallpaper. Their own `surface`/
+`on_surface`/`outline`/etc roles still come from chrome's render, not the
+hued scheme's — see below.
+
+### Seamless backgrounds for the third run
+
+Swapping schemes for `matugen/hue.toml` alone would give nvim and bat a
+different background than the terminal sitting right next to them, since
+both read the exact same `surface`/`on_surface`/etc roles ghostty's own
+`background` does. `scripts/wallpaper-apply.sh` fixes that without touching
+either template: the chrome run gets `-j hex` added (matugen dumps computed
+colours before it renders any template, so this is free — no extra
+`matugen` invocation), a `jq` filter keeps only the neutral roles from that
+dump (`background`, `on_background`, every `surface*`/`outline*`/`inverse_*`
+role, `shadow`, `scrim` — never `primary`/`secondary`/`tertiary`/`error`,
+which is exactly what must stay hued), and the third run gets
+`--import-json <that file>` appended, which matugen merges over its own
+computed roles before rendering. Gated on the hue pass's scheme actually
+differing from chrome's (comparing `$mghuescheme` to `$mgscheme`) and on
+`jq` being present; either false and the third run renders exactly as if
+this didn't exist.
 
 ### Why the Spotify template copies instead of rendering in place
 

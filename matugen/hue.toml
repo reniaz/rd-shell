@@ -1,0 +1,58 @@
+# nvim's and bat's own syntax highlighting -- the two templates the user
+# asked to keep a real, hued scheme even on an achromatic wallpaper, rather
+# than following dotfiles/matugen/config.toml's chrome (the bar, GTK, Qt/KDE,
+# ghostty's ANSI palette, btop, yazi, starship and the rest) into matugen's
+# scheme-monochrome. Kept apart for the same reason matugen/bar.toml is kept
+# apart from that file: matugen renders a run's templates in one scheme, so
+# giving nvim and bat a scheme of their own is the only way for them to
+# render differently from everything else in the same wallpaper switch.
+# scripts/wallpaper-apply.sh renders this file in a third pass, after the bar
+# and after chrome, with a scheme that falls back to the fixed hued scheme
+# instead of monochrome whenever the resolved one is monochrome and
+# settings.json's "keepAppColours" is true (the default) -- see
+# scripts/matugen-scheme.sh's `--hue` mode and the pipeline doc.
+#
+# `~/.config/quickshell/rd-shell` is a symlink to the repo, and is used rather
+# than the repo path directly so that moving the checkout does not silently
+# leave matugen rendering a template nobody reads (same reasoning as
+# matugen/bar.toml's own header).
+
+# Required by matugen even when empty: it fails the whole run with
+# "missing field `config`" rather than defaulting.
+[config]
+
+# Same six fixed hues as dotfiles/matugen/config.toml's copy -- duplicated
+# rather than shared because matugen has no config-include mechanism and each
+# config file is a fully independent run. Keep this table byte-identical to
+# that copy: a `red` that means one colour in nvim and a different one in the
+# terminal would be a worse inconsistency than either going grey together.
+[config.custom_colors]
+red = { color = "#e5534b", blend = true }
+green = { color = "#57ab5a", blend = true }
+yellow = { color = "#c69026", blend = true }
+blue = { color = "#539bf5", blend = true }
+magenta = { color = "#b083f0", blend = true }
+cyan = { color = "#39c5cf", blend = true }
+
+# Neovim colorscheme, generated as a real colors/*.lua so `:colorscheme
+# matugen` works like any other scheme. No post_hook: nvim's own
+# lua/matugen_watch.lua (required from init.lua) watches this output file
+# with vim.uv.fs_event and re-sources it live in every running instance,
+# but only while "matugen" is the active colorscheme -- a user who ran
+# `:colorscheme gruvbox-material` (the built-in fallback, still fully
+# configured) is left alone. init.lua tries `:colorscheme matugen` after
+# setup and falls back to gruvbox-material automatically if this file is
+# missing or fails to load.
+[templates.nvim]
+input_path = '~/.config/nvim/matugen/colorscheme.lua'
+output_path = '~/.config/nvim/colors/matugen.lua'
+
+# bat theme. bat has no file-watch/reload -- each invocation is a fresh
+# process that reads the compiled theme cache, so the only "live update"
+# needed is recompiling that cache after the .tmTheme changes. Fast
+# (~0.3s measured), never fails loudly (redirected + || true), and touches
+# no running app.
+[templates.bat]
+input_path = '~/.config/matugen/templates/bat.tmTheme'
+output_path = '~/.config/bat/themes/matugen.tmTheme'
+post_hook = 'bat cache --build >/dev/null 2>&1 || true'

@@ -15,7 +15,11 @@ The `✦` pill on the left of the bar opens `SettingsPopup.qml`. It holds:
   `tonal-spot`, which invents a secondary/tertiary hue — or, for a
   black-and-white wallpaper that has no colour of its own to keep,
   `monochrome` (white/grey accent) instead of matugen's own blue fallback.
-  See [Theming](../theming/README.md#wallpaper-colours).
+  See [Theming](../theming/README.md#wallpaper-colours). Directly under it,
+  **Keep app colours** — on by default, and only ever relevant once the
+  wallpaper toggle above has actually landed on `monochrome` — keeps nvim and
+  bat on their own hued syntax scheme instead of following the wallpaper into
+  grey; everything else stays monochrome either way.
 
 Everything the popup can set is backed by a single file,
 `settings.json`, next to `shell.qml` in `~/.config/quickshell/rd-shell/` —
@@ -30,7 +34,8 @@ need to exist; every property has its own default:
   "uiScale": 1.0,
   "highContrast": false,
   "focusRing": false,
-  "wallpaperColours": false
+  "wallpaperColours": false,
+  "keepAppColours": true
 }
 ```
 
@@ -43,6 +48,7 @@ need to exist; every property has its own default:
 | `highContrast` | `false` | The high-contrast toggle described above. |
 | `focusRing` | `false` | The visible-focus-ring toggle described above. |
 | `wallpaperColours` | `false` | The wallpaper-colours toggle described above; resolved by `scripts/matugen-scheme.sh` into matugen's `content` scheme (`monochrome` for a wallpaper with no real colour) instead of `Config/Caelus.qml`'s fixed `tonal-spot`. |
+| `keepAppColours` | `true` | The keep-app-colours toggle described above. No effect unless `wallpaperColours` is on and the wallpaper itself resolved to `monochrome`; when it has, this keeps nvim and bat on a hued scheme while everything else (bar, GTK/Qt/KDE, borders, lock, terminal, btop, yazi, starship) stays grey. Off follows the wallpaper everywhere, nvim and bat included. |
 
 There's no UI-sounds toggle any more — the feature (and
 `Services/UiSound.qml`) has been removed outright, not just hidden.

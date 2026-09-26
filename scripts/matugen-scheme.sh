@@ -1,17 +1,28 @@
 #!/bin/sh
 # usage: matugen-scheme.sh [image]
+#        matugen-scheme.sh --hue [image]
 #
-# Prints "<scheme> <mode>" -- the matugen --type suffix and --mode this shell
-# is currently configured for. The optional image argument is the wallpaper
-# the scheme is being resolved for -- only used to tell an achromatic
-# wallpaper apart from a colourful one when the wallpaper-colours toggle is
-# on (see below); leave it off and that check is simply skipped.
+# Default form prints "<scheme> <mode>" -- the matugen --type suffix and
+# --mode this shell is currently configured for. The optional image argument
+# is the wallpaper the scheme is being resolved for -- only used to tell an
+# achromatic wallpaper apart from a colourful one when the wallpaper-colours
+# toggle is on (see below); leave it off and that check is simply skipped.
 #
-# Two callers need this answer and they must never disagree: wallpaper-apply.sh,
-# which renders the live theme, and wallpaper-preview.sh, which renders a
-# throwaway one for the switcher's swatches. A preview computed with a
-# different scheme than the apply would use is worse than no preview at all --
-# it would show the user colours they are not about to get.
+# `--hue` prints the scheme scripts/wallpaper-apply.sh's third pass
+# (matugen/hue.toml -- nvim's and bat's own syntax highlighting) should
+# render with instead: the same resolution as the default form, except that
+# a `monochrome` result is swapped for the fixed Caelus scheme whenever
+# settings.json's "keepAppColours" is true (missing key = true) -- so those
+# two templates stay hued on an achromatic wallpaper while everything else
+# (rendered from the unswapped default form) goes grey. Toggle off, or a
+# colourful wallpaper, resolves to the same scheme either form would give,
+# so this only ever changes the monochrome case.
+#
+# Three callers need this answer and none may disagree: wallpaper-apply.sh's
+# chrome pass and its hue pass, and wallpaper-preview.sh, which renders a
+# throwaway swatch for the switcher. A preview computed with a different
+# scheme than the apply would use is worse than no preview at all -- it
+# would show the user colours they are not about to get.
 set -eu
 
 CAELUS="${CAELUS:-$HOME/.config/quickshell/rd-shell/Config/Caelus.qml}"
@@ -21,26 +32,57 @@ CAELUS="${CAELUS:-$HOME/.config/quickshell/rd-shell/Config/Caelus.qml}"
 SETTINGS="${SETTINGS:-$HOME/.config/quickshell/rd-shell/settings.json}"
 JQ=/usr/bin/jq
 MAGICK=/usr/bin/magick
+
+hue=false
+if [ "${1:-}" = "--hue" ]; then
+    hue=true
+    shift
+fi
 img=${1:-}
+
+# Reads one boolean key out of settings.json, jq first with a sed fallback
+# for a machine without jq -- the same two-step lookup both wallpaperColours
+# and keepAppColours need, done once here rather than copied per key.
+# Missing jq, a missing settings.json, or a missing/unparsable key all fall
+# through to the given default.
+setting() {  # setting <key> <default: true|false>
+    key=$1 default=$2
+    val=$default
+    if [ -f "$SETTINGS" ]; then
+        if [ -x "$JQ" ]; then
+            # Not `.key // default` -- jq's `//` falls through on `false`
+            # the same as it does on a missing key, which would silently
+            # turn an explicit "keepAppColours": false back into its
+            # true default. `== null` only matches an actually-missing key.
+            val=$("$JQ" -r "if .$key == null then $default else .$key end" \
+                "$SETTINGS" 2>/dev/null || true)
+        else
+            val=$(sed -n \
+                "s/.*\"$key\"[[:space:]]*:[[:space:]]*\\(true\\|false\\).*/\\1/p" \
+                "$SETTINGS" 2>/dev/null | head -n 1 || true)
+        fi
+    fi
+    case "$val" in
+        true|false) ;;
+        *) val=$default ;;
+    esac
+    printf '%s' "$val"
+}
+
+# Config/Caelus.qml's fixed scheme -- read once, since both "the toggle is
+# off" below and "--hue wants the hued fallback for a monochrome result"
+# need the exact same string, and repeating the sed would risk the two
+# copies drifting.
+base_scheme=$(sed -n \
+    '/property string scheme:/ s/.*:[[:space:]]*"\([a-zA-Z-]*\)"[[:space:]]*$/\1/p' \
+    "$CAELUS" 2>/dev/null || true)
+[ -n "$base_scheme" ] || base_scheme=tonal-spot
 
 # The settings popup's "Wallpaper colours" toggle (Settings.wallpaperColours).
 # On, it overrides Config/Caelus.qml's fixed scheme with `content`, the one
 # that keeps a wallpaper's own colours instead of inventing a secondary/
-# tertiary hue. Missing jq, a missing settings.json, or a missing/unparsable
-# key all fall through to "false", which is exactly today's behaviour:
-# nothing here is load-bearing for a machine that has never had this key
-# written.
-wallpaperColours=false
-if [ -f "$SETTINGS" ]; then
-    if [ -x "$JQ" ]; then
-        wallpaperColours=$("$JQ" -r '.wallpaperColours // false' "$SETTINGS" 2>/dev/null || true)
-    else
-        wallpaperColours=$(sed -n \
-            's/.*"wallpaperColours"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' \
-            "$SETTINGS" 2>/dev/null | head -n 1 || true)
-    fi
-fi
-[ "$wallpaperColours" = true ] || wallpaperColours=false
+# tertiary hue.
+wallpaperColours=$(setting wallpaperColours false)
 
 if [ "$wallpaperColours" = true ]; then
     # Default to content -- matugen's scheme that keeps a wallpaper's own
@@ -84,14 +126,22 @@ if [ "$wallpaperColours" = true ]; then
         esac
     fi
 else
-    # Fixed at tonal-spot. Config/Caelus.qml is the single place it is written
-    # down; this reads it from there rather than repeating the string, so the
-    # shell and matugen cannot disagree about which scheme the colours came
-    # from.
-    scheme=$(sed -n \
-        '/property string scheme:/ s/.*:[[:space:]]*"\([a-zA-Z-]*\)"[[:space:]]*$/\1/p' \
-        "$CAELUS" 2>/dev/null || true)
-    [ -n "$scheme" ] || scheme=tonal-spot
+    # Fixed at tonal-spot (or whatever Config/Caelus.qml's `scheme` property
+    # says) -- the one place it's written down, so the shell and matugen
+    # cannot disagree about which scheme the colours came from.
+    scheme=$base_scheme
+fi
+
+# `--hue`: an achromatic wallpaper has no hue for chrome to keep either, and
+# that's the right call there -- but nvim's and bat's own syntax highlighting
+# (matugen/hue.toml) need several hues to stay legible at all, so "keep app
+# colours" (default on) swaps the fixed, always-hued scheme back in for just
+# this pass rather than following chrome into monochrome. A
+# non-monochrome result (toggle off, or a colourful wallpaper) is left
+# exactly as resolved above -- this only ever changes the monochrome case.
+if [ "$hue" = true ] && [ "$scheme" = monochrome ]; then
+    keepAppColours=$(setting keepAppColours true)
+    [ "$keepAppColours" = true ] && scheme=$base_scheme
 fi
 
 mode=$(sed -n \
