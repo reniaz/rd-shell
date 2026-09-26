@@ -7,10 +7,16 @@
 # dispatcher name and argument say nothing useful, so each bind carries a
 # `description` in hyprland.lua and that is what is shown here.
 #
-#   keybinds.sh --tsv    the rows, "<combo>\t<action>\t<ref>" -- what
+#   keybinds.sh --tsv    the rows, "<combo>\t<action>\t<ref>\t<raw>" -- what
 #                        Services/Keybinds.qml reads. <ref> is the bind's Lua
 #                        callback (see `ref` below), empty for a bind the
-#                        overview cannot run.
+#                        overview cannot run. <raw> is the same chord in
+#                        Hyprland's OWN spelling (mods + hyprctl's own `key`
+#                        field, not the display glyphs `combo` uses) -- what
+#                        hl.bind/hl.unbind take and what keybind-overrides.lua
+#                        matches rows against, since that file has to
+#                        round-trip through those functions, not through
+#                        this script's display column.
 set -euo pipefail
 
 # No modes left to switch on -- `--tsv` is accepted (and ignored) only so
@@ -48,7 +54,11 @@ rows=$(hyprctl -j binds | jq -r '
     # `.mouse` reads false even for drag binds on 0.56, so mouse keys (drag
     # and scroll -- no keyboard capture can rebind them) are ruled out by name.
     def ref: if .dispatcher == "__lua" and (.mouse | not) and (.key // "" | startswith("mouse") | not) then .arg else "" end;
-    .[] | [ ((mods + [keyname]) | join(" + ")), action, ref ] | @tsv
+    # Same as `keyname` but with none of the display translation -- exactly
+    # the token hyprland.lua'"'"'s own hl.bind call for this key would have
+    # used, which is what rd_bind_registry there is keyed by.
+    def rawkey: if (.key // "") == "" then "code:\(.keycode)" else .key end;
+    .[] | [ ((mods + [keyname]) | join(" + ")), action, ref, ((mods + [rawkey]) | join(" + ")) ] | @tsv
 ')
 
 printf '%s\n' "$rows"

@@ -119,6 +119,41 @@ if [ ! -f "$REPO/shell.qml" ]; then
     exit 1
 fi
 
+# The "Config" step below symlinks the whole repo into ~/.config/quickshell,
+# hyprland.lua/hyprland-gui.lua/hypridle.conf/hyprlock.conf into ~/.config/hypr,
+# and the whole ghostty dir into ~/.config/ghostty -- so editing any of those
+# through their ~/.config link edits a file this git clone tracks. A plain
+# `git pull` (see docs/installation/updating.md) can then refuse outright, or
+# leave `<<<<<<<`/`>>>>>>>` conflict markers in the file if it changed
+# upstream too. Catch the conflict-marker case here: symlinking a config that
+# still has them into ~/.config/hypr would otherwise fail silently, showing up
+# as a Hyprland config-parse error far from the actual cause.
+if git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+    conflicted="" modified=""
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        # `<<<<<<< ` alone: a bare ======= line can be legitimate content.
+        if grep -qE '^<{7} ' "$REPO/$f" 2>/dev/null; then
+            conflicted="$conflicted $f"
+        else
+            modified="$modified $f"
+        fi
+    done < <(git -C "$REPO" diff --name-only HEAD -- . ':!Local')
+
+    if [ -n "$conflicted" ]; then
+        fail "unresolved git merge conflict markers in:$conflicted"
+        fail "resolve them by hand (keep your machine-specific lines, take the"
+        fail "incoming version of the rest), 'git add' the file(s), then re-run"
+        fail "this script -- see docs/installation/updating.md"
+        exit 1
+    fi
+    if [ -n "$modified" ]; then
+        warn "tracked files edited in place, through their ~/.config symlink:$modified"
+        warn "install.sh uses them as they are, but the next 'git pull' can refuse"
+        warn "or conflict on them -- see docs/installation/updating.md"
+    fi
+fi
+
 # --- repositories -------------------------------------------------------
 # Fedora carries none of Hyprland, hypridle, hyprlock, hyprpicker, hyprlauncher,
 # hyprshutdown, xdg-desktop-portal-hyprland or uwsm itself on this host --
@@ -1068,17 +1103,35 @@ step "First colour render"
 # bar restores from -- instead of a second copy of that logic that could drift.
 # It swallows matugen failures by design (a bad render must never block a
 # wallpaper switch), so the outputs are checked here instead of its status.
+#
+# Fallback wallpaper vs --restore: WALL_STATE is the same state file
+# wallpaper-apply.sh itself writes on every switch and Hyprland's own
+# --restore reads on login -- its presence is exactly "this machine has run
+# this step (or a wallpaper switch) before". First install (no state file
+# yet): render the fallback wallpaper, same as always, so nothing on first
+# launch points at a template output that doesn't exist. Every re-run over
+# an existing install (updating.md): --restore, so a plain `./install.sh`
+# to pick up a template/package fix (a broken starship prompt, say) does not
+# also silently reset whoever's own wallpaper and theme back to the
+# fallback.
 APPLY="$HOME/.config/quickshell/$CONFIG/scripts/wallpaper-apply.sh"
+WALL_STATE="${XDG_CACHE_HOME:-$HOME/.cache}/rd-shell/wallpaper"
 if ! command -v matugen >/dev/null 2>&1; then
     warn "matugen not installed — the bar starts in the static caelus palette"
-elif [ ! -f "$FALLBACK_WALL" ]; then
+elif [ ! -s "$WALL_STATE" ] && [ ! -f "$FALLBACK_WALL" ]; then
     warn "$FALLBACK_WALL missing — skipping the render; re-run once wallpapers are in place"
 elif [ ! -x "$APPLY" ]; then
     warn "$APPLY missing — skipping the render"
 else
-    "$APPLY" "$FALLBACK_WALL" >/dev/null 2>&1 || true
+    if [ -s "$WALL_STATE" ]; then
+        "$APPLY" --restore >/dev/null 2>&1 || true
+        render_note="re-render, --restore — kept your own wallpaper"
+    else
+        "$APPLY" "$FALLBACK_WALL" >/dev/null 2>&1 || true
+        render_note="first render, fallback wallpaper"
+    fi
     [ -s "${XDG_CACHE_HOME:-$HOME/.cache}/rd-shell/matugen.json" ] \
-        && ok "bar theme rendered" \
+        && ok "bar theme rendered ($render_note)" \
         || warn "bar theme render failed (matugen/bar.toml) — the bar starts in the static palette"
     [ -s "$HOME/.config/ghostty/themes/matugen" ] \
         && ok "app themes rendered (ghostty, btop, cava, yazi, nvim, vesktop, spicetify)" \
@@ -1086,6 +1139,21 @@ else
     [ -s "$HOME/.config/hypr/hyprlock-colors.conf" ] \
         && ok "lock screen colours + image" \
         || warn "hyprlock-colors.conf not written — hyprlock falls back to its own defaults"
+    # starship re-reads ~/.config/starship.toml fresh on every prompt with no
+    # cache to invalidate, so a template fix (a rendering bug like the
+    # doubled-backslash one that shipped once) only reaches an existing
+    # install through this render actually running -- worth a check of its
+    # own, since matugen swallows a bad render silently by design (above) and
+    # a broken starship.toml otherwise only shows up the next time a shell
+    # opens, far from here.
+    if command -v starship >/dev/null 2>&1 && [ -f "$HOME/.config/starship.toml" ]; then
+        starship_err=$(STARSHIP_CONFIG="$HOME/.config/starship.toml" starship prompt 2>&1 1>/dev/null)
+        if printf '%s' "$starship_err" | grep -qi 'unable to parse'; then
+            fail "~/.config/starship.toml failed to parse — starship falls back to its defaults"
+        else
+            ok "~/.config/starship.toml parses"
+        fi
+    fi
 fi
 
 # --- KDE colour scheme (first apply) ----------------------------------------

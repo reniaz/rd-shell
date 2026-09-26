@@ -44,7 +44,7 @@ Item {
         if (!root._captured || root._saving) return;
         root._saving = true;
         root._error = "";
-        Keybinds.saveOverride(root.target, root._captured);
+        root._saveToken = Keybinds.saveOverride(root.target, root._captured);
     }
 
     property bool _heldSuper: false
@@ -55,6 +55,11 @@ Item {
     property var _conflict: null
     property string _error: ""
     property bool _saving: false
+    // The token `Keybinds.saveOverride` handed back for the save in flight,
+    // so a saveFinished meant for some other save/reset (an old capture's,
+    // still landing after the user has since opened this one) gets ignored
+    // instead of being shown as this capture's own result.
+    property var _saveToken: null
 
     function _modKeys() {
         const m = [];
@@ -101,6 +106,38 @@ Item {
         case Qt.Key_Comma: return "comma";
         case Qt.Key_Period: return "period";
         case Qt.Key_Slash: return "slash";
+        // With Shift held, the digit row and these punctuation keys arrive
+        // as their own distinct Qt key codes for the shifted glyph (Key_1 +
+        // Shift becomes Key_Exclam, not Key_1 with a modifier) -- but
+        // hyprland.lua's own binds (see the SHIFT + [0-9] workspace loop)
+        // spell the chord as the base key plus an explicit SHIFT, the same
+        // as every unshifted symbol above (grave/minus/equal/...), and rely
+        // on Hyprland to match the physical key regardless of what it
+        // prints. Left uncorrected, capturing Super+Shift+1 would come out
+        // as "!", which nothing here is bound to and hl.bind can't use the
+        // same way. This assumes the same US-style base layout the table
+        // above already does.
+        case Qt.Key_Exclam: return "1";
+        case Qt.Key_At: return "2";
+        case Qt.Key_NumberSign: return "3";
+        case Qt.Key_Dollar: return "4";
+        case Qt.Key_Percent: return "5";
+        case Qt.Key_AsciiCircum: return "6";
+        case Qt.Key_Ampersand: return "7";
+        case Qt.Key_Asterisk: return "8";
+        case Qt.Key_ParenLeft: return "9";
+        case Qt.Key_ParenRight: return "0";
+        case Qt.Key_AsciiTilde: return "grave";
+        case Qt.Key_Underscore: return "minus";
+        case Qt.Key_Plus: return "equal";
+        case Qt.Key_BraceLeft: return "bracketleft";
+        case Qt.Key_BraceRight: return "bracketright";
+        case Qt.Key_Bar: return "backslash";
+        case Qt.Key_Colon: return "semicolon";
+        case Qt.Key_QuoteDbl: return "apostrophe";
+        case Qt.Key_Less: return "comma";
+        case Qt.Key_Greater: return "period";
+        case Qt.Key_Question: return "slash";
         }
         if (key >= Qt.Key_F1 && key <= Qt.Key_F35) return "F" + (key - Qt.Key_F1 + 1);
         if (key >= Qt.Key_A && key <= Qt.Key_Z) return String.fromCharCode(key);
@@ -115,6 +152,19 @@ Item {
             || (event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier | Qt.ShiftModifier)) !== 0;
         if (event.key === Qt.Key_Escape && !modHeld) {
             root.cancel();
+            event.accepted = true;
+            return;
+        }
+        // A bare Return/Enter once a chord is already captured confirms
+        // the save instead of re-capturing "RETURN" -- the keyboard
+        // equivalent of clicking Save, and the only way to save without a
+        // mouse at all. A modified Return (SUPER + RETURN, say) still falls
+        // through to the capture below like any other chord, and so does a
+        // bare one before anything has been captured yet -- pressing it
+        // again right after (now with something already captured) saves
+        // that, the same as for every other key.
+        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !modHeld && root._captured !== null) {
+            root.save();
             event.accepted = true;
             return;
         }
@@ -150,7 +200,7 @@ Item {
         if (mods.shift) combo.push("SHIFT");
         combo.push(name);
         root._captured = combo;
-        root._conflict = Keybinds.findConflict(combo, root.target ? root.target.ref : "");
+        root._conflict = Keybinds.findConflict(combo, root.target ? root.target.raw : "");
     }
 
     function _onRelease(event) {
@@ -169,8 +219,9 @@ Item {
     Connections {
         target: Keybinds
 
-        function onSaveFinished(ok, error) {
+        function onSaveFinished(ok, error, token) {
             if (!root.capturing) return; // not from this dialog (only one editor at a time)
+            if (token !== root._saveToken) return; // not the save this dialog is waiting on
             root._saving = false;
             if (ok) {
                 root.target = null;

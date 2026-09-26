@@ -16,8 +16,11 @@ palette = "matugen"
 # [palettes.matugen] -- TOML attaches a bare key to the last opened table.
 add_newline = false
 
+# Four backslashes, not two: matugen's template engine turns every `\\`
+# into `\`, so this renders as `\\[` -- a TOML-escaped backslash, which
+# starship then reads as a literal `[`.
 format = """
-[\\[](outline)$username[@](outline)$hostname $directory[\\]](outline) \
+[\\\\[](outline)$username[@](outline)$hostname $directory[\\\\]](outline) \
 $git_branch$git_status$cmd_duration$character"""
 
 [palettes.matugen]

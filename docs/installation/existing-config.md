@@ -17,6 +17,12 @@ checks what's already there:
   `~/.config/hypr/hyprland.lua.bak-20260925-143012`), then the symlink is
   created.
 
+One consequence of this: the whole repo, `hyprland.lua` and the ghostty
+config are symlinked wholesale (below), so editing any of them *through*
+their `~/.config` link is editing a file this git clone tracks, not a private
+copy. That's fine day to day, but it changes what a later `git pull` does —
+see [Updating / re-running](updating.md).
+
 This covers every one of: the whole repo → `~/.config/quickshell/rd-shell`,
 `hypr/{hyprland.lua,hyprland-gui.lua,hypridle.conf,hyprlock.conf}` →
 `~/.config/hypr/`, `hypr/dotfiles/ghostty` → `~/.config/ghostty`,

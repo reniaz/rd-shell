@@ -61,9 +61,15 @@ PanelWindow {
         manager.startCapture(bind);
     }
 
+    // The token `Keybinds.resetOverrides` handed back for the reset in
+    // flight, so a saveFinished meant for some other save/reset (a rebind
+    // started right after, say) gets ignored instead of overwriting
+    // `resetStatus` with that unrelated result.
+    property var _resetToken: null
+
     function resetToDefaults() {
         root.resetStatus = "Resetting…";
-        Keybinds.resetOverrides();
+        root._resetToken = Keybinds.resetOverrides();
     }
 
     function close() {
@@ -88,11 +94,12 @@ PanelWindow {
     Connections {
         target: Keybinds
 
-        function onSaveFinished(ok, error) {
+        function onSaveFinished(ok, error, token) {
             // Only the reset flow reports through this label -- a rebind's
             // own result shows inside KeybindManager.qml's own dialog, which
             // is still open (or just closed itself) when this fires.
             if (root.resetStatus === "") return;
+            if (token !== root._resetToken) return; // not the reset this label is waiting on
             root.resetStatus = ok ? "Reset" : error;
         }
     }

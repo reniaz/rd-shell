@@ -31,13 +31,21 @@ shortcuts are paused, so a chord already bound to something else (e.g.
 into the compositor before the overview ever sees it. A clash with an
 existing bind shows "Already used by …" before you save, and Save replaces
 it anyway; `Esc` cancels the capture (and un-pauses shortcuts) without
-writing anything. Overrides are written to
+writing anything, and once a chord is captured, `Return`/`Enter` saves it
+too, so a rebind never needs the mouse. Overrides are written to
 `~/.config/hypr/keybind-overrides.lua`, loaded by `hyprland.lua` itself
 (`pcall(dofile, ...)` near the end of the file, so a missing or broken
 overrides file never breaks the rest of the config) — `Services/Keybinds.qml`
 does the write, reload and rollback (`hyprctl reload` +
 `hyprctl configerrors`) round trip. "Reset to defaults" in the same panel
 deletes that file and reloads.
+
+`hyprland.lua` records every bind it makes, keyed by its own chord rather
+than by load order, so an override keeps re-applying correctly even after
+you add, remove or reorder binds elsewhere in the file — it no longer
+depends on which bind happened to load in which slot. If a save can't
+finish for any reason, it times out with a readable error instead of
+leaving the dialog stuck on "Saving…" forever.
 
 ## Apps & windows
 

@@ -428,6 +428,58 @@ hl.gesture({
 
 local mainMod = "SUPER" -- Sets "Windows" key as main modifier
 
+-- rd-shell's keybind overview (SUPER+K, edit mode) rebinds a row by
+-- unbinding whatever it is on right now and re-binding the ORIGINAL
+-- dispatcher + options onto the new chord -- which needs that dispatcher
+-- and options back, not a Lua registry slot number: slots shift whenever a
+-- bind is added, removed or reordered above them, or freed by an unbind, so
+-- a saved override that re-invoked a bind by slot could silently end up
+-- calling something else entirely after the next edit here. Wrapping
+-- hl.bind before any real bind below is registered records every one of
+-- them in `rd_bind_registry`, keyed by its own canonical chord, so
+-- ~/.config/hypr/keybind-overrides.lua (dofile'd at the very end of this
+-- config, see the loader there) can look a bind up by what it is bound to
+-- right now. Deliberately a real global, not `local`: that loader runs in
+-- its own chunk and has no other way to reach it.
+local RD_MOD_ORDER = { SUPER = 1, CTRL = 2, ALT = 3, SHIFT = 4 }
+
+-- Canonical form of a chord exactly as hl.bind/hl.unbind take it ("SUPER +
+-- SHIFT + up", "XF86AudioRaiseVolume", a plain "Q", ...): modifiers
+-- upper-cased and sorted into a fixed order, the key token left exactly as
+-- given. Unlike the display spellings scripts/keybinds.sh puts on screen
+-- (arrow glyphs, "Audio Raise Volume"), hl.bind's own key names already
+-- match hyprctl's `key` field byte for byte -- arrows stay lowercase, XF86
+-- names keep their mixed case -- so folding case on the key would only make
+-- two spellings of the same key stop matching each other.
+local function rd_canon_chord(keys)
+    local parts = {}
+    for token in tostring(keys):gmatch("[^+]+") do
+        local t = token:match("^%s*(.-)%s*$")
+        if t ~= "" then parts[#parts + 1] = t end
+    end
+    if #parts == 0 then return "" end
+    local key = table.remove(parts)
+    for i, t in ipairs(parts) do parts[i] = t:upper() end
+    table.sort(parts, function(a, b) return (RD_MOD_ORDER[a] or 99) < (RD_MOD_ORDER[b] or 99) end)
+    parts[#parts + 1] = key
+    return table.concat(parts, ",")
+end
+
+rd_bind_registry = nil
+if type(hl.bind) == "function" then
+    rd_bind_registry = {}
+    local rd_orig_bind = hl.bind
+    hl.bind = function(keys, dispatcher, opts)
+        local kb = rd_orig_bind(keys, dispatcher, opts)
+        local canon = rd_canon_chord(keys)
+        if canon ~= "" then rd_bind_registry[canon] = { dispatcher = dispatcher, opts = opts } end
+        return kb
+    end
+end
+-- If hl.bind isn't a plain reassignable function on this Hyprland build,
+-- rd_bind_registry stays nil and keybind-overrides.lua falls back to its
+-- older ref-based behaviour (see that file's own loader comment).
+
 -- Example binds, see https://wiki.hypr.land/Configuring/Basics/Binds/ for more
 --
 -- Every bind carries a description. SUPER+K lists them (the shell's keybind
