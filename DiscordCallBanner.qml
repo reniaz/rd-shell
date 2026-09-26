@@ -91,7 +91,13 @@ Item {
             textFormat: Text.PlainText
             font.family: Caelus.fontFamily
             font.pixelSize: 16
-            text: root.call?.kind === "video" ? "· Incoming video" : "· Incoming voice"
+            // The bridge (Vencord's CALL_UPDATE) never says voice vs. video --
+            // kind is always null through that path -- so the generic label is
+            // the honest default; voice/video only ever show if some future
+            // source actually knows which.
+            text: root.call?.kind === "video" ? "· Incoming video"
+                : root.call?.kind === "voice" ? "· Incoming voice"
+                : "· Incoming call"
             color: Colors.fgMuted
         }
 

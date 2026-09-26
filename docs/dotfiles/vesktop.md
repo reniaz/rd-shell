@@ -45,15 +45,33 @@ Editing `enabledThemes` directly in `settings.json` works too, but that file
 also holds Vesktop's own account/session state — safer to use the in-app
 toggle than to hand-edit the file.
 
-## Incoming-call banner
+## Call banner (XSOverlay plugin)
 
 The bar's clock island morphs into a call banner for an incoming Vesktop
 call — see [Notifications → Discord call
 banner](../the-shell/notifications.md) for how it's detected and what Join
 and Decline actually do (both are real Discord keyboard shortcuts sent
-straight to the Vesktop window, nothing this rice invents). It relies on
-Vesktop showing its own desktop notification for the call, so it needs
-Vesktop's own notification setting left on.
+straight to the Vesktop window, nothing this rice invents). Detection rides
+on Vencord's built-in **XSOverlay** plugin, which already posts a
+notification-shaped message over a local WebSocket the moment a call starts
+ringing; `scripts/vencord-call-bridge.py` is the small local server that
+message reaches, and `Services/DiscordCall.qml` turns a genuine ring into
+the banner.
+
+`install.sh` wires the plugin up for you (see [What install.sh
+does](../installation/what-install-does.md)), but only once Vesktop has
+been run at least once — it edits
+`~/.config/vesktop/settings/settings.json`, which doesn't exist until then.
+If it skipped, or you'd rather set it by hand, open Vesktop → Settings →
+Vencord → Plugins → **XSOverlay**, enable it, then in its settings turn
+**Call Notifications** on and **DM/Group DM/Server/Bot Notifications** off
+(so nothing but a ring ever reaches the bridge), leaving **WebSocket Port**
+at `42070` and **Prefer UDP** off. Either way, Vesktop only reads this at
+start — **restart Vesktop** for the banner to go live.
+
+Two things it can't do: tell voice calls from video ones (the banner's
+label is always the generic "Incoming call"), and know when ringing actually
+stops — nothing reports that, so the banner just times out on its own.
 
 ## Installing Vesktop itself
 

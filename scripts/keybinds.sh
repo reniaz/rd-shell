@@ -45,7 +45,9 @@ rows=$(hyprctl -j binds | jq -r '
     # callback'"'"'s slot in the Lua registry -- what lets the overview run it with
     # `hyprctl eval`. Mouse binds (drag to move/resize) have nothing to run
     # without the drag itself, so they get no ref.
-    def ref: if .dispatcher == "__lua" and (.mouse | not) then .arg else "" end;
+    # `.mouse` reads false even for drag binds on 0.56, so mouse keys (drag
+    # and scroll -- no keyboard capture can rebind them) are ruled out by name.
+    def ref: if .dispatcher == "__lua" and (.mouse | not) and (.key // "" | startswith("mouse") | not) then .arg else "" end;
     .[] | [ ((mods + [keyname]) | join(" + ")), action, ref ] | @tsv
 ')
 

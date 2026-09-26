@@ -21,6 +21,8 @@ narrow file edits, so nothing here should surprise you.
                                        -- ghostty set as default terminal
 ~/.bashrc                             -- one starship-init line appended (only if starship is installed)
 ~/.local/bin/starship                 -- installed here if no Fedora/COPR package covered it
+~/.config/vesktop/settings/settings.json
+                                       -- .plugins.XSOverlay merged in (only if the file already existed)
 $XDG_RUNTIME_DIR/rd-shell.log         -- shell's own log
 ~/.cache/qs-bar/                      -- claude-global.sh's transcript cache
 ~/.cache/rd-shell/                    -- rendered matugen colours (bar, firefox, gtk, lock)
@@ -69,6 +71,11 @@ via `hyprpm`, `swaync`/`dunst`/`mako` masked, `pipewire`/`wireplumber`/
    from `~/.bashrc` (and delete `~/.local/bin/starship` too, if you want it
    gone — it's the one binary `install.sh` puts there directly rather than
    through `dnf`, since Fedora has no package for it).
+8. **Vencord XSOverlay plugin**: turn it back off in Vesktop → Settings →
+   Vencord → Plugins if you don't want the call banner, or restore
+   `~/.config/vesktop/settings/settings.json` from the
+   `.bak-YYYYmmdd-HHMMSS` copy `install.sh` made right before it edited it.
+   Either way, restart Vesktop afterwards.
 
 There's no single command that undoes all of the above — `install.sh` is
 one-directional by design, the same way it's safe to re-run: it only ever

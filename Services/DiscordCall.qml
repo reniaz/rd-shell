@@ -1,232 +1,207 @@
 pragma Singleton
+import QtQuick
 import Quickshell
 import Quickshell.Io
 
 // Idea 38 -- an incoming Vesktop call rendered as a rich banner instead of a
-// generic toast. What this file does NOT do, and why, matters more than what
-// it does:
+// generic toast.
 //
-// Vesktop ships arRPC (Discord's local RPC bridge) *disabled* by default
-// (`~/.config/vesktop/settings.json`: "arRPC": false) and no `discord-ipc-*`
-// socket exists in $XDG_RUNTIME_DIR on this machine even when it is on --
-// and that bridge only ever lets a local app SET_ACTIVITY (rich presence)
-// on Discord's own socket, never read call state or caller metadata back.
-// Vesktop also owns no MPRIS or StatusNotifierItem name of its own on this
-// bus. There is, in short, no IPC/RPC surface to watch here -- the plan's
-// step 1 surface does not exist on a stock Vesktop install.
+// The previous version of this file watched org.freedesktop.Notifications
+// for a text pattern ("Incoming call" et al), on the theory that Discord's
+// web client fires a plain Notification() on a ring and Electron forwards it
+// to the same bus every other toast arrives on. A real incoming call proved
+// that wrong: Vesktop sends no desktop notification for a ring at all, so
+// that path never fired and never could. It also had a real cost sitting in
+// Services/Notifications.qml's onNotification -- any DM whose text happened
+// to start with "incoming call" (someone literally typing that) would have
+// been silently swallowed and shown as a fake call banner instead of the
+// message it was. That hook is gone; see Notifications.qml for the removal.
 //
-// What does exist: Discord's web client fires a plain HTML5 Notification()
-// on an incoming call while unfocused, and Electron forwards that straight
-// to org.freedesktop.Notifications.Notify -- the exact bus every other
-// toast in this shell already arrives on (Services/Notifications.qml).
-// That is what this file watches instead: `consider()` is called from
-// Notifications.qml's own onNotification, before DND is even consulted (a
-// call ringing is not the chatter DND is aimed at) and before a matching
-// arrival is ever pushed onto the popup stack, taking it over as a call
-// banner rather than letting it become a second, plain toast for the same
-// event.
+// What actually exists: the installed Vencord has a plugin, "XSOverlay",
+// whose CALL_UPDATE handler -- when call.ringing includes the current user
+// and its own callNotifications setting is on -- opens
+// ws://127.0.0.1:42070/?client=Vencord (from the discord.com page itself,
+// so Origin https://discord.com) and sends one text frame carrying a
+// {"title":"<channel> is calling you...","content":"Incoming call",
+// "useBase64Icon":false, ...} envelope. That is a real signal with no
+// notification-bus detour needed. No QtWebSockets QML module is installed
+// here and no installs are allowed for this fix, so the other end of that
+// socket is scripts/vencord-call-bridge.py -- a small python3 stdlib
+// WebSocket server this file owns as a Quickshell Process. It parses the
+// envelope itself and only ever prints one line per detected ring to
+// stdout: {"event":"ring","name":"<channel name or empty>"}. It never knows
+// or reports voice vs. video (Vencord's own event carries nothing that
+// says), which is why `call.kind` below is always null -- see
+// DiscordCallBanner.qml for how that shows.
 //
-// A web Notification carries no `actions` array -- Chromium's Linux
-// notification bridge does not expose one -- so there is no notification-
-// level accept/decline verb. What accept()/decline() use instead is
-// Discord's own documented keyboard shortcuts (support.discord.com's
-// Hotkeys/Shortcuts guide): Ctrl+Enter answers an incoming call, Escape
-// declines one. Both are normally scoped to Discord's *focused* window;
-// Hyprland's `sendshortcut` dispatcher is documented to deliver a key to a
-// named window's surface directly -- swapping keyboard focus only for that
-// one keypress and handing it straight back, never raising or activating
-// the target -- which is what lets accept()/decline() below act without
-// yanking focus away from whatever the user is doing. Ctrl+Enter only ever
-// answers with audio: Discord's own docs describe it as "Answer incoming
-// call" with no mention of the camera, and the camera is never enabled on
-// answer either way -- turning it on stays a separate, explicit action the
-// user takes inside the call afterwards.
+// Nothing in this file consults Notifications.dnd, on purpose: a call
+// ringing is not the chatter DND exists to hold back, and the user asked
+// for this banner to survive DND same as before.
 //
-// That no-focus delivery claim caused one real incident while this was
-// being built: a `sendshortcut` test aimed at a disposable ghostty window
-// instead hit the user's own real ghostty terminal and toggled it
-// fullscreen (the throwaway shared ghostty's class with the user's real
-// window, and had likely already exited from under a concurrent test).
-// accept()/decline() below never select by class for exactly that reason
-// -- always one `address:0x...` resolved fresh from `hyprctl -j clients`
-// right before the send, sent nowhere if that resolution is not a single
-// vesktop match. A later, careful re-test with two disposable non-ghostty
-// probe windows (one focused, one hidden, both address-resolved fresh)
-// confirmed the delivery mechanism itself is sound: the hidden probe
-// received exactly the bytes sent, the focused one received none, and
-// focus/workspace never moved (see `_sendAccept`'s comment for how). What
-// no test rig can confirm is that Discord/Electron answers or declines a
-// call on receiving these keys -- that is only ever confirmable by
-// watching a real incoming call actually stop ringing and open.
+// ---- accept/decline: the real key, not just a window raise ----
 //
-// "Already in a call" (idea 38's rule 5) has no real signal behind it
-// either, and this file used to guess at one from PipeWire: first "any
-// vesktop stream", then "a vesktop capture stream that predates this
-// notification". Both were wrong, confirmed against a real incoming call
-// that this shell then failed to show a banner for at all -- Vesktop keeps
-// its `Stream/Output/Audio Playback` and `Stream/Input/Audio RecordStream`
-// nodes open permanently, call or no call, VC or no VC, so PipeWire's own
-// node list carries zero information about whether a call is under way.
-// There is no PipeWire check here any more. What idea 38's rule 5 actually
-// reduces to, without a real "in a call" signal to read, is narrower and
-// fully answerable from the notification stream alone: never show a
-// banner again for a call this session already acted on. `_answered`
-// (accept) and the ordinary close/replace/decline paths below cover that;
-// nothing here claims to detect a call joined some other way (Vesktop's
-// own UI, a second device, ...), which is the one case idea 38's rule 5
-// still cannot see.
+// Unchanged from the notification-based version. Both resolve the one
+// Vesktop window Hyprland currently knows about fresh, every press, from
+// `hyprctl -j clients` -- never cached, and never matched by class alone (a
+// class match would hit every Vesktop window if more than one were ever
+// open, and the wrong one is worse than none). Zero matches or more than
+// one and nothing is sent at all. This also covers the window having closed
+// between the banner showing and the button press: a stale address just
+// would not be in this query's own fresh output.
+//
+// A live test of `hl.dsp.send_shortcut({ mods, key, window =
+// "address:0x.." })`, aimed at a disposable ghostty window while an earlier
+// version of this file was being built, once delivered a key to the WRONG
+// window -- the user's own real ghostty terminal, not the throwaway one --
+// and toggled it fullscreen. That test used `ghostty` (a class shared with
+// the user's own terminal) as the throwaway target and re-focused nothing
+// in between concurrent agents opening and closing windows of that same
+// class, so the address it sent to may or may not still have pointed at a
+// live window by the time the key landed -- never conclusively pinned down,
+// and not repeated that way again.
+//
+// Re-tested properly afterwards with two disposable, NON-ghostty (`kitty`,
+// unique `--class`) probe windows instead: one left focused and visible,
+// one left hidden and unfocused -- both re-resolved by address immediately
+// beforehand, both checked with `stty raw -echo` so every byte lands
+// without the kernel's own line buffering hiding or reordering it.
+// `send_shortcut` targeted at the hidden probe's address delivered exactly
+// the raw bytes sent (0x0D for Ctrl+Return, 0x1B for Escape) to that probe
+// and zero bytes to the focused one, and `hyprctl activewindow`/
+// `activeworkspace` read identical before and after every send on both
+// monitors. That confirms `sendshortcut` itself does not need, take, or
+// leak focus at the compositor level; it does not, and cannot, confirm that
+// Discord/Electron's own key handling behaves identically to a raw
+// terminal reading its pty -- see `_sendAccept` below for what still rests
+// on that.
 Singleton {
     id: root
 
     // The one call banner in play, or null while nothing is ringing:
-    // { notification, name, kind ("voice"|"video"), avatar }. Never more
-    // than one -- a second incoming-call arrival while this is set just
-    // replaces it, same as Discord itself only ever rings one call at a time.
+    // { name, kind }. kind is always null -- this source (Vencord's
+    // CALL_UPDATE via the bridge) never knows voice vs. video, unlike the
+    // old notification text guess. Never more than one call shown at once --
+    // a second incoming ring while this is set just replaces it, same as
+    // Discord itself only ever rings one call at a time.
     property var call: null
     readonly property bool visible: root.call !== null
 
-    // The notification object the `closed` listener below is already
-    // attached to, so a replaced-in-place notification that still matches
-    // (Discord updates the same object rather than sending a new one) never
-    // grows a second listener stacked on top of the first.
-    property var _trackedNotification: null
+    // Identifies the ring currently "in play" (showing, or already
+    // answered/declined and cooling down) -- the channel name the bridge
+    // last reported, or "" for a nameless 1:1 DM. Vencord's CALL_UPDATE
+    // fires several times over one ring with no "stopped ringing" event
+    // ever sent, so there is no hard boundary between "still the same call"
+    // and "a new one" to read off the wire -- this file draws that
+    // boundary itself: a ring event for the SAME name while `_ringTimer` is
+    // still running is treated as the same ring (never re-shown if already
+    // handled, still refreshed if not); a different name, or this same name
+    // after the timer has lapsed, starts a fresh ring. That means two
+    // different silent (empty-name) DM callers back to back within the
+    // window would misread as one ring -- an accepted limitation of having
+    // only a channel name to go on, not a bug in the timer.
+    property string _activeName: ""
+    property bool _haveActive: false
+    property bool _handled: false
 
-    // Set by accept() to the notification it just acted on -- consider()
-    // refuses to ever show a banner for that same object again, even if
-    // Vesktop leaves it tracked and it somehow gets re-offered (a replace
-    // that still reads as a call, e.g.). This is the whole of "don't show
-    // while already on this call" now that no external signal exists to
-    // confirm it: rely on the one thing this file does know for certain,
-    // which is that the user already pressed accept on it.
-    property var _answered: null
+    // No official cadence for CALL_UPDATE is documented and none was
+    // captured live before this was built, so this is a judgment call, not
+    // a measured number: comfortably longer than any gap between repeats of
+    // one real ring should be, comfortably shorter than "the user forgot
+    // and this is a stale banner nobody will ever act on". Also stands in
+    // for the notification-based version's `closed` signal as the one way
+    // this file now learns "the call is presumably over" (answered on
+    // another device, hung up, timed out) -- there is no such signal from
+    // the bridge, so silence itself is that signal.
+    readonly property int ringTimeoutMs: 30000
 
-    // Matched the same way Services/Notifications.qml already reads every
-    // arrival (appName, summary, body) -- nothing here needs a wider hook.
-    // Case-insensitive appName match covers both "Vesktop" and a renamed
-    // desktop-entry fallback ("discord").
-    readonly property var _appRe: /vesktop|discord/i
-
-    // Anchored to the start of the field, not the whole field -- a real
-    // Vesktop call notification's exact text is still unconfirmed. A
-    // `^...$` full-field anchor missed an actual incoming call outright
-    // once already, so this stays deliberately tolerant: "incoming call"
-    // at the very start of summary or body, an optional "voice"/"video" in
-    // between, and anything after (a trailing `\b` so "incoming callback"
-    // or "incoming calling" cannot false-match "call" as a prefix -- every
-    // real call phrase still ends the word right there, so this costs
-    // nothing legitimate). The exact text of a live call has not been
-    // captured yet, hence the tolerance. Still dropped the
-    // original's un-anchored "... is calling" alternative -- that one
-    // matched ordinary chat too (e.g. "she is calling in sick"), which is
-    // exactly the chat/call scoping idea 38 asks this file to hold.
-    readonly property var _callRe: /^incoming\s+(?:(voice|video)\s+)?call\b/i
-
-    // Returns "voice"/"video" (defaulting to "voice" when the notification
-    // just says "Incoming call" with no kind word) if `text` (trimmed)
-    // starts with the call phrase, null otherwise -- checked per-field
-    // rather than against the two fields concatenated, so a call phrase can
-    // never come from a combination that only reads that way once joined.
-    function _matchCall(text) {
-        const m = root._callRe.exec((text ?? "").trim());
-        return m ? (m[1] ? m[1].toLowerCase() : "voice") : null;
-    }
-
-    function _looksLikeCall(n) {
-        if (!root._appRe.test(n?.appName ?? "")) return false;
-        return root._matchCall(n?.summary) !== null || root._matchCall(n?.body) !== null;
-    }
-
-    // Discord's own notification carries no separate "caller name" field --
-    // just summary/body, one of which is the call phrase above and the
-    // other the caller's name. Whichever field matched the phrase, the
-    // other is the name; fall back to the app name rather than show a blank
-    // banner if that side is somehow empty too.
-    function _callInfo(n) {
-        const s = n?.summary ?? "", b = n?.body ?? "";
-        const sKind = root._matchCall(s), bKind = root._matchCall(b);
-        const kind = sKind ?? bKind;
-        const name = sKind ? b : s;
-        return { kind: kind ?? "voice", name: name || (n?.appName ?? "Discord") };
-    }
-
-    // Called from Services/Notifications.qml before DND is consulted and
-    // before a matching arrival is handed to the toast stack. Returns true
-    // once this notification has been taken over as a call banner -- the
-    // caller must then skip its own popup push for it, so the two never
-    // both show. Returns false for anything not call-shaped, or for one
-    // already accepted this session: both cases fall straight through to
-    // the normal toast path with no special handling needed here, which is
-    // the whole of "degrade gracefully".
-    function consider(n) {
-        if (!root._looksLikeCall(n)) {
-            // Discord can replace a tracked notification's content in place
-            // (same object, new summary/body) without ever closing it -- if
-            // that happens to the one this banner is showing and the new
-            // content no longer reads as a call, the banner has nothing
-            // left to show for and would otherwise go stale next to
-            // whatever toast just took its place.
-            if (root.call?.notification === n) root.dismiss();
-            return false;
+    Timer {
+        id: ringTimer
+        interval: root.ringTimeoutMs
+        onTriggered: {
+            root.call = null;
+            root._haveActive = false;
+            root._handled = false;
         }
-        if (n === root._answered) return false;
-
-        const info = root._callInfo(n);
-        root.call = { notification: n, name: info.name, kind: info.kind, avatar: n?.image ?? "" };
-
-        // Discord withdrawing the notification (call ended, answered on
-        // another device, timed out) closes the underlying object; the
-        // banner has nothing left to show for once that happens. Guarded so
-        // a still-matching in-place replacement never stacks a second
-        // listener on the same notification.
-        if (root._trackedNotification !== n) {
-            root._trackedNotification = n;
-            n.closed.connect(() => { if (root.call?.notification === n) root.dismiss(); });
-        }
-        return true;
     }
 
-    // ---- accept/decline: the real key, not just a window raise ----
-    //
-    // Both resolve the one Vesktop window Hyprland currently knows about
-    // fresh, every press, from `hyprctl -j clients` -- never cached, and
-    // never matched by class alone (a class match would hit every Vesktop
-    // window if more than one were ever open, and the wrong one is worse
-    // than none). Zero matches or more than one and nothing is sent at all.
-    // This also covers the window having closed between the banner showing
-    // and the button press: a stale address just would not be in this
-    // query's own fresh output.
-    //
-    // A live test of `hl.dsp.send_shortcut({ mods, key, window =
-    // "address:0x.." })`, aimed at a disposable ghostty window while an
-    // earlier version of this file was being built, once delivered a key
-    // to the WRONG window -- the user's own real ghostty terminal, not the
-    // throwaway one -- and toggled it fullscreen. That test used `ghostty`
-    // (a class shared with the user's own terminal) as the throwaway
-    // target and re-focused nothing in between concurrent agents opening
-    // and closing windows of that same class, so the address it sent to
-    // may or may not still have pointed at a live window by the time the
-    // key landed -- never conclusively pinned down, and not repeated that
-    // way again.
-    //
-    // Re-tested properly afterwards with two disposable, NON-ghostty
-    // (`kitty`, unique `--class`) probe windows instead: one left focused
-    // and visible, one left hidden and unfocused -- both re-resolved by
-    // address immediately beforehand, both checked with `stty raw -echo`
-    // so every byte lands without the kernel's own line buffering hiding
-    // or reordering it. `send_shortcut` targeted at the hidden probe's
-    // address delivered exactly the raw bytes sent (0x0D for Ctrl+Return,
-    // 0x1B for Escape) to that probe and zero bytes to the focused one, and
-    // `hyprctl activewindow`/`activeworkspace` read identical before and
-    // after every send on both monitors -- repeated with the hidden probe
-    // on a scratch special-workspace and again on a plain numbered
-    // workspace neither monitor had in view (mirroring Vesktop's own usual
-    // workspace 7), both clean. That confirms `sendshortcut` itself does
-    // not need, take, or leak focus at the compositor level; it does not,
-    // and cannot, confirm that Discord/Electron's own key handling behaves
-    // identically to a raw terminal reading its pty -- see `_sendAccept`
-    // below for what still rests on that.
+    // Bridge process -- scripts/vencord-call-bridge.py, launched the same
+    // way Services/SysMon.qml launches its own long-running python3
+    // sampler, including the same crash-loop backoff (doubled each time the
+    // process dies within 5s of starting, reset once one runs longer than
+    // that). "Port busy" reads here as just another fast exit: SO_REUSEADDR
+    // means a hot-reloaded bridge rebinds instantly, so a fast exit here
+    // means something else already owns 127.0.0.1:42070 -- worth one
+    // warning, not a log line every retry.
+    property int _backoff: 1000
+    property real _startedAt: 0
+    property bool _loggedStuck: false
+
+    Timer {
+        id: restartTimer
+        onTriggered: bridge.running = true
+    }
+
+    Process {
+        id: bridge
+        running: true
+        command: ["python3", Quickshell.shellPath("scripts/vencord-call-bridge.py")]
+
+        onRunningChanged: if (bridge.running) root._startedAt = Date.now()
+
+        onExited: (exitCode, exitStatus) => {
+            if (Date.now() - root._startedAt > 5000) {
+                root._backoff = 1000;
+                root._loggedStuck = false;
+            } else {
+                root._backoff = Math.min(root._backoff * 2, 30000);
+                if (root._backoff >= 30000 && !root._loggedStuck) {
+                    console.warn("DiscordCall: vencord-call-bridge.py keeps exiting right after start (is 127.0.0.1:42070 already in use?) -- retrying quietly every 30s");
+                    root._loggedStuck = true;
+                }
+            }
+            restartTimer.interval = root._backoff;
+            restartTimer.start();
+        }
+
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => root._onBridgeLine(data)
+        }
+    }
+
+    // The bridge never prints anything but {"event":"ring","name":...} --
+    // no message content, ever (see its own header comment) -- but this
+    // still parses defensively rather than trust a line blindly: a stray
+    // partial line across a restart should never throw past this function.
+    function _onBridgeLine(line) {
+        let msg;
+        try { msg = JSON.parse(line); } catch (e) { return; }
+        if (msg?.event !== "ring") return;
+        root._onRing(typeof msg.name === "string" ? msg.name : "");
+    }
+
+    function _onRing(name) {
+        if (root._haveActive && root._activeName === name && ringTimer.running) {
+            // Same ring, still sending CALL_UPDATEs: refresh the window so
+            // silence-based expiry keeps counting from the most recent
+            // update, but never flip a banner the user already acted on
+            // back on.
+            ringTimer.restart();
+            if (!root._handled) root.call = { name: name || "Discord", kind: null };
+            return;
+        }
+
+        // Different name, or nothing currently active/it already expired --
+        // always a fresh ring.
+        root._activeName = name;
+        root._haveActive = true;
+        root._handled = false;
+        root.call = { name: name || "Discord", kind: null };
+        ringTimer.restart();
+    }
+
     property var _pendingAction: null
-    property var _pendingNotification: null
+    property string _pendingRingName: ""
 
     Process {
         id: _vesktopQuery
@@ -236,18 +211,18 @@ Singleton {
         }
     }
 
-    function _resolveVesktopThen(action, notification) {
+    function _resolveVesktopThen(action, ringName) {
         if (_vesktopQuery.running) return; // one lookup in flight is enough for two buttons
         root._pendingAction = action;
-        root._pendingNotification = notification;
+        root._pendingRingName = ringName;
         _vesktopQuery.running = true;
     }
 
     function _onVesktopResolved(text) {
         const action = root._pendingAction;
-        const notification = root._pendingNotification;
+        const ringName = root._pendingRingName;
         root._pendingAction = null;
-        root._pendingNotification = null;
+        root._pendingRingName = "";
 
         let clients;
         try { clients = JSON.parse(text || "[]"); } catch (e) { clients = []; }
@@ -256,13 +231,13 @@ Singleton {
         // honest left to offer (accept can't join, decline can't decline)
         // once the one window it would act on can't be resolved uniquely.
         if (matches.length !== 1 || !/^0x[0-9a-f]+$/i.test(matches[0]?.address ?? "")) {
-            if (root.call?.notification === notification) root.dismiss();
+            if (root._activeName === ringName) root.dismiss();
             return;
         }
         const address = matches[0].address;
 
-        if (action === "accept") root._sendAccept(address, notification);
-        else if (action === "decline") root._sendDecline(address);
+        if (action === "accept") root._sendAccept(address, ringName);
+        else if (action === "decline") root._sendDecline(address, ringName);
     }
 
     // Ctrl+Enter -- Discord's documented "Answer incoming call", audio
@@ -277,12 +252,12 @@ Singleton {
     // will visibly do nothing rather than silently misbehave, since nothing
     // here falls back to raising the window instead. Argv is fixed except
     // for the address itself, which comes from `hyprctl`'s own trusted
-    // output, never from notification text.
-    function _sendAccept(address, notification) {
-        if (root.call?.notification !== notification) return; // banner moved on while this was resolving
+    // output, never from anything Vencord sent.
+    function _sendAccept(address, ringName) {
+        if (root._activeName !== ringName) return; // banner moved on while this was resolving
         Quickshell.execDetached(["hyprctl", "eval",
             "hl.dispatch(hl.dsp.send_shortcut({ mods = 'CTRL', key = 'Return', window = 'address:" + address + "' }))"]);
-        root._answered = notification;
+        root._handled = true;
         root.dismiss();
     }
 
@@ -293,22 +268,25 @@ Singleton {
     // reached anything: even with no Vesktop window resolved, "make the
     // banner go away" is the one part of decline this file can always
     // deliver honestly.
-    function _sendDecline(address) {
+    function _sendDecline(address, ringName) {
+        if (root._activeName !== ringName) return; // banner moved on while this was resolving
         Quickshell.execDetached(["hyprctl", "eval",
             "hl.dispatch(hl.dsp.send_shortcut({ mods = '', key = 'Escape', window = 'address:" + address + "' }))"]);
     }
 
-    // Only while a live, not-closed call banner is actually showing --
+    // Only while a live, not-dismissed call banner is actually showing --
     // `root.visible` is false once `dismiss()` has run, whether from a
-    // prior accept/decline or from Discord itself closing the notification.
+    // prior accept/decline or from the ring timing out.
     function accept() {
         if (!root.visible) return;
-        root._resolveVesktopThen("accept", root.call.notification);
+        root._handled = true;
+        root._resolveVesktopThen("accept", root._activeName);
     }
 
     function decline() {
         if (!root.visible) return;
-        root._resolveVesktopThen("decline", root.call.notification);
+        root._handled = true;
+        root._resolveVesktopThen("decline", root._activeName);
         root.dismiss();
     }
 

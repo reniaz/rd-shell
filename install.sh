@@ -1377,6 +1377,49 @@ else
     fi
 fi
 
+# --- Vencord call banner ----------------------------------------------------
+# Vesktop sends no desktop notification for an incoming call, so the bar's
+# call banner instead rides Vencord's built-in XSOverlay plugin: it already
+# opens a WebSocket and posts a "ringing" message on CALL_UPDATE, which
+# scripts/vencord-call-bridge.py (started by Services/DiscordCall.qml) turns
+# into the banner. The plugin just needs pointing at that bridge's port with
+# every other notification source it can also drive turned off, so only
+# calls -- never message content -- ever reach it. Vesktop only reads this
+# file at start, so nothing here can make the banner live without a restart;
+# only wired up if Vesktop has been run at least once (nothing here installs
+# or starts it, same as the rest of this script).
+step "Vencord call banner (XSOverlay plugin)"
+VESKTOP_SETTINGS="$HOME/.config/vesktop/settings/settings.json"
+if [ ! -f "$VESKTOP_SETTINGS" ]; then
+    warn "no $VESKTOP_SETTINGS — start Vesktop once, then re-run this script to wire up the call banner"
+else
+    want='{"enabled":true,"callNotifications":true,"preferUDP":false,"webSocketPort":42070,"dmNotifications":false,"groupDmNotifications":false,"serverNotifications":false,"botNotifications":false}'
+    # Compared as data, not bytes: Vencord writes 4-space JSON and jq's own
+    # formatting differs, so a byte compare would rewrite (and back up) the
+    # file on every run. Written back at Vencord's own indent.
+    if ! merged=$(jq --indent 4 --argjson want "$want" \
+            '.plugins.XSOverlay = ((.plugins.XSOverlay // {}) + $want)' \
+            "$VESKTOP_SETTINGS" 2>/dev/null); then
+        fail "could not parse $VESKTOP_SETTINGS as JSON — leaving it untouched"
+    elif jq -e --argjson want "$want" \
+            '(.plugins.XSOverlay // {}) == ((.plugins.XSOverlay // {}) + $want)' \
+            "$VESKTOP_SETTINGS" >/dev/null 2>&1; then
+        ok "XSOverlay plugin already set up for the call banner"
+    else
+        bak="$VESKTOP_SETTINGS.bak-$(date +%Y%m%d-%H%M%S)"
+        cp -p "$VESKTOP_SETTINGS" "$bak"
+        tmp="$VESKTOP_SETTINGS.tmp.$$"
+        if printf '%s\n' "$merged" > "$tmp" && mv "$tmp" "$VESKTOP_SETTINGS"; then
+            chmod --reference="$bak" "$VESKTOP_SETTINGS" 2>/dev/null
+            ok "XSOverlay plugin enabled for the call banner (backup: $bak)"
+            warn "restart Vesktop for this to take effect"
+        else
+            rm -f "$tmp"
+            fail "could not write $VESKTOP_SETTINGS — backup left at $bak"
+        fi
+    fi
+fi
+
 printf '\n\033[1;32mDone.\033[0m\n'
 
 # --- summary -----------------------------------------------------------------

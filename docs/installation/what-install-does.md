@@ -215,7 +215,21 @@ repo's `firefox/`, writes the `userChrome.css`/`userContent.css` import
 stubs, and enables `toolkit.legacyUserProfileCustomizations.stylesheets` in
 `user.js`.
 
-### 26. Summary
+### 26. Vencord call banner (XSOverlay plugin)
+
+If `~/.config/vesktop/settings/settings.json` exists (Vesktop has been run
+at least once), merges in the settings the bar's Discord call banner needs
+from Vencord's XSOverlay plugin — enabled, pointed at the bridge's port
+(`42070`), call notifications on, everything else (DM/group/server/bot) off
+— backing the file up first and writing only if something actually
+changed. Every other key, and every other plugin's settings, are left
+exactly as they were. Skipped with a hint to re-run later if the file
+doesn't exist yet. See [vesktop](../dotfiles/vesktop.md#call-banner-xsoverlay-plugin)
+for what it sets and why, and [Notifications](../the-shell/notifications.md)
+for how the banner itself works. Either way, Vesktop needs a restart
+afterwards — this step never restarts it for you.
+
+### 27. Summary
 
 Prints the machine-specific edits you still need to make by hand — see
 [Fresh install](fresh-install.md#after-the-script-finishes) for the list.

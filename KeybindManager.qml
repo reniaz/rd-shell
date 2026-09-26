@@ -83,6 +83,7 @@ Item {
         case Qt.Key_Return:
         case Qt.Key_Enter: return "Return";
         case Qt.Key_Tab: return "Tab";
+        case Qt.Key_Escape: return "ESCAPE";
         case Qt.Key_Backspace: return "BackSpace";
         case Qt.Key_Delete: return "Delete";
         case Qt.Key_Home: return "Home";
@@ -108,7 +109,11 @@ Item {
     }
 
     function _onKey(event) {
-        if (event.key === Qt.Key_Escape) {
+        // Bare Escape cancels; with a modifier held it is a chord like any
+        // other (CTRL+SHIFT+ESCAPE is bound in hyprland.lua).
+        const modHeld = root._heldSuper || root._heldCtrl || root._heldAlt || root._heldShift
+            || (event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier | Qt.ShiftModifier)) !== 0;
+        if (event.key === Qt.Key_Escape && !modHeld) {
             root.cancel();
             event.accepted = true;
             return;

@@ -76,6 +76,15 @@ PanelWindow {
         root.dismissed();
     }
 
+    // Belt-and-suspenders for the ShortcutInhibitor below: `close()` above
+    // already cancels a capture on the way out, but `root.open` can also go
+    // false without going through it -- SUPER+K again while mid-capture
+    // calls Keybinds.toggle() directly, which this window only ever sees as
+    // a change to `open`. Either way the inhibitor's `enabled` binding
+    // follows `manager.capturing`, so cancelling here is what actually lets
+    // go of the compositor's shortcuts once the sheet is on its way out.
+    onOpenChanged: if (!root.open && manager.capturing) manager.cancel()
+
     Connections {
         target: Keybinds
 
@@ -400,5 +409,28 @@ PanelWindow {
 
         anchors.fill: parent
         onClosed: search.forceActiveFocus()
+    }
+
+    // Hyprland matches its OWN compositor binds before this window -- even
+    // with WlrKeyboardFocus.Exclusive above -- ever sees the key, so a chord
+    // already bound elsewhere (SUPER+S, etc.) would never reach
+    // KeybindManager's Keys.onPressed without this. `enabled` tracks
+    // `manager.capturing` exactly, not `root.open`: read-only browsing and
+    // the search field's own Up/Down/Enter handling must never have
+    // Hyprland's shortcuts inhibited, only the one dialog that is actually
+    // waiting on a chord. `manager.cancel()` above (from close(), Escape, a
+    // successful save, or a failed one's own Escape) and onOpenChanged's
+    // failsafe both drop `capturing` straight back to false, which this
+    // binding follows immediately -- there is no path that leaves
+    // `capturing` true once the sheet is not both open and mid-capture, so
+    // there is none that leaves this inhibited either. `cancelled` fires if
+    // the compositor drops the inhibitor on its own (a lock screen, e.g.);
+    // treated exactly like the user having pressed Escape.
+    ShortcutInhibitor {
+        id: shortcutInhibitor
+
+        window: root
+        enabled: manager.capturing
+        onCancelled: if (manager.capturing) manager.cancel()
     }
 }

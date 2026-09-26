@@ -144,14 +144,39 @@ Singleton {
             + "return overrides\n";
     }
 
+    // Canonical form of one key token, for comparing a captured chord
+    // against `root.binds` rather than for anything shown on screen.
+    // scripts/keybinds.sh turns hyprctl's raw "left"/"right"/"up"/"down"
+    // into arrow glyphs for the keycaps, but KeybindManager.qml's capture
+    // path (Qt key codes in, Hyprland's own bind-key spelling out) has no
+    // reason to produce those glyphs -- so left uncorrected, a captured
+    // "CTRL + ALT + up" would never match displayed "CTRL + ALT + ↑" and a
+    // screenshot bind already on that chord would look free. Folding case
+    // too means a captured "Return" matches a live "RETURN" (or any other
+    // case Hyprland happens to echo back a name in) without either side
+    // having to guess the other's spelling.
+    function _canonKey(k) {
+        switch (k) {
+        case "←": return "LEFT";
+        case "→": return "RIGHT";
+        case "↑": return "UP";
+        case "↓": return "DOWN";
+        default: return String(k).toUpperCase();
+        }
+    }
+
+    function _canonCombo(keys) {
+        return keys.map(root._canonKey).join(" + ");
+    }
+
     // Live conflict check for the chord being captured -- `root.binds`
     // already reflects whatever is bound *right now*, overrides included,
     // so this catches a clash with another override just as well as with a
     // stock hyprland.lua bind. `excludeRef` leaves out the row being
     // rebound itself, so picking back its own current chord is not "in use".
     function findConflict(comboKeys, excludeRef) {
-        const combo = comboKeys.join(" + ");
-        return root.binds.find(b => b.ref !== excludeRef && b.keys.join(" + ") === combo) ?? null;
+        const combo = root._canonCombo(comboKeys);
+        return root.binds.find(b => b.ref !== excludeRef && root._canonCombo(b.keys) === combo) ?? null;
     }
 
     // `bind` is a row from `root.binds` (hyprctl's live view); `comboKeys`

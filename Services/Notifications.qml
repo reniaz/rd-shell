@@ -87,17 +87,17 @@ Singleton {
             // Not while the panel is open: the user is already looking at the
             // list, so counting there would leave a stale badge behind on close.
             if (!root.panelOpen) root.unseen++;
-            // DiscordCall.consider() takes over the one arrival that looks
-            // like an incoming Vesktop call (idea 38) before DND is even
-            // consulted -- a call ringing is not the chatter DND is aimed
-            // at, so it must survive DND the same as a hotkey or an allowed
-            // app does below. Taking it over here, before the toast stack
-            // is ever touched, is also what keeps the rich banner and this
-            // plain toast from both showing for the same call. Anything
-            // else -- ordinary chat, or a call arriving while already on
-            // one -- it hands straight back, unchanged, to the normal
-            // DND-gated toast path.
-            if (DiscordCall.consider(n)) return;
+            // Idea 38's call banner used to be taken over here, before DND
+            // was even consulted, by matching this notification's text
+            // against an "incoming call" guess. Removed: Vesktop sends no
+            // desktop notification for a real call (confirmed against one
+            // that actually rang), so that guess never fired for its own
+            // purpose -- it only ever risked misfiring on a DM whose text
+            // happened to start with "incoming call" and showing a fake call
+            // banner for someone else's message instead of the message
+            // itself. Services/DiscordCall.qml now gets its ring signal from
+            // Vencord's own CALL_UPDATE via a small local WebSocket bridge,
+            // entirely off this notification path -- see its header comment.
 
             // filter first: a replaced notification arrives as the same object, so
             // a blind prepend stacks visual duplicates of one notification

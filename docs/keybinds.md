@@ -25,8 +25,13 @@ monitor names.
 
 The Edit toggle in `Super+K`'s own overview (`KeybindOverview.qml`) lets you
 capture a new chord for any bind with a ref and write it, live, with no
-manual editing of `hyprland.lua`. A clash with an existing bind is shown
-before you save, and Save replaces it. Overrides are written to
+manual editing of `hyprland.lua`. While it's capturing, Hyprland's own
+shortcuts are paused, so a chord already bound to something else (e.g.
+`Super+S`, the sticky note key) can still be captured instead of vanishing
+into the compositor before the overview ever sees it. A clash with an
+existing bind shows "Already used by …" before you save, and Save replaces
+it anyway; `Esc` cancels the capture (and un-pauses shortcuts) without
+writing anything. Overrides are written to
 `~/.config/hypr/keybind-overrides.lua`, loaded by `hyprland.lua` itself
 (`pcall(dofile, ...)` near the end of the file, so a missing or broken
 overrides file never breaks the rest of the config) — `Services/Keybinds.qml`

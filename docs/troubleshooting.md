@@ -17,7 +17,7 @@
 | Wallpaper switch doesn't recolour anything | matugen missing, or hasn't rendered yet | `command -v matugen`; re-run `scripts/wallpaper-apply.sh --restore` by hand and watch its output |
 | Window borders still show the static orange after a switch | `hyprctl reload` re-read the static literals from `hyprland.lua` since the last switch | run `scripts/wallpaper-apply.sh --border`, or switch wallpaper again — see [Theming](theming/README.md) |
 | Bar/GTK/Qt agree but the lock screen doesn't | `hyprlock-colors.conf` not regenerated yet | `scripts/wallpaper-apply.sh --lock` |
-| Discord call banner never shows | Vesktop's own desktop notification for the call never arrived | check Vesktop's notification setting is on — detection rides entirely on that notification, see [Notifications](the-shell/notifications.md) |
+| Discord call banner never shows | XSOverlay plugin off, Vesktop not restarted since it was turned on, port 42070 already taken, or another real XSOverlay app is running | enable/check the plugin (Vencord → Plugins → XSOverlay) and restart Vesktop; `ss -ltnp '( sport = :42070 )'` shows what's holding the port — a real XSOverlay VR overlay app wants it too, so only run one at a time; see [Notifications](the-shell/notifications.md) and [vesktop](dotfiles/vesktop.md#call-banner-xsoverlay-plugin) |
 | Sticky note key does nothing | the focused workspace isn't empty | `Super+S` only creates a note over an empty workspace, by design |
 
 ## Reading the shell's own log
