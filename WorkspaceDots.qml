@@ -39,12 +39,12 @@ Item {
     readonly property real _beatMaxOpacity: 0.35
 
     // Zero whenever the gate is off or cava has nothing playing -- checked
-    // explicitly rather than trusted to Cava.level alone (which already
-    // settles to 0 the same instant, see Services/Cava.qml) so this reads as
+    // explicitly rather than trusted to `level` alone (which already
+    // settles to 0 the same instant, see Services/CavaFeed.qml) so this reads as
     // inert by construction and not just by the service's current
     // implementation.
-    readonly property real _beatOpacity: root.beatReactive && Cava.active
-        ? Cava.level * root._beatMaxOpacity
+    readonly property real _beatOpacity: root.beatReactive && Cava.islands.active
+        ? Cava.islands.level * root._beatMaxOpacity
         : 0
 
     // Class substring -> Material Symbols glyph, so an occupied workspace
@@ -170,7 +170,7 @@ Item {
 
         // Alpha-only, so this never touches the geometry the comment above
         // is protecting. Motion.fast rather than left to snap: `level` is
-        // already its own envelope follower (Services/Cava.qml), so this is
+        // already its own envelope follower (Services/CavaFeed.qml), so this is
         // a second, gentle pass rather than the thing doing the smoothing.
         Behavior on border.color { ColorAnimation { duration: Motion.fast } }
 

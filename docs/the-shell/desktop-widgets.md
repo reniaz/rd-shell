@@ -13,7 +13,9 @@ A giant clock in the top-right corner.
 A now-playing card, directly under the clock, for **Spotify only** — Firefox
 or any other player never makes it appear.
 
-- **Idle**: just a `cava` bar visualizer with no background.
+- **Idle**: just a `cava` bar visualizer with no background. Both it and
+  the hover ring follow Spotify alone while Spotify plays; otherwise they
+  show every other sound (wayvibes excluded).
 - **Hover**: a see-through card grows out of it with an accent border — art
   ringed by a radial visualizer, a scrolling title, the artist with any
   featured artists (full Spotify credits; two or more fade through one at a

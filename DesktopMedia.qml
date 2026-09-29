@@ -229,11 +229,9 @@ Item {
         // paused-with-a-track-loaded is idle's whole reason to exist, and a
         // widget with no footprint has nothing left to hover.
         collapsible: false
-        // The one caller CavaBars.qml's own `normalise` comment names: sat
-        // at this size with nothing else on the card to look at, the same
-        // ring-local peak normalisation CavaRing uses keeps a quiet player
-        // reading as motion instead of twelve nearly-flat bars.
-        normalise: true
+        // Spotify alone while it plays, every other sound but wayvibes
+        // while it does not -- see Services/Cava.qml.
+        feed: Cava.desktop
         visible: true
         opacity: root._idleReady ? 1 : 0
 
@@ -335,6 +333,7 @@ Item {
                     sourceComponent: CavaRing {
                         diameter: root._ringSize
                         tint: Colors.mediaActive
+                        feed: Cava.desktop
                     }
                 }
 
@@ -469,7 +468,7 @@ Item {
     // MPRIS position does not push updates of its own -- see the
     // MprisPlayer docs. Runs only while Spotify is playing and the card is
     // shown, the same "no wakeups nobody asked for" discipline
-    // Services/Cava.qml already applies to its own process.
+    // Services/CavaFeed.qml already applies to its own process.
     Timer {
         interval: 1000
         repeat: true

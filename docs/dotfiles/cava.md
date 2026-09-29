@@ -57,21 +57,32 @@ overwrites the latter. Trigger a re-render with
 ## Not the same cava as the bar's visualizers
 
 The media pill, the media popup's spectrum, and the desktop Spotify card's
-ring visualizer are **not** reading this file at all. `Services/Cava.qml`
-launches its own, completely separate cava process —
+visualizers are **not** reading this file at all. `Services/Cava.qml`
+launches its own, completely separate cava processes —
 `cava -p ~/.cache/rd-shell/cava.conf` — with an explicit `-p`, so it never
 looks at `~/.config/cava/config` and this page's template can't affect it
 (and the `post_hook` above deliberately skips it for the same reason, so a
 terminal-cava colour reload never restarts the bar's feed).
 
-That instance is also fed differently: `method = pulse` targeted at a
-capture proxy, not the default sink's monitor — so it's fed **Spotify's
-audio only**, wired up live over PipeWire link management (the QML
-equivalent of `pw-link`): every stream whose node name matches this shell's
-own cava capture nodes (prefixed `rd-cava`, including any terminal cava you
-start with `PULSE_PROP='node.name=rd-cava-<name> node.autoconnect=false'`) gets Spotify's playback stream(s)
-linked into it, and nothing else — Firefox, games, or any other audio never
-reaches it, muted for cava's purposes specifically. Its generated config
+Those instances are also fed differently: `method = pulse` targeted at a
+capture proxy, not the default sink's monitor, with the streams each one
+hears wired up live over PipeWire link management (the QML equivalent of
+`pw-link`, in `Services/CavaFeed.qml`):
+
+- **`rd-cava`** — the bar's islands (media pill bars, media popup ring,
+  workspace beat glow). Every playback stream except **wayvibes'** key
+  clicks: Spotify, Firefox, games, anything that is sounding.
+- **`rd-spotify-cava`** — the desktop Spotify card. **Spotify only** while
+  Spotify is playing, even with other apps sounding over it. While Spotify
+  isn't playing the card reads the `rd-cava` mix instead, so it still moves
+  with everything else (wayvibes excluded).
+
+Each process only runs while one of its streams is actually sounding (its
+PipeWire link is `active`, not `paused`), and every visualizer shares one
+normaliser tuning (`CavaNormalize.js`), so the island and the desktop card
+react to the same hit the same way. A terminal cava started with
+`PULSE_PROP='node.name=rd-cava-<name> node.autoconnect=false'` gets the
+islands' mix; `rd-spotify-cava-<name>` gets Spotify's. Its generated config
 lives in `~/.cache/rd-shell/`, not under `~/.config/cava`, since it's
 runtime/cache state the same way `Services/Wallpapers.qml` already treats
 that directory, not a dotfile meant for hand editing.

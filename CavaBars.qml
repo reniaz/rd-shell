@@ -22,60 +22,39 @@ Item {
     property int barHeight: 20
     property int barFloor: 2
 
-    // Off by default so the bar strip's `CavaBars {}` reads exactly the raw
-    // twelve levels it always has -- see Services/Cava.qml's own comment on
-    // why noise_reduction plus the height Behavior below is already enough
-    // smoothing for that footprint. DesktopMedia's idle visualizer is the
-    // one caller that turns this on: sat at a much bigger size with nothing
-    // else on the card competing for attention, a quiet player reading as
-    // twelve nearly-flat bars would look broken rather than idle, so it
-    // opts into the same ring-local equalisation CavaRing uses -- see
-    // CavaNormalize.js -- instead of a second copy of that maths.
-    property bool normalise: false
+    // Which spectrum to draw: the islands' everything-but-wayvibes mix by
+    // default; DesktopMedia's idle bars hand in `Cava.desktop` instead.
+    property CavaFeed feed: Cava.islands
 
-    // Same tuning CavaRing settled on after "hits way too hard" and "pins
-    // to full at low volume" -- see CavaRing.qml's own header for what each
-    // one does and why. Kept in step with the ring rather than re-derived,
-    // since the two are meant to look like the same instrument at two
-    // sizes, not two different ones.
-    readonly property real _eqGainMin: 1
-    readonly property real _eqGainMax: 3
-    readonly property real _eqRefFloor: 0.02
-    readonly property int _eqRefMs: 2500
-    readonly property real _headroom: 0.75
-    readonly property real _lift: 0.75
-    readonly property int _attackMs: 190
-    readonly property int _releaseMs: 260
+    // Same per-band equalisation and tuning as CavaRing -- see
+    // CavaNormalize.js -- for every instance, the bar strip's included, so
+    // the island and the desktop card react to a hit the same way instead
+    // of the strip drawing raw levels while the card equalises them.
+    readonly property bool _live: root.feed.active
 
     property var _ref: CavaNorm.zeros(Cava.bars, 0)
     property var _display: CavaNorm.zeros(Cava.bars, 0)
 
-    function _rate(ms) {
-        return 1 - Math.pow(0.05, 1 / (Cava.framerate * ms / 1000));
-    }
-
-    readonly property var _normOpts: ({
-        refRate: root._rate(root._eqRefMs),
-        gainMin: root._eqGainMin,
-        gainMax: root._eqGainMax,
-        refFloor: root._eqRefFloor,
-        headroom: root._headroom,
-        lift: root._lift,
-        attack: root._rate(root._attackMs),
-        release: root._rate(root._releaseMs)
-    })
+    readonly property var _normOpts: CavaNorm.options(root.feed.framerate)
 
     Connections {
-        target: Cava
+        target: root.feed
         function onLevelsChanged() {
-            if (!root.normalise) return;
-            root._display = CavaNorm.step(Cava.levels, root._ref, root._display, root._normOpts);
+            if (!root._live) return;
+            root._display = CavaNorm.step(root.feed.levels, root._ref, root._display, root._normOpts);
         }
     }
 
+    // Matches CavaRing: a stale frame left in `_display` would otherwise be
+    // what the bars rested at after playback stops.
+    on_LiveChanged: if (!root._live) {
+        root._ref = CavaNorm.zeros(Cava.bars, 0);
+        root._display = CavaNorm.zeros(Cava.bars, 0);
+    }
+
     // Bar.qml's own reason to collapse to nothing rather than to a row of
-    // flat bars: no player, a paused one, and cava missing entirely all read
-    // as `!active` on the service, and its row should close the gap for
+    // flat bars: nothing sounding and cava missing entirely both read as
+    // `!active` on the feed, and its row should close the gap for
     // every one of those the same way, not just when nothing is running at
     // all. DesktopMedia's idle visualizer sets this false: it needs a
     // stable, hoverable footprint precisely while paused (bars resting at
@@ -86,7 +65,7 @@ Item {
     readonly property int _naturalWidth: Cava.bars * root.barWidth
         + Math.max(0, Cava.bars - 1) * root.barSpacing
 
-    implicitWidth: (root.collapsible && !Cava.active) ? 0 : root._naturalWidth
+    implicitWidth: (root.collapsible && !root._live) ? 0 : root._naturalWidth
     implicitHeight: root.barHeight
     clip: true
 
@@ -94,11 +73,11 @@ Item {
     // visible, whatever its width -- so collapsing to 0 alone would leave
     // Bar.qml's row permanently 16px wider than it looks, for the whole time
     // nothing is playing, which is almost always. Tied to the animated width
-    // rather than straight to Cava.active so the slot is given up only once
+    // rather than straight to `_live` so the slot is given up only once
     // the shrink has finished, and taken back before the grow starts.
     // Meaningless for a non-collapsible instance, where implicitWidth never
     // reaches 0 in the first place.
-    visible: !root.collapsible || Cava.active || root.implicitWidth > 0
+    visible: !root.collapsible || root._live || root.implicitWidth > 0
 
     // base, not fast: Motion.qml assigns "a shape changing size in place" to
     // base and names the workspace dot stretching into a capsule as the
@@ -120,9 +99,7 @@ Item {
 
                 required property int index
 
-                readonly property real level: root.normalise
-                    ? (root._display[bar.index] ?? 0)
-                    : (Cava.levels[bar.index] ?? 0)
+                readonly property real level: root._display[bar.index] ?? 0
 
                 anchors.bottom: parent.bottom
                 width: root.barWidth
@@ -134,8 +111,7 @@ Item {
                 radius: Caelus.radiusPill
                 color: Colors.accent
 
-                // cava's own noise_reduction (default 77, left untouched in
-                // the config Cava.qml writes) already keeps the incoming
+                // The normaliser's own attack/release already keeps the
                 // levels from jumping around; this is what turns the steps
                 // between frames arriving roughly thirty times a second into
                 // a line instead of a strobe.

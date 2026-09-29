@@ -21,52 +21,24 @@ Item {
     required property int diameter
     property color tint: Colors.popupAccent
 
+    // Which spectrum to draw: the islands' everything-but-wayvibes mix by
+    // default; DesktopMedia hands in `Cava.desktop` instead.
+    property CavaFeed feed: Cava.islands
+
     // ── tuning ────────────────────────────────────────────────
-    // Every number that shapes how hard the ring hits, gathered here so a
-    // future retune is a one-line change instead of a hunt through the
-    // geometry and the Repeater below. Reworked twice already off live
-    // feedback -- "too few bars in one corner", then "hits way too hard",
-    // then "still pins to full size at low volume" -- so these are picked
-    // to sit at a calm middle, not at whatever first looked right.
+    // Every number that shapes the ring's reach, gathered here so a future
+    // retune is a one-line change instead of a hunt through the geometry
+    // and the Repeater below. Reworked off live feedback -- "too few bars
+    // in one corner", then "hits way too hard" -- so these are picked to
+    // sit at a calm middle, not at whatever first looked right.
 
     // A third less reach than the ring first shipped with (0.2): the ring
     // was landing near-full-length on ordinary passages, not just hits.
     readonly property real _barMaxRatio: 0.133
     readonly property real _barMinRatio: 0.07
 
-    // CavaNormalize.step's per-band equalisation gain: a band quieter than
-    // the overall average can be boosted up to 3x to match it, but never
-    // attenuated below its own raw reading (gainMin: 1) -- see
-    // CavaNormalize.js's header for why this only levels the spectrum and
-    // never amplifies it toward "loud".
-    readonly property real _eqGainMin: 1
-    readonly property real _eqGainMax: 3
-    // Below this, a band's own slow reference is treated as silence rather
-    // than divided into -- without it, true silence's near-zero reference
-    // would make `gain` explode and turn the first bit of noise after a
-    // quiet passage into a false full-scale reading.
-    readonly property real _eqRefFloor: 0.02
-    // How many seconds the per-band reference averages over. Deliberately
-    // far slower than anything Motion.qml names -- this has to describe
-    // "how loud this band usually runs", which a UI-speed window would
-    // just chase moment to moment, undoing the equalisation.
-    readonly property int _eqRefMs: 2500
-
-    // Scales the raw, equalised level down before the lift curve below, so
-    // an ordinary hit lands short of the ring's own full length and only a
-    // genuine peak reaches it -- see CavaNormalize.js's header.
-    readonly property real _headroom: 0.75
-    // pow < 1 lifts what headroom left behind back up a little, so a
-    // typical passage still reads as motion rather than as a flat line.
-    // 0.75 sits closer to 1 (gentler) than the 0.5-0.6 the ring first
-    // shipped with, which is what "hits way too hard" was describing.
-    readonly property real _lift: 0.75
-
-    // A little slower than Motion.fast's 120ms: enough that a hit still
-    // registers as a hit rather than the previous instant snap, without
-    // drifting anywhere near the release below.
-    readonly property int _attackMs: 190
-    readonly property int _releaseMs: 260
+    // How hard the bars hit is CavaNormalize.options' shared tuning, the
+    // same as every other visualizer's -- only the geometry lives here.
 
     // One bar roughly every 4.5px of arc rather than one per Cava band --
     // twelve wedges around a ring the size of DesktopMedia's art read as a
@@ -88,11 +60,9 @@ Item {
     readonly property real barMaxLength: Math.max(5, Math.round(root.diameter * root._barMaxRatio))
     readonly property real barMinLength: Math.max(2, Math.round(root.diameter * root._barMinRatio))
 
-    // Cava.available is false with the binary not installed, and Cava.active
-    // stays false for every player that is paused -- both leave this at rest.
-    // Nothing here reacts to `available` directly: `active` already implies
-    // it (see the contract), so one flag is enough.
-    readonly property bool live: Cava.active
+    // `active` stays false with the binary not installed and while nothing
+    // the feed hears is sounding -- both leave this at rest.
+    readonly property bool live: root.feed.active
 
     // Geometry never follows `live`: `implicitWidth`/`Height` stay pinned to
     // `diameter` whether or not the ring is drawn, so whatever centres album
@@ -115,30 +85,17 @@ Item {
     property var _ref: CavaNorm.zeros(Cava.bars, 0)
     property var _display: CavaNorm.zeros(Cava.bars, 0)
 
-    function _rate(ms) {
-        return 1 - Math.pow(0.05, 1 / (Cava.framerate * ms / 1000));
-    }
-
-    readonly property var _normOpts: ({
-        refRate: root._rate(root._eqRefMs),
-        gainMin: root._eqGainMin,
-        gainMax: root._eqGainMax,
-        refFloor: root._eqRefFloor,
-        headroom: root._headroom,
-        lift: root._lift,
-        attack: root._rate(root._attackMs),
-        release: root._rate(root._releaseMs)
-    })
+    readonly property var _normOpts: CavaNorm.options(root.feed.framerate)
 
     Connections {
-        target: Cava
+        target: root.feed
         function onLevelsChanged() {
             if (!root.live) return;
-            root._display = CavaNorm.step(Cava.levels, root._ref, root._display, root._normOpts);
+            root._display = CavaNorm.step(root.feed.levels, root._ref, root._display, root._normOpts);
         }
     }
 
-    // Matches Cava.qml's own reset on `active` going false: a stale frame
+    // Matches CavaFeed's own reset on `active` going false: a stale frame
     // sitting in `_display` would otherwise be what the ring drew for one
     // frame the next time playback starts, before a fresh one arrives.
     onLiveChanged: if (!root.live) {

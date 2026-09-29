@@ -70,10 +70,9 @@ BarPopup {
                 readonly property bool playing: entry.modelData.isPlaying
                 readonly property bool controllable: entry.modelData.canTogglePlaying
 
-                // The one row Cava's own reading actually describes: it reads
-                // whatever is coming out of the speakers as a whole, gated on
-                // `Media.playing` (Cava.qml's own `active`), which is this
-                // player and no other. The ring only ever goes on this row.
+                // The row the ring goes on: it reads every sound but
+                // wayvibes (`Cava.islands`), and this is the player the pill
+                // shows. The ring only ever goes on this row.
                 readonly property bool isPrimaryPlayer: entry.modelData === Media.player
 
                 // Skipping is shown as a pair or not at all: which way a queue
@@ -176,7 +175,7 @@ BarPopup {
                         // Only instantiated at all while cava could ever be
                         // active, so a session without the binary never builds
                         // a ring it will never show, on top of the ring's own
-                        // `Cava.active` gate inside CavaRing itself.
+                        // feed `active` gate inside CavaRing itself.
                         Loader {
                             anchors.centerIn: parent
                             active: Cava.available

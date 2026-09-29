@@ -2,10 +2,10 @@
 
 // Shared per-band equalisation for CavaRing and CavaBars -- the "ring-local
 // normalisation" the desktop contract asks for, factored out once two
-// files needed the exact same maths. Kept as plain functions rather than a
+// files needed the exact same maths and tuning (`options` below). Kept as plain functions rather than a
 // QtObject: the state they advance (`ref`, `display`) is owned by each
 // caller, not by this file, which is what makes it "ring-local" in the
-// first place -- two rings reading the same Cava.levels each keep their
+// first place -- two rings reading the same feed's levels each keep their
 // own arrays, so one player's ring never drives another's, or the bar
 // strip's.
 //
@@ -28,6 +28,40 @@
 // `opts.headroom` and `opts.lift` (a pow < 1) then set how much of the
 // bar's length a typical, un-equalised hit reaches, so only a genuine peak
 // -- not just "on beat" -- ever reads full-scale.
+// The one tuning every visualizer uses -- the bar strip, the desktop card's
+// idle bars, and both rings -- so they read as the same instrument at
+// different sizes: a hit lands as hard on the island as on the desktop.
+// Reworked off live feedback -- "hits way too hard", then "still pins to
+// full size at low volume" -- so these sit at a calm middle.
+function options(framerate) {
+    // "Reach 95% of a step within `ms`" at cava's own frame rate.
+    const rate = ms => 1 - Math.pow(0.05, 1 / (framerate * ms / 1000));
+    return {
+        // A band's own slow reference: how loud it usually runs, averaged
+        // far slower than anything Motion.qml names, since a UI-speed
+        // window would chase moment to moment and undo the equalisation.
+        refRate: rate(2500),
+        // A band quieter than the overall average can be boosted up to 3x
+        // to match it, but never attenuated below its own raw reading.
+        gainMin: 1,
+        gainMax: 3,
+        // Below this a band's reference is treated as silence rather than
+        // divided into, so the first noise after a quiet passage cannot
+        // explode into a false full-scale reading.
+        refFloor: 0.02,
+        // Scales the equalised level down so an ordinary hit lands short of
+        // full length and only a genuine peak reaches it...
+        headroom: 0.75,
+        // ...and pow < 1 lifts what headroom left back up a little, so a
+        // typical passage still reads as motion rather than a flat line.
+        lift: 0.75,
+        // A little slower than Motion.fast: a hit still registers as a hit
+        // without drifting anywhere near the release.
+        attack: rate(190),
+        release: rate(260)
+    };
+}
+
 function zeros(n, fill) {
     const z = new Array(n);
     z.fill(fill ?? 0);

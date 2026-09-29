@@ -8,8 +8,8 @@ One bar per monitor (`BarWindow.qml`), split into three groups.
   The active dot travels with a real spring, not an eased tween, and a
   workspace Hyprland marks urgent pulses until you switch to it.
 - **Media pill** — now playing, with a `cava` audio visualizer
-  (`CavaBars.qml`/`CavaRing.qml`) fed from Spotify's audio only (the same
-  feed every other visualizer in the shell uses). Opens `MediaPopup.qml`.
+  (`CavaBars.qml`/`CavaRing.qml`) fed from every playing app except
+  wayvibes. Opens `MediaPopup.qml`.
 - **System monitor pill** — CPU/GPU/RAM, colour-coded by load and
   temperature. Opens `SysPopup.qml`.
 - **Disk pill** — opens `DiskPopup.qml`.
