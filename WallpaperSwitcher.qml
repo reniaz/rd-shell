@@ -82,6 +82,25 @@ PanelWindow {
     // folders at the left, the last wallpaper at the right -- so every way of
     // moving it goes through here and stops at them, and the delegate hides
     // the copies PathView still draws past the seam.
+    // Up / k lays the centred card down into the screen's own shape and shows
+    // the whole picture the way the desktop will, not the tall slice the
+    // strip browses by; Down / j stands it back up. A mode rather than a
+    // one-off zoom, so stepping left and right keeps it on -- whichever card
+    // arrives in the centre lies flat, the one leaving stands back up.
+    property bool fullFrame: false
+
+    // Every opening starts on the tall cards. A fresh window already does,
+    // but PopupLoader keeps this one alive for a moment after it closes, and
+    // reopening inside that moment gets the same window back -- mode and all.
+    onOpenChanged: if (root.open) root.fullFrame = false
+
+    // The mode, eased: how far the path has spread its neighbours out to
+    // make room for a flat centre card. Each card eases its own shape
+    // separately (`flatT` on the delegate), since only one of them changes.
+    property real frameT: root.fullFrame ? 1 : 0
+
+    Behavior on frameT { NumberAnimation { duration: Motion.spatial; easing.type: Easing.Bezier; easing.bezierCurve: Motion.spatialCurve } }
+
     function step(delta) {
         const n = Wallpapers.entries.length;
         if (n === 0) return;
@@ -146,6 +165,14 @@ PanelWindow {
             case Qt.Key_Right:
             case Qt.Key_L:
                 root.step(1);
+                break;
+            case Qt.Key_Up:
+            case Qt.Key_K:
+                root.fullFrame = true;
+                break;
+            case Qt.Key_Down:
+            case Qt.Key_J:
+                root.fullFrame = false;
                 break;
             case Qt.Key_Return:
             case Qt.Key_Enter:
@@ -249,6 +276,22 @@ PanelWindow {
                 readonly property real cardWidth: 180
                 readonly property real cardHeight: 400
 
+                // The centre card laid flat in full-frame mode: the screen's
+                // own aspect, and a little taller than the upright cards
+                // either side, so it reads as that card growing up out of the
+                // row (its bottom edge stays put -- see the delegate's
+                // Translate) rather than a smaller card sat level with them.
+                readonly property real flatHeight: Math.round(pathView.cardHeight * 1.12)
+                readonly property real flatWidth: root.height > 0
+                    ? Math.round(pathView.flatHeight * root.width / root.height)
+                    : Math.round(pathView.flatHeight * 16 / 9)
+
+                // How much wider than an upright card the flat one is, each
+                // side, at the centre's 1.26 scale -- every stop past the
+                // centre moves out by this much, so the neighbours overlap a
+                // flat card by exactly as much as they overlap an upright one.
+                readonly property real spread: (pathView.flatWidth - pathView.cardWidth) * 1.26 / 2 * root.frameT
+
                 width: root.width
                 height: pathView.cardHeight + 90
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -322,7 +365,7 @@ PanelWindow {
                 // strip does it where there is nothing to see. Without that it
                 // blinked into existence at two thirds size.
                 path: Path {
-                    startX: pathView.width / 2 -952.4
+                    startX: pathView.width / 2 - (952.4 + pathView.spread)
                     startY: pathView.height / 2
                     PathAttribute { name: "itemAngle"; value: 38 }
                     PathAttribute { name: "itemScale"; value: 0.62 }
@@ -330,7 +373,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 -866.6; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 - (866.6 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.03333 }
                     PathAttribute { name: "itemAngle"; value: 36 }
                     PathAttribute { name: "itemScale"; value: 0.64 }
@@ -338,7 +381,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 -777.1; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 - (777.1 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.10000 }
                     PathAttribute { name: "itemAngle"; value: 34 }
                     PathAttribute { name: "itemScale"; value: 0.68 }
@@ -346,7 +389,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.42 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 -679.3; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 - (679.3 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.16667 }
                     PathAttribute { name: "itemAngle"; value: 31 }
                     PathAttribute { name: "itemScale"; value: 0.72 }
@@ -354,7 +397,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.62 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 -572.1; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 - (572.1 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.23333 }
                     PathAttribute { name: "itemAngle"; value: 27 }
                     PathAttribute { name: "itemScale"; value: 0.76 }
@@ -362,7 +405,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.68 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 -453.9; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 - (453.9 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.30000 }
                     PathAttribute { name: "itemAngle"; value: 22 }
                     PathAttribute { name: "itemScale"; value: 0.81 }
@@ -370,7 +413,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.72 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 -323.3; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 - (323.3 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.36667 }
                     PathAttribute { name: "itemAngle"; value: 16 }
                     PathAttribute { name: "itemScale"; value: 0.86 }
@@ -378,7 +421,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.76 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 -179.6; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 - (179.6 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.43333 }
                     PathAttribute { name: "itemAngle"; value: 9 }
                     PathAttribute { name: "itemScale"; value: 0.92 }
@@ -386,7 +429,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.82 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +0.0; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + 0.0; y: pathView.height / 2 }
                     PathPercent { value: 0.50000 }
                     PathAttribute { name: "itemAngle"; value: 0 }
                     PathAttribute { name: "itemScale"; value: 1.26 }
@@ -394,7 +437,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 1 }
                     PathAttribute { name: "itemLift"; value: -18 }
 
-                    PathLine { x: pathView.width / 2 +179.6; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (179.6 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.56667 }
                     PathAttribute { name: "itemAngle"; value: -9 }
                     PathAttribute { name: "itemScale"; value: 0.92 }
@@ -402,7 +445,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.82 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +323.3; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (323.3 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.63333 }
                     PathAttribute { name: "itemAngle"; value: -16 }
                     PathAttribute { name: "itemScale"; value: 0.86 }
@@ -410,7 +453,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.76 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +453.9; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (453.9 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.70000 }
                     PathAttribute { name: "itemAngle"; value: -22 }
                     PathAttribute { name: "itemScale"; value: 0.81 }
@@ -418,7 +461,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.72 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +572.1; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (572.1 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.76667 }
                     PathAttribute { name: "itemAngle"; value: -27 }
                     PathAttribute { name: "itemScale"; value: 0.76 }
@@ -426,7 +469,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.68 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +679.3; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (679.3 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.83333 }
                     PathAttribute { name: "itemAngle"; value: -31 }
                     PathAttribute { name: "itemScale"; value: 0.72 }
@@ -434,7 +477,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.62 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +777.1; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (777.1 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.90000 }
                     PathAttribute { name: "itemAngle"; value: -34 }
                     PathAttribute { name: "itemScale"; value: 0.68 }
@@ -442,7 +485,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0.42 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +866.6; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (866.6 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 0.96667 }
                     PathAttribute { name: "itemAngle"; value: -36 }
                     PathAttribute { name: "itemScale"; value: 0.64 }
@@ -450,7 +493,7 @@ PanelWindow {
                     PathAttribute { name: "itemOpacity"; value: 0 }
                     PathAttribute { name: "itemLift"; value: 0 }
 
-                    PathLine { x: pathView.width / 2 +952.4; y: pathView.height / 2 }
+                    PathLine { x: pathView.width / 2 + (952.4 + pathView.spread); y: pathView.height / 2 }
                     PathPercent { value: 1.00000 }
                     PathAttribute { name: "itemAngle"; value: -38 }
                     PathAttribute { name: "itemScale"; value: 0.62 }
@@ -473,8 +516,21 @@ PanelWindow {
                     readonly property bool filler: !cardRoot.entry
                     visible: !cardRoot.filler
 
-                    width: pathView.cardWidth
-                    height: pathView.cardHeight
+                    // 0 a tall slice, 1 laid flat into the screen's shape --
+                    // only ever the centred card, and only in full-frame mode.
+                    property real flatT: root.fullFrame && cardRoot.isCurrent ? 1 : 0
+
+                    Behavior on flatT { NumberAnimation { duration: Motion.spatial; easing.type: Easing.Bezier; easing.bezierCurve: Motion.spatialCurve } }
+
+                    // The full frame is decoded from the original file (see
+                    // `frame` below), which is only worth doing for a card
+                    // somebody actually laid flat -- latched, so standing it
+                    // back up and laying it down again does not decode twice.
+                    property bool _frameWanted: false
+                    onFlatTChanged: if (cardRoot.flatT > 0) cardRoot._frameWanted = true
+
+                    width: pathView.cardWidth + (pathView.flatWidth - pathView.cardWidth) * cardRoot.flatT
+                    height: pathView.cardHeight + (pathView.flatHeight - pathView.cardHeight) * cardRoot.flatT
                     // Every one of these falls back to a resting value.
                     // PathView keeps `cacheItemCount` delegates alive off the
                     // path, and those have no attached attributes at all --
@@ -499,7 +555,10 @@ PanelWindow {
                         // as a transform rather than to `y` because PathView
                         // owns the delegate's position and would fight a
                         // binding on it.
-                        Translate { y: cardRoot.PathView.itemLift ?? 0 },
+                        // Lift, plus half of whatever height the card has
+                        // gained lying flat: that keeps its bottom edge on
+                        // the row's, so the extra height all goes upward.
+                        Translate { y: (cardRoot.PathView.itemLift ?? 0) - (cardRoot.height - pathView.cardHeight) / 2 },
                         Rotation {
                             origin.x: cardRoot.width / 2
                             origin.y: cardRoot.height / 2
@@ -530,7 +589,11 @@ PanelWindow {
                             // there is something in there, which a flat card
                             // with a folder glyph on it never did.
                             visible: !!cardRoot.entry?.thumb
-                            opacity: cardRoot.isImage ? 1 : 0.4
+                            // Hands over to `frame` below as the card lies
+                            // flat, but only once that has something to show
+                            // -- a card never goes blank waiting on a decode.
+                            opacity: (cardRoot.isImage ? 1 : 0.4)
+                                * (frame.status === Image.Ready ? 1 - cardRoot.flatT : 1)
                             source: cardRoot.entry?.thumb ?? ""
                             asynchronous: true
                             fillMode: Image.PreserveAspectCrop
@@ -546,6 +609,27 @@ PanelWindow {
                             // source decodes, instead of a blank flash -- most
                             // visible re-entering a folder, where every visible
                             // thumbnail's source changes at once.
+                            retainWhileLoading: true
+                        }
+
+                        // The whole picture, framed the way Wallpaper.qml frames
+                        // it on the desktop (cropped to the screen's shape,
+                        // centred): the thumbnail above is cropped to a tall
+                        // slice on disk, so it cannot become this by itself.
+                        // Decoded at a fixed size for the same cache-key
+                        // reason as the thumbnail's sourceSize.
+                        Image {
+                            id: frame
+
+                            anchors.fill: parent
+                            clip: true
+                            opacity: cardRoot.flatT
+                            source: cardRoot._frameWanted && cardRoot.isImage
+                                ? "file://" + cardRoot.entry.path : ""
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectCrop
+                            sourceSize.width: pathView.flatWidth * 2
+                            sourceSize.height: pathView.flatHeight * 2
                             retainWhileLoading: true
                         }
 

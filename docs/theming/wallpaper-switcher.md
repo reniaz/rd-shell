@@ -6,6 +6,11 @@ which is the one place the actual switch logic lives — the same script runs
 on Hyprland's own startup (`--restore`) and on every switch from the UI, so
 a fresh login gets exactly what a manual switch would produce.
 
+`←`/`→` (or `h`/`l`) step through the strip and `Enter` applies. `↑` (or `k`)
+lays the selected card flat and shows the whole picture as the desktop will
+frame it; stepping left and right keeps that on for whichever card is
+selected, and `↓` (or `j`) goes back to the tall cards.
+
 ## `scripts/wallpaper-apply.sh`
 
 ```
