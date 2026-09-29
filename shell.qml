@@ -118,6 +118,16 @@ ShellRoot {
         }
     }
 
+    // Bound to CTRL+ALT+B in hyprland.lua: qs ipc -c rd-shell call barstyle toggle.
+    // No pill for the same reason as the wallpaper switcher above.
+    IpcHandler {
+        target: "barstyle"
+
+        function toggle(): void {
+            BarStyles.togglePanel();
+        }
+    }
+
     // Native WlSessionLock lock screen (idea 15) -- reachable over IPC only
     // (target "lock": lock(), test(seconds), status()), never bound to a key.
     // hyprlock stays the real default for Super+L and hypridle; this is

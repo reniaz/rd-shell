@@ -3,6 +3,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import QtQuick
 import qs.Config
+import qs.Services
 
 // The per-screen window host. The bar strip and every popup it opens used
 // to each be their own PanelWindow; they are fused into one surface here so
@@ -118,35 +119,235 @@ Scope {
         // the mic being unplugged each move it, and this keeps that in one place.
         readonly property real networkAnchorX: rightGroup.x + rightGroup.networkAnchorX
 
-        // The three island rects in window coordinates, `blob`'s own input
-        // (declared below alongside the three `Island` instances it reads
-        // their geometry from).
-        readonly property var islands: [
-            { x: leftIsland.x, y: leftIsland.y, w: leftIsland.width, h: leftIsland.height },
-            { x: centerIsland.x, y: centerIsland.y, w: centerIsland.width, h: centerIsland.height },
-            { x: rightIsland.x, y: rightIsland.y, w: rightIsland.width, h: rightIsland.height }
-        ]
+        // Which style the shapes below have actually *finished* arriving
+        // at. Deliberately not a binding on `BarStyles.current`: that
+        // property already holds the *new* id by the time anything reacts
+        // to it changing (Qt's own change signals always fire after the
+        // write), so reading it here would make "the style just left"
+        // indistinguishable from "the style just picked" the instant a
+        // switch happens. Written only from `morphAnim.onFinished`, below --
+        // see the comment there for what that buys a second switch that
+        // arrives before the first has landed.
+        property string _activeStyle: ""
+
+        Component.onCompleted: bar._activeStyle = BarStyles.current
+
+        // The pad-inset rect a pill group sits inside, in window
+        // coordinates -- what the old `Island { anchors.fill: group;
+        // anchors.leftMargin: -Caelus.barIslandPad; anchors.rightMargin:
+        // -Caelus.barIslandPad }` pairing produced by construction, before
+        // any style had a say in it. Pulled out as its own function because
+        // `_styleShapes` below needs to build it three times over for
+        // whichever style it is asked for -- "islands" *is* these three
+        // rects, verbatim; "full" only starts from them, to find where to
+        // cut the strip.
+        function _groupRect(group) {
+            return {
+                x: group.x - Caelus.barIslandPad,
+                y: group.y,
+                w: group.width + Caelus.barIslandPad * 2,
+                h: group.height
+            };
+        }
+
+        // How far past the top, left and right screen edges `full`'s strip
+        // is pushed -- comfortably past both the corner radius a style
+        // starts from (Caelus.radiusIsland) and the extra reach a card's
+        // own smooth-min join can add on top of that (Caelus.blobSmoothK,
+        // see the comment on Blob's own `_margin`), so neither one ever
+        // lands back inside the visible window. Only the bottom edge --
+        // the strip's real boundary, held at `Caelus.barHeight` -- is ever
+        // meant to read as a line.
+        readonly property real _offEdge: Caelus.radiusIsland + Caelus.blobSmoothK + 32
+
+        // The blob geometry a style wants right now: three island rects in
+        // window coordinates, plus the one corner radius they all share
+        // (Blob draws every island at a single `islandRadius` -- see the
+        // comment on that property in Blob.qml, and the task that left it
+        // that way). Built off `leftGroup`/`centerGroup`/`rightGroup`'s own
+        // live layout -- everything read in here, directly or through
+        // `_groupRect`, is a plain QML property, so a caller reading
+        // `_styleShapes(...)` from inside a binding gets the tray filling
+        // up, the mic being unplugged, or a workspace appearing for free,
+        // in whichever style asked for it.
+        //
+        // This is the function BarStyles.qml's header comment names as one
+        // of the three edit points a new style takes. An id this ladder
+        // does not recognise falls back to "islands" -- the same fallback
+        // `BarStyles.current` itself already gives a stale or typo'd
+        // settings.json value -- so this is never reached with nothing to
+        // draw.
+        function _styleShapes(id) {
+            const raw = [
+                bar._groupRect(leftGroup),
+                bar._groupRect(centerGroup),
+                bar._groupRect(rightGroup)
+            ];
+
+            if (id === "full") {
+                // One flush strip, still reported as three rects rather
+                // than one: that is what lets the grain Surfaces below --
+                // one per rect, same as `islands` -- keep tracking
+                // whichever pill group is moving even while the bar reads
+                // as a single edge-to-edge plate. Partitioned at the
+                // midpoints between the live islands, so `islands` below
+                // (what those Surfaces actually render) always meets with
+                // no gap and no overlap.
+                const off = bar._offEdge;
+                const top = -off;
+                const height = Caelus.barHeight - top;
+                const midLC = (raw[0].x + raw[0].w + raw[1].x) / 2;
+                const midCR = (raw[1].x + raw[1].w + raw[2].x) / 2;
+                const islands = [
+                    { x: -off, y: top, w: midLC + off, h: height },
+                    { x: midLC, y: top, w: midCR - midLC, h: height },
+                    { x: midCR, y: top, w: bar.width + off - midCR, h: height }
+                ];
+
+                // What `blob` is actually handed: the same three segments,
+                // each widened by `off` into whichever neighbour it meets.
+                // Two boxes that only *touch* still each report their own
+                // edge as a zero-distance boundary to blob.frag's SDF --
+                // `min(d0, d1)` at the exact seam is `min(0, 0)`, not the
+                // deeply-negative "obviously interior" value either box
+                // alone would give a pixel either side of it -- so the
+                // stroke pass (which paints wherever the merged distance
+                // is within `uStrokeWidth` of 0) reads that seam as a real
+                // edge and draws a sliver of border colour right down it.
+                // Overlapping by `off` -- the same margin already proven
+                // to clear the union's *outer* corner and blend reach, see
+                // the comment on it above -- pushes every internal seam
+                // deep inside whichever segment is winning the union
+                // there, far past the 1px stroke ever reaches, so `min`
+                // folds the three into one rect with no interior line
+                // instead of three rects outlined at their own edges.
+                // `islands` above is left at the exact partition on
+                // purpose: a Surface's grain pass has no SDF to leak a
+                // seam from, and giving it the same overlap would just
+                // double the grain's already-subtle opacity across every
+                // band two segments now share.
+                const blobIslands = [
+                    { x: islands[0].x, y: top, w: islands[0].w + off, h: height },
+                    { x: islands[1].x - off, y: top, w: islands[1].w + off * 2, h: height },
+                    { x: islands[2].x - off, y: top, w: islands[2].w + off, h: height }
+                ];
+
+                return { radius: 0, islands, blobIslands };
+            }
+
+            return { radius: Caelus.radiusIsland, islands: raw, blobIslands: raw };
+        }
+
+        // `_activeStyle`'s own shapes (wherever the last completed
+        // transition actually landed) and `BarStyles.current`'s (wherever
+        // it is headed now) -- both fully live, so both ends of a morph
+        // keep tracking pill geometry even while `_morphT` is mid-flight
+        // between them, exactly like a settled style already does.
+        readonly property var _fromShape: bar._styleShapes(bar._activeStyle)
+        readonly property var _toShape: bar._styleShapes(BarStyles.current)
+
+        // 0 at the start of a switch, 1 once it has arrived. `morphAnim`
+        // below is the only thing that ever writes this, on
+        // Motion.spatial/spatialCurve -- the same pairing a popup extrudes
+        // on -- so a style switch reads with the same weight: the islands
+        // grow into the strip, or shrink back out of it, rather than
+        // cutting.
+        property real _morphT: 1
+
+        // What `blob` and the three grain Surfaces below actually draw --
+        // `_fromShape` and `_toShape` blended by `_morphT`, recomputed
+        // every time any of the three changes. Generic over however many
+        // islands or styles exist: nothing here branches on a style id,
+        // only `_styleShapes` above does that.
+        readonly property var _shape: bar._lerpShape(bar._fromShape, bar._toShape, bar._morphT)
+
+        function _lerpShape(a, b, t) {
+            const lerp = (x, y) => x + (y - x) * t;
+            const lerpRects = (arrA, arrB) => {
+                const out = [];
+                for (let i = 0; i < 3; i++) {
+                    const ra = arrA[i], rb = arrB[i];
+                    out.push({
+                        x: lerp(ra.x, rb.x), y: lerp(ra.y, rb.y),
+                        w: lerp(ra.w, rb.w), h: lerp(ra.h, rb.h)
+                    });
+                }
+                return out;
+            };
+            // Radius floored at 0: `spatialCurve` overshoots slightly past
+            // its own endpoint on the way to settling (see the comment on
+            // it in Motion.qml), and a corner radius that briefly goes
+            // negative is undefined for Blob's `sdRoundBox` in a way a
+            // rect that briefly overshoots its own final size simply is
+            // not.
+            return {
+                radius: Math.max(0, lerp(a.radius, b.radius)),
+                islands: lerpRects(a.islands, b.islands),
+                blobIslands: lerpRects(a.blobIslands, b.blobIslands)
+            };
+        }
+
+        NumberAnimation {
+            id: morphAnim
+            target: bar
+            property: "_morphT"
+            to: 1
+            duration: Motion.spatial
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Motion.spatialCurve
+            // Only a transition that actually reaches its target settles
+            // `_activeStyle` -- `restart()` below interrupting one
+            // mid-flight stops it instead of finishing it, which never
+            // fires this, so a second switch arriving before the first has
+            // landed keeps morphing from the last style that really did
+            // settle rather than snapping to whatever the interrupted one
+            // had reached by then.
+            onFinished: bar._activeStyle = BarStyles.current
+        }
+
+        Connections {
+            target: BarStyles
+
+            function onCurrentChanged() {
+                // settings.json is read after the bar is already built, so the
+                // saved style arriving at startup is not a switch anyone made
+                // -- take it as it is rather than morphing into it on every
+                // shell start.
+                if (!Settings.ready) {
+                    morphAnim.stop();
+                    bar._activeStyle = BarStyles.current;
+                    bar._morphT = 1;
+                    return;
+                }
+                bar._morphT = 0;
+                morphAnim.restart();
+            }
+        }
 
         // The bar's body. Each group gets a plate *behind* it rather than being
         // wrapped inside one: wrapping would make every group's `x` island-relative
         // and quietly break all four anchor sums above, which are what aim the
-        // popups at their pills. Anchored to the group it backs, so it grows and
-        // shrinks with it -- the tray filling up or the mic being unplugged moves
-        // the island's edge the same frame it moves the pills.
-        component Island: Surface {
+        // popups at their pills. Positioned off `_shape.islands[index]` rather
+        // than anchored to the group it used to sit behind: at rest in
+        // "islands" style that is the exact same rect (`_styleShapes` builds
+        // it from the same `_groupRect` math the old `anchors.fill` +
+        // margins pair produced), but the plate also has to become a third
+        // of an edge-to-edge strip in "full" and everything in between --
+        // geometry `_shape` already tracks for `blob` below, so this reads
+        // it straight off the same source rather than growing a second,
+        // independently-drifting copy of the same morph.
+        component IslandSurface: Surface {
             id: island
 
-            required property Item group
+            required property int index
 
-            anchors.fill: group
-            // Only the sides are padded. The top and bottom come out of the
-            // group's own height, which is one pill tall, so the island is
-            // `barHeight - 2 * barInset` and the inset is real wallpaper.
-            anchors.leftMargin: -Caelus.barIslandPad
-            anchors.rightMargin: -Caelus.barIslandPad
-            // Half of a 32px island, so the ends are semicircles. The same shape
-            // the pills inside it take when hovered.
-            radius: Caelus.radiusIsland
+            readonly property var _rect: bar._shape.islands[island.index]
+
+            x: island._rect.x
+            y: island._rect.y
+            width: island._rect.w
+            height: island._rect.h
+            radius: bar._shape.radius
             // Transparent: `blob` below draws the island's fill, in the same
             // pass as its stroke and every open card, so this Surface paints
             // nothing of its own material any more -- see the comment on
@@ -184,41 +385,44 @@ Scope {
             anchors.top: parent.top
             height: Caelus.barHeight
 
-            Island {
-                id: leftIsland
-                group: leftGroup
+            IslandSurface {
+                index: 0
             }
 
-            Island {
-                id: centerIsland
-                group: centerGroup
+            IslandSurface {
+                index: 1
             }
 
-            Island {
-                id: rightIsland
-                group: rightGroup
+            IslandSurface {
+                index: 2
             }
 
             // The fused silhouette for this screen: the three islands above, plus
             // whatever popup cards `overlays` currently reports open, drawn as one
             // shape instead of three plates and N cards each outlined by hand (see
             // the file comment atop BarPopup.qml). `z: -2` keeps it under the
-            // islands (`z: -1` on the `Island` component above) and everything else
-            // declared in this window, whatever order any of them end up in -- a
-            // blob painted over a pill would be a much worse defect than the seam
-            // it exists to remove.
+            // islands (`z: -1` on the `IslandSurface` component above) and
+            // everything else declared in this window, whatever order any of them
+            // end up in -- a blob painted over a pill would be a much worse defect
+            // than the seam it exists to remove.
             //
-            // `islands` reads `bar`'s own export (declared above, before the
-            // groups exist to size it from); `cards` reads `overlays.cards`,
-            // built from every loaded popup's `cardRect`/`cardRadius`/`cardAlpha`
-            // (BarPopup.qml) -- both are plain JS arrays already in window
-            // coordinates, which is the same frame this Item and everything
-            // inside it shares, so neither needs converting here.
+            // `islands`/`islandRadius` read `bar._shape` -- the active style's
+            // geometry, mid-morph or settled (see the comment on `_shape`,
+            // above). `islands` specifically reads `blobIslands`, not the
+            // exact-partition rects the grain Surfaces above render -- see
+            // the comment on that second array, in `_styleShapes`, for the
+            // seam it exists to keep out of the shader's stroke pass.
+            // `cards` reads `overlays.cards`, built from every loaded
+            // popup's `cardRect`/`cardRadius`/`cardAlpha` (BarPopup.qml) --
+            // all already plain JS data in window coordinates, the same
+            // frame this Item and everything inside it shares, so nothing
+            // here needs converting.
             Blob {
                 id: blob
 
                 z: -2
-                islands: bar.islands
+                islands: bar._shape.blobIslands
+                islandRadius: bar._shape.radius
                 cards: overlays.cards
             }
 

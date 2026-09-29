@@ -93,6 +93,7 @@ leaving the dialog stuck on "Saving…" forever.
 | Combo | Action |
 |---|---|
 | `Ctrl+Alt+F` | Wallpaper switcher |
+| `Ctrl+Alt+B` | Bar style switcher |
 | `Ctrl+Shift+Escape` | System monitor |
 | `Super+N` | Notification panel |
 | `Super+M` | Power menu |

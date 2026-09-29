@@ -159,6 +159,16 @@ Item {
         }
     }
 
+    // The wallpaper switcher's rules exactly, one screen and exclusive keys, and
+    // closed through BarStyles for the same reason: applying a style shuts it.
+    PopupLoader {
+        open: BarStyles.panelOpen && root.modelData.name === root.overlayScreen
+
+        BarStyleSwitcher {
+            screen: root.modelData
+        }
+    }
+
     // Held open by the service and not by this loader alone, because Escape, the
     // bell and the IPC handler can all shut this panel and only one of them is
     // that window.

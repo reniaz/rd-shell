@@ -82,6 +82,11 @@ Singleton {
     // settings.json.
     property alias keepAppColours: adapter.keepAppColours
 
+    // The bar's shape, picked in the Ctrl+Alt+B switcher. Stored as a style
+    // id; Services/BarStyles.qml owns which ids exist and falls back to the
+    // first one for anything it does not recognise.
+    property alias barStyle: adapter.barStyle
+
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
     // rather than in some second, hidden location a person would have to be
@@ -104,6 +109,10 @@ Singleton {
     // these properties from their declared defaults to whatever is saved --
     // does not re-render the theme on every single shell start.
     property bool _ready: false
+
+    // The same flag, read-only for everyone else: a value that changes before
+    // this is true is settings.json arriving, not a person changing it.
+    readonly property bool ready: root._ready
 
     onDynamicColourChanged: if (root._ready) reapplyDebounce.restart()
 
@@ -172,6 +181,7 @@ Singleton {
             property bool bluetoothPill: true
             property bool wallpaperColours: false
             property bool keepAppColours: true
+            property string barStyle: "islands"
         }
     }
 }

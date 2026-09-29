@@ -608,6 +608,7 @@ hl.bind(mainMod .. " + SHIFT + down",  move_window("down"),  { description = "Mo
 hl.bind("CTRL + ALT + up", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh area"), { description = "Screenshot a region" })
 hl.bind("CTRL + ALT + down", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh annotate"), { description = "Screenshot a region, then annotate it in swappy" })
 hl.bind("CTRL + ALT + F", hl.dsp.exec_cmd("qs ipc -c rd-shell call wallpaper toggle"), { description = "Wallpaper switcher" })
+hl.bind("CTRL + ALT + B", hl.dsp.exec_cmd("qs ipc -c rd-shell call barstyle toggle"), { description = "Bar style switcher" })
 
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
@@ -807,8 +808,9 @@ hl.layer_rule({
 -- namespace for anything that does not set its own -- is a `PanelWindow` on
 -- its own layer, so neither rule above reaches it: the first is anchored to
 -- `^quickshell$` (the bar itself), the second to the four OSDs. The
--- wallpaper switcher (`qs-wallpapers`) gets the same treatment, since it is
--- chrome floating over the desktop the same as any other popup. `qs-wallpaper`
+-- wallpaper switcher (`qs-wallpapers`) and the bar style switcher
+-- (`qs-barstyles`) get the same treatment, since they are chrome floating
+-- over the desktop the same as any other popup. `qs-wallpaper`
 -- (singular) is deliberately left out of the list -- that is the wallpaper
 -- layer itself, and blurring it would blur the background into itself, hence
 -- the anchored alternation rather than a `qs-wallpaper` prefix that would
@@ -816,7 +818,7 @@ hl.layer_rule({
 -- transparent gaps to protect, only rounded corners.
 hl.layer_rule({
     name  = "quickshell-popup-blur",
-    match = { namespace = "^qs-(audio|calendar|claude|disk|edge|media|mic|network|notifications|popup|popups|power|settings|sysmon|wallpapers)$" },
+    match = { namespace = "^qs-(audio|calendar|claude|disk|edge|media|mic|network|notifications|popup|popups|power|settings|sysmon|wallpapers|barstyles)$" },
 
     blur         = true,
     ignore_alpha = 0.2,

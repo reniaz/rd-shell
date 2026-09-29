@@ -53,6 +53,19 @@ Every pill hangs its card from a shared popup component (`Pill.qml` +
 `PopupLoader.qml`/`BarPopup.qml`) — see [Popups & panels](popups.md) for how
 that's wired.
 
+## Bar styles
+
+`Ctrl+Alt+B` opens a switcher, styled like the wallpaper switcher, to pick the
+bar's shape:
+
+- **Islands** — three floating plates with the wallpaper showing between them.
+  The default.
+- **Full bar** — one solid strip across the top edge.
+
+The switch animates, and the choice is remembered (`barStyle` in
+`settings.json`, `islands` or `full`). To open it from a script:
+`qs ipc -c rd-shell call barstyle toggle`.
+
 ## Contrast watching
 
 `BarContrastWatch.qml` and `BarOsdWatch.qml` keep the bar and OSDs legible
