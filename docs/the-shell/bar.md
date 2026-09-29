@@ -9,7 +9,8 @@ One bar per monitor (`BarWindow.qml`), split into three groups.
   workspace Hyprland marks urgent pulses until you switch to it.
 - **Media pill** — now playing, with a `cava` audio visualizer
   (`CavaBars.qml`/`CavaRing.qml`) fed from every playing app except
-  wayvibes. Opens `MediaPopup.qml`.
+  wayvibes. A title too long for the pill scrolls continuously (`MarqueeText.qml`)
+  instead of eliding, and stops while paused. Opens `MediaPopup.qml`.
 - **System monitor pill** — CPU/GPU/RAM, colour-coded by load and
   temperature. Opens `SysPopup.qml`.
 - **Disk pill** — opens `DiskPopup.qml`.

@@ -21,6 +21,15 @@ Rectangle {
     property alias content: row.data
     // A pill nobody can act on should not pretend otherwise.
     property bool interactive: true
+    // False (the default) keeps every existing pill's label exactly as it
+    // was: a plain elided Text. The media pill is the one caller that wants
+    // its label to scroll a long title into view instead of truncating it
+    // -- see MarqueeText.qml's own `continuous` mode.
+    property bool scrollLabel: false
+    // Only meaningful with scrollLabel: true. The call site owns whether
+    // there is anything worth scrolling for right now (media paused, or the
+    // pill itself off-bar) -- Pill has no notion of that on its own.
+    property bool labelActive: true
     // Driven by the call site's own MouseArea -- hoverPoint below takes no
     // buttons (see its own comment), so a press has to be reported in from
     // outside rather than sensed here.
@@ -129,7 +138,21 @@ Rectangle {
             font.pixelSize: 16
             elide: Text.ElideRight
             Layout.maximumWidth: root.maxLabelWidth
-            visible: root.label !== ""
+            visible: root.label !== "" && !root.scrollLabel
+        }
+
+        // Same slot, same sizing (implicitWidth mirrors a Text's own, capped
+        // by the same Layout.maximumWidth), but a title too long to fit
+        // scrolls into view instead of ending in an ellipsis.
+        MarqueeText {
+            text: root.label
+            color: Colors.fg
+            fontFamily: Caelus.fontFamily
+            pixelSize: 16
+            continuous: true
+            active: root.labelActive
+            Layout.maximumWidth: root.maxLabelWidth
+            visible: root.label !== "" && root.scrollLabel
         }
     }
 }

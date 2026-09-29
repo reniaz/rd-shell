@@ -50,6 +50,13 @@ RowLayout {
         icon: Media.playing ? "pause" : "play_arrow"
         label: Media.label
         iconColor: Colors.mediaIcon
+        // A long title scrolls into view instead of ending in "..." -- see
+        // Pill.qml's own comment on scrollLabel/labelActive. Only worth
+        // animating while something is actually playing; paused or with no
+        // player at all (the pill goes invisible then, via Media.available
+        // below) there is nothing to burn a frame budget scrolling toward.
+        scrollLabel: true
+        labelActive: Media.playing
         // Lowered from 280: hb-shape measured the left island swinging
         // 717-805px wide as track titles changed length, shoving CavaBars
         // and the system pill sideways on every song. 160px is enough for a

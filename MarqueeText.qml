@@ -22,7 +22,21 @@ Item {
     property string fontFamily: Caelus.fontFamily
     property int pixelSize: Caelus.sizeLead
     property bool active: true
+    // Off by default -- every existing caller (DesktopMedia, MediaArtists)
+    // wants the pause/scroll/pause/fade-back cycle below exactly as it was.
+    // The bar's media pill sets this true instead: a fixed-width pill has no
+    // "card is expanded" moment to scroll during, so it wants a title that
+    // just loops for as long as it's on screen, with a second copy trailing
+    // the first by `gap` px standing in for the jump-back.
+    property bool continuous: false
+    // Gap between the trailing copy and the next lap, continuous mode only.
+    property real gap: 32
 
+    // Every existing caller sets Layout.fillWidth instead, where implicit
+    // sizing is moot -- this only matters to a caller (Pill.qml's media
+    // label) that wants "as wide as the text, capped at a maximum" the way
+    // a plain elided Text sizes itself in a RowLayout.
+    implicitWidth: label.implicitWidth
     implicitHeight: label.implicitHeight
 
     readonly property bool _overflows: root.width > 0 && label.implicitWidth > root.width
@@ -44,22 +58,46 @@ Item {
     readonly property real _overflowPx: Math.max(0, label.implicitWidth - root.width)
     readonly property int _scrollMs: root._speed > 0 ? Math.round(root._overflowPx / root._speed * 1000) : 0
 
+    // Continuous mode's lap distance: the trailing copy sits `gap` px past
+    // the first, so travelling exactly that far leaves the trailing copy
+    // sitting wherever the leading one started -- the loop point where
+    // NumberAnimation's own from-value jump is invisible.
+    readonly property real _lapPx: label.implicitWidth + root.gap
+    readonly property int _lapMs: root._speed > 0 ? Math.round(root._lapPx / root._speed * 1000) : 0
+
     function _restart() {
         label.x = 0;
         label.opacity = 1;
-        cycle.restart();
+        track.x = 0;
+        if (root.continuous) {
+            cycle.stop();
+            loop.restart();
+        } else {
+            loop.stop();
+            cycle.restart();
+        }
     }
 
     function _stop() {
         cycle.stop();
+        loop.stop();
         label.x = 0;
         label.opacity = 1;
+        track.x = 0;
     }
 
     // A track change (or any other text change) always starts the new
     // title from its own beginning, never mid-scroll where the old one
     // happened to be -- even if both titles are long enough to scroll.
     onTextChanged: {
+        if (root._scrolling) root._restart();
+        else root._stop();
+    }
+
+    // Not expected to flip at runtime today, but cheap to cover: whichever
+    // animation is now the wrong one for the mode gets swapped in place
+    // rather than left running underneath.
+    onContinuousChanged: {
         if (root._scrolling) root._restart();
         else root._stop();
     }
@@ -87,25 +125,58 @@ Item {
         anchors.fill: parent
         clip: true
 
-        Text {
-            id: label
-
+        // The legacy cycle animates `label.x` directly and never touches
+        // `track`, so wrapping it here costs that path nothing. Continuous
+        // mode animates `track.x` instead and leaves `label.x` at 0, so the
+        // two modes can share one tree without either one's animation
+        // fighting the other's.
+        Item {
+            id: track
             x: 0
-            text: root.text
-            color: root.color
-            font.family: root.fontFamily
-            font.pixelSize: root.pixelSize
 
-            // The same soft shadow every other line on this card uses for
-            // legibility over the wallpaper -- see DesktopMedia.qml's own
-            // title/artist Text for why this exists.
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowColor: "#000000"
-                shadowBlur: 0.6
-                shadowOpacity: 0.5
-                shadowVerticalOffset: 1
+            Text {
+                id: label
+
+                x: 0
+                text: root.text
+                color: root.color
+                font.family: root.fontFamily
+                font.pixelSize: root.pixelSize
+
+                // The same soft shadow every other line on this card uses for
+                // legibility over the wallpaper -- see DesktopMedia.qml's own
+                // title/artist Text for why this exists.
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#000000"
+                    shadowBlur: 0.6
+                    shadowOpacity: 0.5
+                    shadowVerticalOffset: 1
+                }
+            }
+
+            // Continuous mode's trailing copy, `gap` px after the first.
+            // Only present while actually looping -- a static continuous
+            // label (short title, nothing to scroll) has no second copy to
+            // draw, same as if `continuous` had never been set.
+            Text {
+                id: label2
+                visible: root.continuous && root._scrolling
+                x: label.implicitWidth + root.gap
+                text: label.text
+                color: label.color
+                font.family: label.font.family
+                font.pixelSize: label.font.pixelSize
+
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#000000"
+                    shadowBlur: 0.6
+                    shadowOpacity: 0.5
+                    shadowVerticalOffset: 1
+                }
             }
         }
     }
@@ -143,5 +214,24 @@ Item {
             duration: Motion.fast
             easing.type: Motion.standard
         }
+    }
+
+    // Continuous mode: no pause, no fade, no jump -- just `track` sliding
+    // left forever. `loops: Infinite` restarts this from `from` (0) every
+    // lap, which is normally a snap back, but at exactly one lap's distance
+    // the trailing copy (`label2`) has arrived at the position the leading
+    // copy (`label`) started from, so the frame right before the restart and
+    // the frame right after it are pixel-identical -- the loop reads as
+    // endless rather than as a repeating snap.
+    NumberAnimation {
+        id: loop
+        target: track
+        property: "x"
+        running: false
+        loops: Animation.Infinite
+        from: 0
+        to: -root._lapPx
+        duration: root._lapMs
+        easing.type: Easing.Linear
     }
 }
