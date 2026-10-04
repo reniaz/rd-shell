@@ -234,6 +234,7 @@ def _handle_ring_envelope(text):
     if not isinstance(outer, dict):
         return
     if outer.get("command") != "SendNotification":
+        _log(f"ignored frame: command={outer.get('command')!r}")
         return
 
     raw = outer.get("jsonData")
@@ -246,19 +247,50 @@ def _handle_ring_envelope(text):
     if not isinstance(data, dict):
         return
 
-    if data.get("content") != "Incoming call":
-        return
-    if data.get("useBase64Icon") is not False:
+    # One stderr line per notification that is not a ring, saying why --
+    # never the message text itself. DiscordCall.qml forwards stderr to the
+    # shell log, so a ring that does not show can be traced there.
+    content = data.get("content")
+    title = data.get("title")
+
+    # Deliberate second ring signal: the call's own DM system message.
+    # XSOverlay's "Incoming call" path hangs off Discord's CALL_UPDATE, but
+    # a fresh incoming call arrives as CALL_CREATE, so on a real ring that
+    # path sent nothing -- only MESSAGE_CREATE's forward of the call's
+    # system message (type 3) came through. Call messages carry no text, so
+    # the plugin forwards them with an empty body; a guild channel is never
+    # rung and its titles read "user (guild, #channel)", so those are
+    # excluded. Other empty-bodied DM notifications (a pin, a bare forward,
+    # a poll) would show a short-lived ring banner -- rare, and the ring
+    # timeout clears it -- which beats a call that never shows at all.
+    if (
+        content == ""
+        and data.get("useBase64Icon") is True
+        and isinstance(title, str)
+        and ", #" not in title
+    ):
+        _log("ring (call message)")
+        _emit(title.strip())
         return
 
-    title = data.get("title")
+    if content != "Incoming call":
+        length = len(content) if isinstance(content, str) else None
+        _log(f"ignored notification: not a call (message, body length {length})")
+        return
+    if data.get("useBase64Icon") is not False:
+        _log(f"ignored call notification: useBase64Icon={data.get('useBase64Icon')!r}")
+        return
+
     if not isinstance(title, str):
+        _log(f"ignored call notification: title={title!r}")
         return
     suffix = " is calling you..."
     if not title.endswith(suffix):
+        _log(f"ignored call notification: unexpected title {title!r}")
         return
 
     name = title[: -len(suffix)]
+    _log("ring")
     _emit(name)
 
 

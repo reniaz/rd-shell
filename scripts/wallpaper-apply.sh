@@ -98,6 +98,12 @@ apply_border() {
                 # border, so no second colour to carry over here.
                 "$HYPRCTL" eval "hl.config({ plugin = { hyprexpo = {\
      border_color_current = 'rgb($p)' } } })" >/dev/null 2>&1 || true
+                # The window glow, also in its own eval: decoration.glow only
+                # exists from Hyprland 0.56 on, and an older build answering
+                # "unknown key" must not cost the borders above their colour.
+                # Same alphas as hyprland.lua's caelus literals.
+                "$HYPRCTL" eval "hl.config({ decoration = { glow = {\
+     color = 'rgba(${p}55)', color_inactive = 'rgba(${o:-595959}33)' } } })" >/dev/null 2>&1 || true
             fi
         else
             # The literals from hyprland.lua's general and group blocks, verbatim.
@@ -112,6 +118,9 @@ apply_border() {
             # hyprexpo literal.
             "$HYPRCTL" eval "hl.config({ plugin = { hyprexpo = {\
      border_color_current = 'rgb(b86e38)' } } })" >/dev/null 2>&1 || true
+            # And hyprland.lua's glow literals.
+            "$HYPRCTL" eval "hl.config({ decoration = { glow = {\
+     color = 'rgba(b86e3855)', color_inactive = 'rgba(59595933)' } } })" >/dev/null 2>&1 || true
         fi
     fi
 }

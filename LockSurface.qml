@@ -70,6 +70,13 @@ WlSessionLockSurface {
             label: Notifications.count + (Notifications.count === 1 ? " notification" : " notifications")
         }
 
+        // Idea 43: CPU/RAM at rest, the four session actions under the
+        // pointer. See LockResourceCard.qml's own header for the stats/
+        // actions source decisions.
+        LockResourceCard {
+            Layout.alignment: Qt.AlignHCenter
+        }
+
         // ── password field ──────────────────────────────────────
         // Fixed-size wrapper Item, not the Rectangle itself, sits in the
         // layout: the shake below rides on the Rectangle's own anchor

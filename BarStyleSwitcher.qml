@@ -99,6 +99,7 @@ PanelWindow {
         property real screenW: 1920
 
         readonly property bool isFull: prev.styleId === "full"
+        readonly property bool isCorners: prev.styleId === "corners"
 
         // Every bar-geometry token below is the live one from Caelus.qml
         // times this one ratio, so the miniature keeps the real bar's
@@ -126,9 +127,11 @@ PanelWindow {
         readonly property real dotY: prev.barH / 2
 
         // islands: three floating plates, inset from the top and from
-        // whichever screen edge they sit nearest.
+        // whichever screen edge they sit nearest. Also the base `full`
+        // takes over from -- `corners` draws its own three plates below
+        // instead, so all three of these are hidden there too.
         Rectangle {
-            visible: !prev.isFull
+            visible: !prev.isFull && !prev.isCorners
             x: prev.margin
             y: prev.inset
             width: prev.leftW
@@ -140,7 +143,7 @@ PanelWindow {
         }
 
         Rectangle {
-            visible: !prev.isFull
+            visible: !prev.isFull && !prev.isCorners
             x: (prev.width - prev.centerW) / 2
             y: prev.inset
             width: prev.centerW
@@ -152,11 +155,54 @@ PanelWindow {
         }
 
         Rectangle {
-            visible: !prev.isFull
+            visible: !prev.isFull && !prev.isCorners
             x: prev.width - prev.margin - prev.rightW
             y: prev.inset
             width: prev.rightW
             height: prev.islandH
+            radius: prev.islandR
+            color: Colors.barIsland
+            border.width: Caelus.borderWidth
+            border.color: Colors.barIslandBorder
+        }
+
+        // corners: a left plate same as `islands`' own, a wide right plate
+        // where the centre and right groups merge into one, and a small
+        // nub flush to the top centre standing in for the notch tab --
+        // same three-rect shape BarWindow.qml's `_styleShapes("corners")`
+        // actually draws, just fixed fractions of the card rather than
+        // measured off a live bar (see the comment atop this component for
+        // why every style's miniature works that way).
+        Rectangle {
+            visible: prev.isCorners
+            x: prev.margin
+            y: prev.inset
+            width: prev.leftW
+            height: prev.islandH
+            radius: prev.islandR
+            color: Colors.barIsland
+            border.width: Caelus.borderWidth
+            border.color: Colors.barIslandBorder
+        }
+
+        Rectangle {
+            visible: prev.isCorners
+            x: prev.width - prev.margin - (prev.centerW + prev.rightW)
+            y: prev.inset
+            width: prev.centerW + prev.rightW
+            height: prev.islandH
+            radius: prev.islandR
+            color: Colors.barIsland
+            border.width: Caelus.borderWidth
+            border.color: Colors.barIslandBorder
+        }
+
+        Rectangle {
+            visible: prev.isCorners
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 0
+            width: prev.centerW * 0.45
+            height: prev.islandH * 0.6
             radius: prev.islandR
             color: Colors.barIsland
             border.width: Caelus.borderWidth
@@ -669,6 +715,52 @@ PanelWindow {
                     color: Colors.fgMuted
                     font.family: Caelus.fontFamily
                     font.pixelSize: Caelus.sizeLabel
+                }
+
+                // Idea 33 (workspace-glyph-skin): a second, independent
+                // choice from the bar shape above it, so it gets its own
+                // rule and its own row rather than crowding into the
+                // coverflow meant for "islands vs full strip". Same
+                // toggle_on/toggle_off glyph-swap idiom SettingsPopup.qml's
+                // own switches use (that file is not mine to add a row to,
+                // per this round's shared contract, but the *idiom* is free
+                // to reuse) -- least-intrusive and most consistent beat a
+                // new widget style invented just for this.
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 220
+                    implicitHeight: 1
+                    color: Colors.popupBorder
+                }
+
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: Caelus.spaceTight
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: BarStyles.workspaceSkin === "glyph" ? "toggle_on" : "toggle_off"
+                        color: BarStyles.workspaceSkin === "glyph" ? Colors.accentBright : Colors.fgMuted
+                        font.family: Caelus.symbolFamily
+                        font.pixelSize: Caelus.sizeTitle
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: BarStyles.applyWorkspaceSkin(
+                                BarStyles.workspaceSkin === "glyph" ? "dots" : "glyph")
+                        }
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: BarStyles.workspaceSkin === "glyph"
+                            ? "Workspace glyphs (numerals)" : "Workspace dots (default)"
+                        color: Colors.fgDim
+                        font.family: Caelus.fontFamily
+                        font.pixelSize: Caelus.sizeLabel
+                    }
                 }
             }
         }

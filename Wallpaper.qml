@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Shapes
 import qs.Services
 import qs.Config
 
@@ -47,24 +48,72 @@ PanelWindow {
     // it anyway would just read as a slow-starting shell.
     property bool haveShown: false
 
-    // The swap is a circular reveal: the incoming wallpaper is already fully
+    // The swap is a masked reveal: the incoming wallpaper is already fully
     // drawn and at full opacity from the first frame, and what grows is the
-    // hole it is seen through -- a circle centred on the top-right corner of
-    // the screen, spreading out until it has covered everything. The old
+    // hole it is seen through, until it has covered everything. The old
     // wallpaper sits underneath the whole time and is only dropped once the
-    // circle has passed the far corner, so the two genuinely overlap rather
+    // hole has passed the far corner, so the two genuinely overlap rather
     // than cross-fading through a washed-out middle.
     //
     // A cross-fade was the first attempt and looked wrong for the same reason
     // it always does: for a third of a second the desktop is two pictures at
     // half strength and neither of them is the wallpaper.
+    //
+    // The hole's shape is one of Wallpapers.transitions -- a circle opening
+    // from a corner or the centre ("grow"), a ring closing in on the centre
+    // ("outer"), a straight or rippling edge sweeping across at an angle
+    // ("wipe"/"wave"). Copied off the service when a swap starts rather than
+    // bound to it, so a pick arriving mid-reveal cannot change the shape of
+    // the one already playing.
     property Image revealing: null
     property real revealProgress: 0
+    property string revealKind: "grow"
+    property real revealSeed: 0
 
-    // The circle starts at a corner, so it has to reach the opposite one:
-    // the diagonal is the radius, and the rectangle below is sized as a
-    // diameter and centred on that corner.
-    readonly property real revealSpan: 2 * Math.sqrt(root.width * root.width + root.height * root.height)
+    readonly property real _diag: Math.sqrt(root.width * root.width + root.height * root.height)
+
+    // grow: one of the four corners or the centre, by seed. The circle has
+    // to reach the farthest screen corner from wherever it starts, so that
+    // distance is its final radius. outer: always the centre, so the ring
+    // closes on the middle of the screen from a circle that just covers it.
+    readonly property point _growOrigin: {
+        const i = Math.floor(root.revealSeed * 5);
+        if (root.revealKind !== "grow" || i === 4) return Qt.point(root.width / 2, root.height / 2);
+        return Qt.point(i % 2 ? root.width : 0, i < 2 ? 0 : root.height);
+    }
+    readonly property real _growReach: {
+        const o = root._growOrigin;
+        return Math.sqrt(Math.max(o.x, root.width - o.x) ** 2 + Math.max(o.y, root.height - o.y) ** 2);
+    }
+    readonly property real _circleSize: root.revealKind === "outer"
+        ? (1 - root.revealProgress) * root._diag
+        : root.revealProgress * 2 * root._growReach
+
+    // wipe/wave: drawn in a square one screen-diagonal wide, centred and
+    // rotated by seed -- whatever the angle, that square covers the whole
+    // screen and its left edge lies wholly off it, so the edge sweeping
+    // from that side to the other starts unseen and ends with nothing left
+    // uncovered. A wipe is a wave with no amplitude; the ripple travels
+    // along the edge as it sweeps rather than standing still.
+    readonly property real _waveAmp: root.revealKind === "wave" ? root._diag * 0.03 : 0
+    readonly property var _edgePoints: {
+        if (root.revealKind !== "wipe" && root.revealKind !== "wave") return [];
+        const d = root._diag, a = root._waveAmp;
+        const lambda = d / 4;
+        const phase = root.revealProgress * Math.PI * 3;
+        const base = root.revealProgress * (d + 2 * a) - a;
+        // Left of the furthest the edge ever swings back, so the polygon
+        // never folds over itself at the start of the sweep.
+        const left = -2 * a - 1;
+        const pts = [Qt.point(left, 0)];
+        const steps = a > 0 ? 96 : 1;
+        for (let i = 0; i <= steps; i++) {
+            const y = d * i / steps;
+            pts.push(Qt.point(base + a * Math.sin(2 * Math.PI * y / lambda + phase), y));
+        }
+        pts.push(Qt.point(left, d));
+        return pts;
+    }
 
     Image {
         id: imgA
@@ -104,6 +153,10 @@ PanelWindow {
             // being a visibly jagged circle.
             maskThresholdMin: 0.5
             maskSpreadAtMin: 0.04
+            // "outer" draws the circle the old wallpaper is still seen
+            // through, not the new one -- the arriving image shows
+            // everywhere outside it.
+            maskInverted: root.revealKind === "outer"
         }
 
         onStatusChanged: if (status === Image.Ready || status === Image.Error) root._onIncomingStatus(imgA)
@@ -140,6 +193,10 @@ PanelWindow {
             // being a visibly jagged circle.
             maskThresholdMin: 0.5
             maskSpreadAtMin: 0.04
+            // "outer" draws the circle the old wallpaper is still seen
+            // through, not the new one -- the arriving image shows
+            // everywhere outside it.
+            maskInverted: root.revealKind === "outer"
         }
 
         onStatusChanged: if (status === Image.Ready || status === Image.Error) root._onIncomingStatus(imgB)
@@ -237,8 +294,10 @@ PanelWindow {
         // -- restart() below never fights a running animation over
         // `outgoing` or the aIsFront flip it does in onStopped.
 
-        // Full opacity from the start -- the circle, not the alpha, is what
+        // Full opacity from the start -- the mask, not the alpha, is what
         // decides how much of it you can see.
+        root.revealKind = Wallpapers.transition;
+        root.revealSeed = Wallpapers.transitionSeed;
         root.revealProgress = 0;
         root.revealing = incoming;
         incoming.opacity = 1;
@@ -264,12 +323,36 @@ PanelWindow {
         layer.enabled: true
 
         Rectangle {
-            width: root.revealProgress * root.revealSpan
+            visible: root.revealKind === "grow" || root.revealKind === "outer"
+            width: root._circleSize
             height: width
             radius: width / 2
-            x: revealShape.width - width / 2
-            y: -width / 2
+            x: root._growOrigin.x - width / 2
+            y: root._growOrigin.y - width / 2
             color: "#ffffff"
+        }
+
+        Item {
+            visible: root._edgePoints.length > 0
+            anchors.centerIn: parent
+            width: root._diag
+            height: root._diag
+            rotation: root.revealSeed * 360
+
+            Shape {
+                anchors.fill: parent
+                // Antialiased edge: the geometry renderer would hand the
+                // mask a stair-stepped rim, which a rotated edge shows far
+                // more than the circle ever did.
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    fillColor: "#ffffff"
+                    strokeColor: "transparent"
+                    fillRule: ShapePath.WindingFill
+                    PathPolyline { path: root._edgePoints }
+                }
+            }
         }
     }
 
@@ -287,9 +370,9 @@ PanelWindow {
         duration: Motion.reveal
         easing.type: Motion.standard
 
-        // Only now is the old wallpaper let go: until the circle has passed
-        // the far corner it is still what fills everything the circle has not
-        // reached yet.
+        // Only now is the old wallpaper let go: until the mask has covered
+        // the whole screen it is still what fills everything the mask has
+        // not reached yet.
         onStopped: {
             revealAnim.outgoing.opacity = 0;
             root.aIsFront = !root.aIsFront;

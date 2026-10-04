@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Config
+import qs.Services
 
 // One segment of the bar. At rest it draws nothing -- the island behind the
 // group it belongs to is the surface, and a pill is only the spacing and the
@@ -67,7 +68,24 @@ Rectangle {
         // Not gated behind `root.hovered`: the pointer can drift off a pill
         // slightly while the button stays down, and the press wash should
         // not vanish mid-click just because it did.
-        opacity: root.interactive && root.pressed ? Caelus.opacityPress
+        //
+        // Suppressed for as long as `rippleHold` runs: the ripple below
+        // starts at this same `opacityPress` and fades out from the actual
+        // press point, so showing both at once would stack two washes of
+        // the same colour and read as a harder press than the token was
+        // tuned for. A hold that outlasts the ripple's own life still needs
+        // to read as held once the ink is gone, so this fades back in then
+        // -- it replaces the ripple rather than layering under it, but only
+        // for the ripple's own duration.
+        // `Settings.pillRipple &&` in front of the rippleHold check: with
+        // the ripple off, onPressedChanged below never restarts
+        // rippleHold, so this reads `rippleHold.running` as permanently
+        // false and the flat wash takes over exactly as it did before the
+        // ripple existed -- the condition still short-circuits either way,
+        // this just makes the off case explicit rather than relying on
+        // rippleHold happening to never run.
+        opacity: root.interactive && root.pressed
+            ? (Settings.pillRipple && rippleHold.running ? 0 : Caelus.opacityPress)
             : root.hovered ? Caelus.opacityHover : 0
         // Behind the pill's contents. The island is a sibling of the group, a
         // level up from here, so this cannot collide with it.
@@ -79,6 +97,51 @@ Rectangle {
         // faster than anything the Motion singleton has.
         Behavior on opacity {
             NumberAnimation { duration: Motion.fast; easing.type: Motion.standard }
+        }
+    }
+
+    // The ripple itself. Same inset and the same radius as hoverBg, one step
+    // above it (same z, declared later -- see hoverBg's own z comment), so
+    // ink that reaches the pill's edge is cut by the exact curve the flat
+    // wash already uses.
+    RippleLayer {
+        id: ripple
+        anchors.fill: hoverBg
+        cornerRadius: hoverBg.radius
+        rippleColor: Colors.fg
+        peakOpacity: Caelus.opacityPress
+        z: -1
+    }
+
+    // Only a flag, never a visible animation of its own -- what hoverBg's
+    // opacity expression above reads to know whether a ripple is still the
+    // one carrying press feedback. Restarted rather than reused per press,
+    // so two presses inside one ripple's lifetime keep hoverBg suppressed
+    // for the newer press's full duration instead of letting it reappear
+    // early just because the first ripple's clock ran out first.
+    Timer {
+        id: rippleHold
+        interval: Motion.ripple
+    }
+
+    onPressedChanged: {
+        // hoverPoint (above) already tracks the live cursor continuously --
+        // `hoverEnabled: true` keeps its mouseX/mouseY current even with no
+        // button down, which a plain MouseArea only does because hover is
+        // on (see hoverPoint's own comment on why it takes no buttons). A
+        // press cannot move the pointer first, so the position hoverPoint
+        // already has the instant `pressed` flips true IS the press origin
+        // -- that makes a new TapHandler/point.position unnecessary: Pill
+        // already has a MouseArea that gives mouse.x/y, just reached one
+        // property lookup later than literally "on press" rather than
+        // through it, since hoverPoint deliberately takes no buttons.
+        //
+        // The y offset undoes hoverBg/ripple's own topMargin inset
+        // (hoverPoint fills the whole pill; ripple sits `spaceTight` in from
+        // its top), so the ripple spawns under the pointer, not above it.
+        if (root.interactive && root.pressed && Settings.pillRipple) {
+            ripple.spawn(hoverPoint.mouseX, hoverPoint.mouseY - Caelus.spaceTight);
+            rippleHold.restart();
         }
     }
 

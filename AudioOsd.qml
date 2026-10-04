@@ -75,9 +75,33 @@ PanelWindow {
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            Rectangle {
-                id: track
+            WavyArc {
+                id: wavyTrack
 
+                visible: Settings.osdWavy
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                // Held at the real level while muted rather than zeroed.
+                // "Silenced at 60%" is what unmuting restores, and a bar
+                // collapsed to nothing says the opposite.
+                value: root.level
+                trackColor: Colors.audioTrack
+                fillColor: root.muted ? Colors.fgMuted : root.tint
+                // Only while the card is actually up -- see WavyArc.qml's
+                // own comment on why this is `shown`, not `visible`.
+                running: osd.shown
+
+                Behavior on fillColor { ColorAnimation { duration: Motion.fast } }
+            }
+
+            // Today's plain filled bar -- kept working behind "Wavy OSD
+            // progress" (SettingsLookPage.qml) rather than deleted. See the
+            // matching comment in BrightnessOsd.qml on why `visible` alone
+            // is enough to swap the two with no Loader.
+            Rectangle {
+                id: flatTrack
+
+                visible: !Settings.osdWavy
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
                 implicitHeight: 5
@@ -85,10 +109,9 @@ PanelWindow {
                 color: Colors.audioTrack
 
                 Rectangle {
-                    // Held at the real level while muted rather than zeroed.
-                    // "Silenced at 60%" is what unmuting restores, and a bar
-                    // collapsed to nothing says the opposite.
-                    width: Math.round(track.width * root.level)
+                    // Held at the real level while muted rather than zeroed,
+                    // same reasoning as the wavy track above.
+                    width: Math.round(flatTrack.width * root.level)
                     height: parent.height
                     radius: parent.radius
                     color: root.muted ? Colors.fgMuted : root.tint

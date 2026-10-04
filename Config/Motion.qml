@@ -38,6 +38,14 @@ Singleton {
     // `spatialCurve` below and not with `standard` -- half a second of plain
     // OutCubic is what actually reads slow.
     readonly property int spatial: 500
+    // The press ripple in Pill.qml/RippleLayer.qml -- a circle of ink
+    // crossing one pill's own width, not the screen, so it sits well under
+    // `spatial`. Slower than `base` on purpose: `base` is tuned for a shape
+    // that is the UI's own geometry changing, where lingering reads as lag,
+    // but ink fading before it has visibly covered the pill reads as a
+    // flicker instead of a wash, and 450ms is what it takes to still look
+    // soft rather than instant on this bar's narrowest pills.
+    readonly property int ripple: 450
 
     // ── easings ──────────────────────────────────────────────
     // Decelerating. Almost everything: it starts at full speed, so short

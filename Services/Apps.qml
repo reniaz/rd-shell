@@ -65,6 +65,27 @@ Singleton {
     }
     property alias _debounce: _debounceTimer
 
+    // A synthetic result for the settings window (Super+I,
+    // Services/SettingsApp.qml) -- not a real DesktopEntry, since this shell
+    // has no .desktop file of its own, but a plain object that duck-types as
+    // one everywhere `_index`'s entries are actually read: `launch()` below
+    // only ever calls `entry.execute()`, and `iconSource()` only ever reads
+    // `entry.icon`, so a JS object carrying both is every bit as usable as a
+    // real DesktopEntries row to those two functions and to Launcher.qml's
+    // delegate. `icon` names a standard XDG icon so it resolves through
+    // Quickshell.iconPath the same way a real app's icon does, falling back
+    // to nothing (rather than a guessed name no theme ships) if the current
+    // icon theme happens not to carry it.
+    readonly property var _settingsEntry: ({
+        name: "Settings",
+        genericName: "rd-shell settings",
+        icon: "preferences-system",
+        keywords: ["settings", "preferences", "appearance", "wallpaper", "bar", "desktop", "accessibility", "keybinds", "about", "rd-shell"],
+        execString: "",
+        noDisplay: false,
+        execute: () => SettingsApp.show("")
+    })
+
     // One entry per visible app, with its searchable text lowercased and
     // split into words up front. This only changes when apps are installed
     // or removed; `query` changes on every keystroke -- so the cost that
@@ -74,9 +95,27 @@ Singleton {
     // one cheap comparison against a real requirement, not a guess about
     // what the model does internally, and it costs nothing if the model
     // was already filtering it.
+    //
+    // The settings entry is unshifted onto the front of the real app list
+    // rather than mixed into the same `.map()` above it -- it is the one
+    // entry here with no desktop file behind it, and keeping it as its own
+    // line is what keeps that difference visible instead of hidden inside a
+    // branch in the general case.
     function _rebuildIndex() {
         root._everBuilt = true;
-        root._index = root._values
+        const settings = root._settingsEntry;
+        const settingsName = settings.name.toLowerCase();
+        const settingsItem = {
+            entry: settings,
+            displayName: settings.name,
+            name: settingsName,
+            words: settingsName.split(/[^a-z0-9]+/).filter(w => w.length > 0),
+            haystack: [settings.name, settings.genericName, ...settings.keywords]
+                .join(" ")
+                .toLowerCase()
+        };
+
+        root._index = [settingsItem].concat(root._values
             .filter(e => !e.noDisplay)
             .map(e => {
                 const name = (e.name ?? "").toLowerCase();
@@ -100,7 +139,7 @@ Singleton {
                         .join(" ")
                         .toLowerCase()
                 };
-            });
+            }));
     }
 
     readonly property var results: root._search(root.query)

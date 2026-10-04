@@ -203,12 +203,31 @@ hl.config({
             color        = 0xee1a1a1a,
         },
 
+        -- A soft glow along the inside of each window's edge, so the focused
+        -- window has some depth on top of its flat border line. It's an inner
+        -- glow, so it fades inward from the border and never spills into the
+        -- gaps the way the shadow above does. Unfocused windows get a faint
+        -- grey one, which keeps focus readable at a glance. These are the
+        -- static caelus values, the same as the borders above.
+        -- scripts/wallpaper-apply.sh swaps them for the matugen colours along
+        -- with the borders, in an eval of its own.
+        glow = {
+            enabled        = true,
+            range          = 14,
+            render_power   = 3,
+            color          = "rgba(b86e3855)",
+            color_inactive = "rgba(59595933)",
+        },
+
         -- Blurs whatever shows through the window opacity set above.
         -- Deliberately a step gentler than the lock screen (hyprlock.conf is
-        -- 2 passes at size 8): same passes, smaller radius.
+        -- 2 passes at size 8): same passes, smaller radius. The bar's layer
+        -- rule has no blur size of its own and uses this one, so it is also
+        -- what decides how much of the wallpaper's detail the bar lets
+        -- through -- at 6 the bar smeared it into a flat tone.
         blur = {
             enabled   = true,
-            size      = 6,
+            size      = 4,
             passes    = 2,
             vibrancy  = 0.1696,
 
@@ -247,46 +266,50 @@ hl.config({
 -- that has never touched the wallpaper switcher.
 hl.exec_cmd("~/.config/quickshell/rd-shell/scripts/wallpaper-apply.sh --border")
 
--- Default curves and animations, see https://wiki.hypr.land/Configuring/Advanced-and-Cool/Animations/
-hl.curve("easeOutQuint",   { type = "bezier", points = { {0.23, 1},    {0.32, 1}    } })
-hl.curve("easeInOutCubic", { type = "bezier", points = { {0.65, 0.05}, {0.36, 1}    } })
-hl.curve("linear",         { type = "bezier", points = { {0, 0},       {1, 1}       } })
-hl.curve("almostLinear",   { type = "bezier", points = { {0.5, 0.5},   {0.75, 1}    } })
-hl.curve("quick",          { type = "bezier", points = { {0.15, 0},    {0.1, 1}     } })
-hl.curve("snapSlide",      { type = "bezier", points = { {0.19, 1},    {0.22, 1}    } })
+-- Animation curves and per-leaf hl.animation() calls -- four presets' worth
+-- of them -- now live in animation-presets.lua (require()d below) rather
+-- than inline here; see that file for the data and docs/dotfiles/
+-- hyprland.md for the feature. "smooth" is an exact copy of what used to sit
+-- in this exact spot, so a machine that has never touched the switcher
+-- (Ctrl+Alt+P, Services/AnimPresets.qml) looks and feels exactly as it
+-- always has.
+--
+-- The preset actually applied is read straight off the shell's own
+-- settings.json rather than trusted from whatever was active a moment ago,
+-- because `hyprctl reload` -- hyprpm's own reload included, and every full
+-- restart -- re-runs this whole file in a FRESH Lua state: confirmed
+-- empirically (a global set by a live `hyprctl eval` does not survive a
+-- `hyprctl reload`), which means `package.loaded` is wiped too, so
+-- `require("animation-presets")` below genuinely re-executes that file
+-- rather than reusing a stale cache -- it is "live switching between
+-- reloads" that gets the cache (see Services/AnimPresets.qml's own comment),
+-- not this. Reading the persisted name here, at config-load time, is what
+-- makes a reload re-assert the person's actual choice instead of reverting
+-- to the shipped default, and it is also why the shell never has to
+-- re-apply the preset on its own startup: this line already runs on every
+-- config load (reload, hyprpm reload, or a full restart), which is the only
+-- moment that matters.
+--
+-- io.open + a plain string match rather than a JSON library: nothing else
+-- in this file parses JSON, and settings.json's shape here is just one
+-- "key": "value" pair on its own line among many -- a real decoder would be
+-- a new dependency for one string. A missing file, a missing key, or a
+-- value nothing in animation-presets.lua's `presets` table recognises all
+-- fall back to "smooth" here AND in that file's own `apply()` (belt and
+-- braces -- either guard alone would already be enough), the same
+-- tolerant-default shape Services/BarStyles.qml and
+-- Services/AnimPresets.qml use for the same settings.json.
+local function rd_read_anim_preset()
+    local path = os.getenv("HOME") .. "/.config/quickshell/rd-shell/settings.json"
+    local f = io.open(path, "r")
+    if not f then return "smooth" end
+    local text = f:read("*a")
+    f:close()
+    local name = text:match('"animPreset"%s*:%s*"([%w_%-]+)"')
+    return name or "smooth"
+end
 
--- Default springs
-hl.curve("easy",           { type = "spring", mass = 1, stiffness = 238.1191, dampening = 24.21279333 })
-
--- borderangle is deliberately absent. It repaints the active border's gradient
--- on a timer rather than in response to anything, so it either sweeps forever
--- at the monitor's refresh rate or sweeps once per focus change; neither is
--- information, and the gradient reads the same standing still. `border` below
--- still animates the colour transition when focus actually moves.
-hl.animation({ leaf = "global",        enabled = true,  speed = 10,   bezier = "default" })
-hl.animation({ leaf = "border",        enabled = true,  speed = 5.39, bezier = "easeOutQuint" })
-hl.animation({ leaf = "windows",     enabled = true, speed = 2.5, bezier = "easeOutQuint" })
-hl.animation({ leaf = "windowsIn",  enabled = true, speed = 1.5, bezier = "easeOutQuint", style = "popin 100%" })
-hl.animation({ leaf = "windowsOut", enabled = true, speed = 1.2, bezier = "linear",       style = "popin 100%" })
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 2.5, bezier = "easeOutQuint" })
-hl.animation({ leaf = "fade",          enabled = true,  speed = 3.03, bezier = "quick" })
-hl.animation({ leaf = "fadeIn",     enabled = true, speed = 1.5, bezier = "almostLinear" })
-hl.animation({ leaf = "fadeOut",    enabled = true, speed = 1.2, bezier = "almostLinear" })
-hl.animation({ leaf = "layers",        enabled = true,  speed = 3.81, bezier = "easeOutQuint" })
-hl.animation({ leaf = "layersIn",      enabled = true,  speed = 4,    bezier = "easeOutQuint", style = "fade" })
-hl.animation({ leaf = "layersOut",     enabled = true,  speed = 1.5,  bezier = "linear",       style = "fade" })
-hl.animation({ leaf = "fadeLayersIn",  enabled = true,  speed = 1.79, bezier = "almostLinear" })
-hl.animation({ leaf = "fadeLayersOut", enabled = true,  speed = 1.39, bezier = "almostLinear" })
--- Workspace switch: horizontal slide, snapSlide curve covers most of the
--- distance up front then eases out, so 250 ms reads as smooth but not slow.
--- Previous settings kept here as a backup; full file backup in hyprland.lua.preslide.*.bak
---   hl.animation({ leaf = "workspaces",    enabled = false,  speed = 1.94, bezier = "almostLinear", style = "fade" })
---   hl.animation({ leaf = "workspacesIn",  enabled = false,  speed = 1.21, bezier = "almostLinear", style = "fade" })
---   hl.animation({ leaf = "workspacesOut", enabled = false,  speed = 1.94, bezier = "almostLinear", style = "fade" })
-hl.animation({ leaf = "workspaces",    enabled = true,  speed = 2.5,  bezier = "snapSlide",    style = "slide" })
-hl.animation({ leaf = "workspacesIn",  enabled = true,  speed = 2.5,  bezier = "snapSlide",    style = "slide" })
-hl.animation({ leaf = "workspacesOut", enabled = true,  speed = 2.5,  bezier = "snapSlide",    style = "slide" })
-hl.animation({ leaf = "zoomFactor",    enabled = true,  speed = 7,    bezier = "quick" })
+require("animation-presets").apply(rd_read_anim_preset())
 
 -- Ref https://wiki.hypr.land/Configuring/Basics/Workspace-Rules/
 -- "Smart gaps" / "No gaps when only"
@@ -517,6 +540,11 @@ hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd(app_launcher), { description = "A
 -- `hyprctl binds`, so a new bind shows up in it as soon as it is described.
 -- The same list inside the bar, with a search field (KeybindOverview.qml).
 hl.bind(mainMod .. " + K", hl.dsp.exec_cmd("qs ipc -c rd-shell call keybinds toggle"), { description = "Keybind overview (search)" })
+-- The settings window (end-4/illogical-impulse-style rail + pages), as its
+-- own toplevel rather than another layer-shell overlay -- see
+-- SettingsWindow.qml and the "settings-window" window rule further down for
+-- why it needed one.
+hl.bind(mainMod .. " + I", hl.dsp.exec_cmd("qs ipc -c rd-shell call settings toggle"), { description = "Settings" })
 -- The system monitor popup, on the key every other desktop opens its task
 -- manager with.
 hl.bind("CTRL + SHIFT + ESCAPE", hl.dsp.exec_cmd("qs ipc -c rd-shell call system toggle"), { description = "System monitor" })
@@ -609,6 +637,12 @@ hl.bind("CTRL + ALT + up", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh
 hl.bind("CTRL + ALT + down", hl.dsp.exec_cmd("~/.config/hypr/scripts/screenshot.sh annotate"), { description = "Screenshot a region, then annotate it in swappy" })
 hl.bind("CTRL + ALT + F", hl.dsp.exec_cmd("qs ipc -c rd-shell call wallpaper toggle"), { description = "Wallpaper switcher" })
 hl.bind("CTRL + ALT + B", hl.dsp.exec_cmd("qs ipc -c rd-shell call barstyle toggle"), { description = "Bar style switcher" })
+hl.bind("CTRL + ALT + P", hl.dsp.exec_cmd("qs ipc -c rd-shell call animpresets toggle"), { description = "Animation preset switcher" })
+hl.bind("CTRL + ALT + U", hl.dsp.exec_cmd("qs ipc -c rd-shell call utilities toggle"), { description = "Utilities tray (read text / pick colour / scan QR)" })
+-- Clipboard ripple on paste (ClipboardRipple.qml). non_consuming: the key
+-- still reaches the focused app -- these only tell the shell a paste happened.
+hl.bind("CTRL + V", hl.dsp.global("quickshell:clipboardPaste"), { non_consuming = true, description = "Paste (ripples at the cursor)" })
+hl.bind("CTRL + SHIFT + V", hl.dsp.global("quickshell:clipboardPaste"), { non_consuming = true, description = "Paste in a terminal (ripples at the cursor)" })
 
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
@@ -770,7 +804,7 @@ hl.window_rule({
     no_dim = true,
 })
 
--- The bar. Its three islands are 80% opaque and the gaps between them are
+-- The bar. Its islands are drawn at Caelus.opacitySurface and the gaps between them are
 -- fully transparent, so `ignore_alpha` at 0.2 blurs the plates and leaves the
 -- gaps alone -- without it the whole 44px strip would be blurred, including
 -- the wallpaper showing through above and below the islands. `blur_popups`
@@ -808,9 +842,10 @@ hl.layer_rule({
 -- namespace for anything that does not set its own -- is a `PanelWindow` on
 -- its own layer, so neither rule above reaches it: the first is anchored to
 -- `^quickshell$` (the bar itself), the second to the four OSDs. The
--- wallpaper switcher (`qs-wallpapers`) and the bar style switcher
--- (`qs-barstyles`) get the same treatment, since they are chrome floating
--- over the desktop the same as any other popup. `qs-wallpaper`
+-- wallpaper switcher (`qs-wallpapers`), the bar style switcher
+-- (`qs-barstyles`) and the animation preset switcher (`qs-animpresets`) get
+-- the same treatment, since they are chrome floating over the desktop the
+-- same as any other popup. `qs-wallpaper`
 -- (singular) is deliberately left out of the list -- that is the wallpaper
 -- layer itself, and blurring it would blur the background into itself, hence
 -- the anchored alternation rather than a `qs-wallpaper` prefix that would
@@ -818,7 +853,7 @@ hl.layer_rule({
 -- transparent gaps to protect, only rounded corners.
 hl.layer_rule({
     name  = "quickshell-popup-blur",
-    match = { namespace = "^qs-(audio|calendar|claude|disk|edge|media|mic|network|notifications|popup|popups|power|settings|sysmon|wallpapers|barstyles)$" },
+    match = { namespace = "^qs-(audio|calendar|claude|disk|edge|media|mic|network|notifications|popup|popups|power|settings|sysmon|wallpapers|barstyles|animpresets)$" },
 
     blur         = true,
     ignore_alpha = 0.2,
@@ -844,6 +879,37 @@ hl.window_rule({
 
     move  = "20 monitor_h-120",
     float = true,
+})
+
+-- The settings window (Super+I, SettingsWindow.qml -- qs ipc -c rd-shell
+-- call settings toggle). A real xdg toplevel, not a layer-shell surface, so
+-- it needs its own window rule the way the overlays above (bar, OSDs,
+-- popups) needed layer rules instead: `class` alone would already be enough
+-- to find it (this is the only client window org.quickshell's own process
+-- ever maps -- every popup and panel in this shell is a layer-shell surface
+-- and never shows up in `hyprctl clients`), but `title` is kept alongside
+-- it so the match stays correct even if some future window in this shell
+-- gains an xdg toplevel of its own. Hyprland already floats a fresh toplevel
+-- like this one without being told (confirmed with `hyprctl clients -j`
+-- while open), so `float` here is a guarantee against that default ever
+-- changing, not a fix for anything broken; `size`/`center` are what pin it
+-- to the ~960x640 the window itself requests via implicitWidth/Height
+-- rather than whatever fraction-of-monitor default Hyprland picks for an
+-- unsized floating window (observed at 1280x1000 -- clamped against this
+-- window's own `maximumSize` -- before this rule existed).
+hl.window_rule({
+    name  = "settings-window",
+    match = { class = "^org.quickshell$", title = "^rd-shell settings$" },
+
+    float    = true,
+    size     = "960 640",
+    center   = true,
+    -- The settings app itself is drawn square (rounding rule in the shared
+    -- contract: max radius anywhere in it is 4px); this is that 4px, applied
+    -- by the compositor to the window's own corners the way every other
+    -- popup/panel in this shell gets its rounding from decoration:rounding
+    -- rather than from its own QML.
+    rounding = 4,
 })
 
 -- Spotify always opens on the second monitor's third workspace, whether it was

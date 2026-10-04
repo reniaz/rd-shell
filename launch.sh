@@ -42,5 +42,17 @@ for pid in $(pgrep -U "$(id -u)" -fx "qs -c $CONFIG" 2>/dev/null); do
     kill "$pid" 2>/dev/null
 done
 
+# Deliberate: quickshell parses every .desktop file in every XDG data dir,
+# and /usr/share/applications/swappy.desktop ships an Exec= with `\"` inside a
+# quoted argument that its parser rejects -- one "Illegal escape sequence"
+# warning per app scan, dozens a session. A user override in
+# ~/.local/share/applications wins for launching but does not stop the
+# system copy being parsed, and fixing that copy needs root. This category
+# only ever reports malformed third-party entries, nothing the shell can act
+# on, so it is silenced here. Via the environment, not --log-rules: the
+# exact `qs -c rd-shell` cmdline is what scripts/lock.sh and the loop above
+# match on.
+export QT_LOGGING_RULES="${QT_LOGGING_RULES:+$QT_LOGGING_RULES;}quickshell.desktopentry.warning=false"
+
 log "starting quickshell"
 exec qs -c "$CONFIG"

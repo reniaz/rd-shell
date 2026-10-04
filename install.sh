@@ -120,7 +120,8 @@ if [ ! -f "$REPO/shell.qml" ]; then
 fi
 
 # The "Config" step below symlinks the whole repo into ~/.config/quickshell,
-# hyprland.lua/hyprland-gui.lua/hypridle.conf/hyprlock.conf into ~/.config/hypr,
+# hyprland.lua/hyprland-gui.lua/animation-presets.lua/hypridle.conf/hyprlock.conf
+# into ~/.config/hypr,
 # and the whole ghostty dir into ~/.config/ghostty -- so editing any of those
 # through their ~/.config link edits a file this git clone tracks. A plain
 # `git pull` (see docs/installation/updating.md) can then refuse outright, or
@@ -656,7 +657,7 @@ fi
 # Hyprland's own files, individually -- not the whole ~/.config/hypr directory,
 # which also holds hyprmod's state, generated lock colours and whatever else
 # accumulates there that is not this repo's to own.
-for f in hyprland.lua hyprland-gui.lua hypridle.conf hyprlock.conf; do
+for f in hyprland.lua hyprland-gui.lua animation-presets.lua hypridle.conf hyprlock.conf; do
     [ -f "$REPO/hypr/$f" ] && link "$REPO/hypr/$f" "$HYPR/$f"
 done
 

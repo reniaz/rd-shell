@@ -112,7 +112,9 @@ RowLayout {
         content: TrayItems { id: trayItems }
         // Counts what the tray actually draws, not what is registered: with
         // only a filtered item present this would otherwise be an empty pill.
-        visible: trayItems.shown.length > 0
+        // Settings.trayPill is a person's own override on top, same shape as
+        // bluetoothPill's -- default true, exactly today's behaviour.
+        visible: trayItems.shown.length > 0 && Settings.trayPill
     }
 
     // Mic and volume are one idea -- audio in, audio out -- so they sit in
@@ -282,6 +284,10 @@ RowLayout {
         // a glance. A network that is merely slow is not this; only
         // Network.connected going false is.
         iconColor: Network.connected ? Colors.networkIcon : Colors.networkOffline
+        // Settings.networkPill: a person's own override, default true --
+        // this pill had no visibility gate at all before, so true keeps it
+        // shown exactly as it always was.
+        visible: Settings.networkPill
 
         MouseArea {
             id: networkArea

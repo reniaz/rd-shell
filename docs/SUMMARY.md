@@ -17,7 +17,7 @@
   * [Edge bar](the-shell/edge-bar.md)
   * [Desktop widgets](the-shell/desktop-widgets.md)
   * [Claude panel](the-shell/claude-panel.md)
-  * [Settings popup](the-shell/settings.md)
+  * [Settings](the-shell/settings.md)
   * [Lock screen](the-shell/lock-screen.md)
 * [Keybinds](keybinds.md)
 * [Theming](theming/README.md)

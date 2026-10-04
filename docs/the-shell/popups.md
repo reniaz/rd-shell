@@ -5,7 +5,9 @@ Every bar pill opens its card through the same shared component
 open at a time and they share entrance/exit animation and positioning logic.
 Full-screen surfaces (launcher, wallpaper switcher, keybind overview,
 notification panel, power menu) go through `BarOverlays.qml` instead, since
-they cover the whole screen rather than hanging off a pill.
+they cover the whole screen rather than hanging off a pill. The utility tray
+below is one of these too, just instantiated straight from `shell.qml`
+instead.
 
 ## System monitor (`SysPopup.qml`)
 
@@ -51,9 +53,61 @@ Disk usage readout.
 Set timers and alarms from here; they ring as notifications with sound, DND
 included.
 
+## Dashboard (`NotchDashboard.qml`)
+
+Only exists under the `corners` bar style (`Ctrl+Alt+B`), dropped from the
+small notch tab at the bar's horizontal centre — `qs ipc -c rd-shell call
+dashboard toggle` opens/closes it from anywhere, same IPC shape every other
+singleton here uses. One screen's panel at a time, same gate the power menu
+uses.
+
+- A top row of quick toggles — Wi-Fi reads `Services/Network.qml` and opens
+  the NetworkManager editor; Bluetooth and the three environment toggles
+  (night light, caffeine, game mode) are disabled stubs with no backend yet.
+- A now-playing strip (`DashMediaCard.qml`, composed from `MediaArt.qml`/
+  `MediaButton.qml`), a compact month grid (`DashCalendarGrid.qml`) and a
+  short notification peek (`DashNotifications.qml`, reusing
+  `NotificationCard.qml`) on the left.
+- Brightness on a vertical track (`EdgeSlider.qml`) and volume/mic
+  (`VolumeSlider.qml`) on the right.
+
+Pin it (the panel's own "keep" glyph, or `BarLeft.qml`'s pin icon in
+`corners`) to stop click-outside from closing it — Escape still closes it
+either way. Built on `BarPopup` like every popup above, so it joins the same
+fused silhouette (`Blob.qml`) the notch tab's own island draws into, with no
+hand-drawn seam of its own.
+
 ## Power (`PowerMenu.qml`)
 
 Logout / reboot / shutdown / lock, dispatched over `hyprshutdown`.
+
+## Utilities tray (`UtilityTray.qml`)
+
+`Ctrl+Alt+U` (`qs ipc -c rd-shell call utilities toggle`) opens a small
+keybind-only popup, no bar pill, with three independent screen-reading tools:
+
+- **Read text** — OCR via `tesseract`, on a `slurp`-selected region captured
+  with `grim -g`. No translation step (see the separately-tracked
+  translate-popup idea for that). Lives in `Services/Ocr.qml`, which owns the
+  whole slurp/grim/tesseract pipeline on its own so that idea can drive it
+  directly too. `tesseract` is not installed by `install.sh` today — the row
+  shows disabled with `sudo dnf install tesseract` as its hint until it is,
+  re-checked (`command -v`) every time the tray opens, no shell restart
+  needed.
+- **Pick colour** — `hyprpicker -a` (its own crosshair selector, not `slurp`);
+  `-a` autocopies the hex it picks, so nothing here calls `wl-copy` a second
+  time for this one.
+- **Scan QR / barcode** — the same `slurp` + `grim -g` region grab as "Read
+  text", decoded with `zbarimg --raw -q` (package `zbar-tools`).
+
+Picking a tool hides the tray so the region-select/colour-pick tool underneath
+it can see the real screen, then brings it back once there is something to
+show: the recognised text / decoded payload (with a Copy action, and an Open
+action when a QR payload is an `http(s)` URL, via `xdg-open`) or the picked
+colour as a swatch + hex. The result is also copied to the clipboard with
+`wl-copy` as soon as it lands. Cancelling the region/colour select (`Esc`)
+is quiet — no error, the tray just reopens on the idle tool list. All of this
+state lives in `Services/Utilities.qml`, not in the popup file itself.
 
 ## Audio Disk OSD note
 

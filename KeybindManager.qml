@@ -20,6 +20,13 @@ Item {
     property var target: null
     readonly property bool capturing: root.target !== null
 
+    // The capture card's corner radius. Defaults to the standalone SUPER+K
+    // overview's own look (Caelus.radiusPopover) so that embedding this same
+    // dialog is a no-op there; SettingsKeysPage.qml -- the settings app's
+    // max-4px ROUNDING RULE applies inside its window only, never here --
+    // sets this to 0 when it embeds the dialog.
+    property real cardRadius: Caelus.radiusPopover
+
     signal closed()
 
     function startCapture(bind) {
@@ -247,7 +254,7 @@ Item {
         anchors.centerIn: parent
         width: 440
         height: content.implicitHeight + Caelus.spaceEdge * 2
-        radius: Caelus.radiusPopover
+        radius: root.cardRadius
         color: Colors.surfaceRaised
         border.width: Caelus.borderWidth
         border.color: root._conflict ? Colors.warn : Colors.accent

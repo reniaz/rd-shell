@@ -29,13 +29,14 @@ In order, a normal call:
    `tonal-spot`/`dark`).
 3. Runs matugen twice — see [The matugen pipeline](matugen-pipeline.md) for
    what each run renders.
-4. `apply_border` — pushes the new window-border colours into the running
-   Hyprland with `hyprctl eval` (a Lua config can't be re-keyworded).
+4. `apply_border` — pushes the new window-border and window-glow colours
+   into the running Hyprland with `hyprctl eval` (a Lua config can't be
+   re-keyworded).
 5. `apply_lock` — writes `~/.config/hypr/hyprlock-colors.conf`, which
    `hyprlock.conf` sources.
 6. Writes the chosen image's path to `~/.cache/rd-shell/wallpaper` — the
    state file `Services/Wallpapers.qml`'s `FileView` watches. This write is
-   what actually starts Quickshell's desktop crossfade (`Wallpaper.qml`), so
+   what actually starts Quickshell's desktop transition (`Wallpaper.qml`, see below), so
    it's deliberately the last step that can affect the bar.
 7. Re-encodes the image to `~/.cache/rd-shell/lock.png` (first frame only,
    downscaled to at most 2560×1440) for the lock screen, and — if the
@@ -49,6 +50,18 @@ dynamic border on every reload (by `hyprpm`, a keybind, or a config edit) —
 `hyprland.lua` runs `wallpaper-apply.sh --border` on every `exec` (not
 `exec-once`) reload to keep it in sync without paying for a full matugen
 render.
+
+## The transition
+
+`Wallpaper.qml` animates each swap itself; no swww or other daemon is involved.
+The new wallpaper shows through a growing mask, and there are four shapes:
+**grow** (a circle opening from a corner or the centre), **outer** (a ring
+closing in on the centre), **wipe** (a straight edge sweeping across at a
+random angle) and **wave** (the same with a rippling edge). The default,
+**random**, plays a different one on every switch and never repeats the last.
+To pin one, use Settings → Appearance → Browse → Transition (it is stored as
+`wallpaperTransition` in `settings.json`). The pick lives in
+`Services/Wallpapers.qml`, so every monitor plays the same transition for one switch.
 
 ## The preview
 

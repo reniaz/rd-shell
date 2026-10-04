@@ -27,6 +27,11 @@ Singleton {
             id: "full",
             name: "Full bar",
             description: "One solid strip across the whole top edge"
+        },
+        {
+            id: "corners",
+            name: "Corner dashboard",
+            description: "Two corner islands and a notch that drops the dashboard"
         }
     ]
 
@@ -50,5 +55,40 @@ Singleton {
         if (root.styles.some(s => s.id === id))
             Settings.barStyle = id;
         root.panelOpen = false;
+    }
+
+    // ── workspace dot skin ───────────────────────────────────
+    // A second, independent choice from the bar shape above: whether
+    // WorkspaceDots.qml paints each occupied slot as a plain dot (today's
+    // look, "dots") or as its workspace number inside the same ring
+    // ("glyph"). Same id/name/description shape as `styles` above, and the
+    // same rule: `id` is what gets persisted, so it must never change once
+    // shipped.
+    readonly property var workspaceSkins: [
+        {
+            id: "dots",
+            name: "Dots",
+            description: "A plain dot per workspace (today's look)"
+        },
+        {
+            id: "glyph",
+            name: "Glyph numerals",
+            description: "Each occupied workspace shows its number instead of an icon"
+        }
+    ]
+
+    // Same fallback shape as `current` above: an id nothing in
+    // `workspaceSkins` answers to -- hand-edited state, or a skin a later
+    // version dropped -- reads back as the first skin ("dots") rather than
+    // leaving WorkspaceDots.qml with nothing to key its default branch on.
+    readonly property string workspaceSkin: root.workspaceSkins.some(s => s.id === Settings.workspaceSkin)
+        ? Settings.workspaceSkin : root.workspaceSkins[0].id
+
+    // Mirrors `apply()` above: an unknown id is ignored rather than
+    // written, since `workspaceSkin`'s own fallback would otherwise mask a
+    // typo silently instead of refusing it here.
+    function applyWorkspaceSkin(id) {
+        if (root.workspaceSkins.some(s => s.id === id))
+            Settings.workspaceSkin = id;
     }
 }

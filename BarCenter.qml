@@ -15,7 +15,21 @@ RowLayout {
     readonly property real clockAnchorX: clockPill.x + clockPill.width / 2
     property alias calendarOpen: clockPill.calendarOpen
 
-    anchors.centerIn: parent
+    // Set only by BarWindow.qml, only in the "corners" style: the item to
+    // dock this group's right edge against instead of centring in the
+    // window. Null (the default) keeps every other style's behaviour
+    // exactly as it was -- the two anchor lines below are both gated on
+    // it rather than one replacing the other outright, which is what lets
+    // a live style switch flip between them with nothing warning about a
+    // binding loop (an `anchors.centerIn` and an `anchors.right` on the
+    // same item fight if both are ever set at once; here only one half of
+    // each pair is ever non-undefined for a given value of `dockRight`).
+    property Item dockRight: null
+
+    anchors.centerIn: root.dockRight ? undefined : parent
+    anchors.right: root.dockRight ? root.dockRight.left : undefined
+    anchors.rightMargin: root.dockRight ? Caelus.barSpacing : 0
+    anchors.verticalCenter: root.dockRight ? parent.verticalCenter : undefined
     spacing: Caelus.barSpacing
 
     // Idea 38's incoming-call banner: the clock pill itself morphs into it

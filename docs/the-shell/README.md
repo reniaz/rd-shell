@@ -31,6 +31,6 @@ closes any other that was open. `BarOverlays.qml` hosts the full-screen
 surfaces (launcher, wallpaper switcher, keybind overview, notification panel,
 power menu) that sit above the bar rather than dropping from a pill.
 `Wallpaper.qml` draws the desktop background itself, on its own layer, and
-runs the crossfade when the wallpaper changes. `WlLock.qml` and
+plays the reveal transition when the wallpaper changes. `WlLock.qml` and
 `LockSurface.qml` are the shell's own lock screen, separate from anything
 above — see [Lock screen](lock-screen.md).

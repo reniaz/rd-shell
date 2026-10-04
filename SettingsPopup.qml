@@ -100,6 +100,75 @@ BarPopup {
             color: Colors.popupBorder
         }
 
+        // The door into the bigger settings *window* (Super+I,
+        // SettingsWindow.qml) -- a navigation rail and full pages of cards
+        // for everything that does not earn a spot on this quick card.
+        // Whole-row clickable, same idiom PowerMenu's own Tile uses, rather
+        // than the Text-with-embedded-MouseArea idiom every toggle on this
+        // card uses: this row does not toggle anything, it navigates, so it
+        // gets the hover film and chevron that say so.
+        Rectangle {
+            id: allSettingsRow
+
+            Layout.fillWidth: true
+            implicitHeight: 44
+            radius: Caelus.radiusCard
+            color: allSettingsMouse.containsMouse ? Colors.surfaceHover : "transparent"
+
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: Caelus.spaceTight
+                anchors.rightMargin: Caelus.spaceTight
+                spacing: Caelus.space
+
+                Text {
+                    text: "tune"
+                    color: Colors.fgDim
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "All settings"
+                    color: Colors.fg
+                    font.family: Caelus.fontFamily
+                    font.pixelSize: Caelus.sizeBody
+                }
+
+                Text {
+                    text: "chevron_right"
+                    color: Colors.fgMuted
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeTitle
+                }
+            }
+
+            MouseArea {
+                id: allSettingsMouse
+
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                // Empty id: open the window on whichever page it was last
+                // left on (SettingsApp.show("") keeps the current page)
+                // rather than resetting it to Appearance every time this
+                // row is clicked.
+                onClicked: {
+                    SettingsApp.show("");
+                    Power.menuOpen = false;
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Colors.popupBorder
+        }
+
         // Whether matugen keeps the wallpaper's own colours instead of
         // reshaping them into today's tonal-spot scheme -- the binary on/off
         // the user asked for, not a scheme picker (Caelus.qml's scheme stays
@@ -244,6 +313,39 @@ BarPopup {
 
             Text {
                 text: "Desktop widgets"
+                color: Colors.fg
+                font.family: Caelus.fontFamily
+                font.pixelSize: Caelus.sizeBody
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        // Idea 31: the clipboard-paste ripple. Same glyph-swap idiom as the
+        // row above; no dimming/dependency gate, since this one settling
+        // means something on its own. Turning it off also stops
+        // ClipboardRipple.qml's own `wl-paste --watch` process (see that
+        // file's `_stopWatcher`), not just the visible ripple.
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Caelus.space
+
+            Text {
+                text: Settings.clipboardRipple ? "toggle_on" : "toggle_off"
+                color: Settings.clipboardRipple ? Colors.popupAccent : Colors.fgMuted
+                font.family: Caelus.symbolFamily
+                font.pixelSize: Caelus.sizeTitle
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Settings.clipboardRipple = !Settings.clipboardRipple
+                }
+            }
+
+            Text {
+                text: "Clipboard ripple"
                 color: Colors.fg
                 font.family: Caelus.fontFamily
                 font.pixelSize: Caelus.sizeBody

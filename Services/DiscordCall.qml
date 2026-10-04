@@ -34,6 +34,12 @@ import Quickshell.Io
 // says), which is why `call.kind` below is always null -- see
 // DiscordCallBanner.qml for how that shows.
 //
+// Observed on a real ring: that CALL_UPDATE path can stay silent (a fresh
+// call arrives as CALL_CREATE, which the plugin does not hear), so the
+// bridge also treats the call's own DM system message -- forwarded by the
+// plugin as an empty-bodied message notification -- as a ring. See the
+// bridge's `_handle_ring_envelope` for the exact rule and its trade-off.
+//
 // Nothing in this file consults Notifications.dnd, on purpose: a call
 // ringing is not the chatter DND exists to hold back, and the user asked
 // for this banner to survive DND same as before.
@@ -144,7 +150,14 @@ Singleton {
     Process {
         id: bridge
         running: true
-        command: ["python3", Quickshell.shellPath("scripts/vencord-call-bridge.py")]
+        // Deliberate: `setpriv --pdeathsig TERM`. Unlike SysMon's sampler,
+        // which writes every tick and dies of SIGPIPE with the shell, the
+        // bridge only writes when a call event arrives -- so a killed or
+        // restarted shell left it running under systemd --user, still
+        // holding 127.0.0.1:42070, and every later shell's bridge hit the
+        // "port busy" fast exit below. The parent-death signal ends it with
+        // the shell that started it.
+        command: ["setpriv", "--pdeathsig", "TERM", "python3", Quickshell.shellPath("scripts/vencord-call-bridge.py")]
 
         onRunningChanged: if (bridge.running) root._startedAt = Date.now()
 
@@ -166,6 +179,13 @@ Singleton {
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => root._onBridgeLine(data)
+        }
+
+        // The bridge's own diagnostics (bind failure, rejected origin, why a
+        // notification was not a ring) -- otherwise discarded with stderr.
+        stderr: SplitParser {
+            splitMarker: "\n"
+            onRead: data => console.info("DiscordCall bridge:", data)
         }
     }
 

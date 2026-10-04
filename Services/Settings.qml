@@ -29,6 +29,16 @@ Singleton {
     // where the reader left it instead of always resetting to Processor.
     property alias sysTab: adapter.sysTab
 
+    // Which settings-app rail page was open last (Services/SettingsApp.qml),
+    // same reasoning and the same alias-onto-the-adapter pattern as sysTab
+    // just above -- reopening the window, this session or the next, lands
+    // back on the page the reader left it on rather than always resetting to
+    // Appearance. SettingsApp.page is what actually validates this against
+    // the live page list and falls back to "look" for anything stale (a page
+    // id a future version renamed or removed); this alias only has to carry
+    // whatever string was last written.
+    property alias settingsPage: adapter.settingsPage
+
     // Shows or hides DesktopWidgets.qml's whole window (giant clock +
     // now-playing card). On by default, the same reasoning dynamicColour's
     // default gets: a machine that has never opened the settings popup
@@ -82,10 +92,108 @@ Singleton {
     // settings.json.
     property alias keepAppColours: adapter.keepAppColours
 
+    // How a wallpaper swap animates: "random" (default -- a different one
+    // every switch) or one transition id to pin. Services/Wallpapers.qml
+    // owns which ids exist and falls back to "random" for anything it does
+    // not recognise, the same way BarStyles does for barStyle.
+    property alias wallpaperTransition: adapter.wallpaperTransition
+
     // The bar's shape, picked in the Ctrl+Alt+B switcher. Stored as a style
     // id; Services/BarStyles.qml owns which ids exist and falls back to the
     // first one for anything it does not recognise.
     property alias barStyle: adapter.barStyle
+
+    // Workspace dot skin ("dots" | "glyph"), picked in the same Ctrl+Alt+B
+    // switcher. Services/BarStyles.qml owns which ids exist and falls back to
+    // "dots" for anything else, same as barStyle above.
+    property alias workspaceSkin: adapter.workspaceSkin
+
+    // Idea 31: the clipboard-paste ripple. On by default, same reasoning as
+    // desktopWidgets above -- a machine that has never opened the settings
+    // popup should see the shell as it is meant to look. ClipboardRipple.qml
+    // reads this directly (not just to hide the ripple, but to stop its own
+    // `wl-paste --watch` process entirely while off -- see that file).
+    property alias clipboardRipple: adapter.clipboardRipple
+
+    // Idea corner-islands-notch-dashboard: whether the notch dashboard
+    // (Services/Dashboard.qml) ignores click-outside dismissal. Off by
+    // default, same reasoning as focusRing and highContrast above -- this is
+    // a deliberate per-person choice, not a look the shell should start
+    // anyone off with.
+    property alias dashboardPinned: adapter.dashboardPinned
+
+    // Settings app -> Appearance -> Wavy OSD progress. On (default), the
+    // volume/brightness OSD level bars draw the Material 3 wavy progress
+    // (WavyArc.qml); off, the plain filled bar they had before.
+    property alias osdWavy: adapter.osdWavy
+
+    // Hyprland's animation feel, picked in the Ctrl+Alt+P switcher
+    // (Services/AnimPresets.qml, AnimPresetSwitcher.qml): "snappy" | "smooth"
+    // | "bouncy" | "minimal". Default "smooth" is exactly today's hand-typed
+    // curves and speeds -- see hypr/animation-presets.lua's own header for
+    // why that one has to stay a byte-for-byte match. Services/AnimPresets.qml
+    // owns which ids exist and falls back to "smooth" for anything else, the
+    // same tolerant-default shape barStyle/workspaceSkin use above. Unlike
+    // every other alias here, this one is NOT the single source of truth for
+    // what the compositor is actually doing: hyprland.lua reads this same key
+    // straight out of settings.json on its own, at every config load
+    // (reload or restart) -- see that file's comment on why -- so this value
+    // and the live Hyprland animation state can disagree only for the instant
+    // between a write here landing on disk and the `hyprctl eval` that
+    // follows it (AnimPresets.apply()) actually running.
+    property alias animPreset: adapter.animPreset
+
+    // Round 4 (settings-app Bar page additions) below. Same alias-onto-the-
+    // adapter pattern and the same "default equals today's behaviour" rule
+    // as everything above -- a machine with no settings.json yet starts up
+    // pixel- and sound-identical to before any of these existed.
+
+    // Services/Time.qml's clock format: "24h" (default, today's hard-coded
+    // "HH:mm") or "12h". Deliberately global rather than bar-only: Time.qml
+    // is the one singleton the bar pill, the desktop clock (DesktopClock.qml)
+    // and the lock screen (LockSurface.qml) all read, and letting the bar
+    // read 24h while the lock screen reads 12h would look like a bug, not a
+    // feature -- the control just happens to live on the Bar settings page,
+    // since that is where a person goes looking for "the clock".
+    property alias clockFormat: adapter.clockFormat
+    // Appends seconds to the same clock. Off (default) keeps Time.qml's
+    // SystemClock at its current Minutes precision; Time.qml only drops to
+    // Seconds precision while this is actually on, so a machine that never
+    // touches this setting gets no extra per-second wakeups it didn't have
+    // before.
+    property alias clockSeconds: adapter.clockSeconds
+
+    // Promotes Config/Caelus.qml's workspaceBeatGlow to a real toggle, the
+    // same way dynamicColour/uiScale are read back out of this file -- see
+    // Caelus.qml's own comment on the property for what it does. Default
+    // false matches Caelus.qml's own literal default exactly.
+    property alias workspaceBeatGlow: adapter.workspaceBeatGlow
+
+    // Pill visibility toggles, same shape as bluetoothPill above: each pill
+    // already hides itself on its own underlying condition (no tray icons,
+    // SysMon unavailable, ...) and these just add a person's own override on
+    // top, same as bluetoothPill's adapter does for the Bluetooth pill. All
+    // default true -- exactly today's unconditional/self-gated visibility --
+    // so nothing disappears from the bar until someone opens this page.
+    property alias trayPill: adapter.trayPill
+    property alias cavaPill: adapter.cavaPill
+    property alias systemPill: adapter.systemPill
+    property alias networkPill: adapter.networkPill
+
+    // Bar edge margin (0-24px) and surface opacity (0.30-0.70), both read
+    // back out of Config/Caelus.qml's barMargin/opacitySurface the same way
+    // uiScale is -- see that file for the clamp (settings.json is hand-
+    // editable, so the clamp lives there too, not just in this page's
+    // slider). Defaults are Caelus.qml's own pre-existing literals (14,
+    // 0.45), so a fresh settings.json changes nothing about how the bar
+    // looks.
+    property alias barMargin: adapter.barMargin
+    property alias barOpacity: adapter.barOpacity
+
+    // Pill.qml's press-origin ink (RippleLayer.qml). On (default) is exactly
+    // what shipped this round; off, Pill falls back to the flat press wash
+    // it always had before the ripple existed.
+    property alias pillRipple: adapter.pillRipple
 
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
@@ -174,6 +282,7 @@ Singleton {
 
             property bool dynamicColour: true
             property string sysTab: "cpu"
+            property string settingsPage: "look"
             property bool desktopWidgets: true
             property real uiScale: 1.0
             property bool highContrast: false
@@ -181,7 +290,23 @@ Singleton {
             property bool bluetoothPill: true
             property bool wallpaperColours: false
             property bool keepAppColours: true
+            property string wallpaperTransition: "random"
             property string barStyle: "islands"
+            property string workspaceSkin: "dots"
+            property bool clipboardRipple: true
+            property bool dashboardPinned: false
+            property bool osdWavy: true
+            property string animPreset: "smooth"
+            property string clockFormat: "24h"
+            property bool clockSeconds: false
+            property bool workspaceBeatGlow: false
+            property bool trayPill: true
+            property bool cavaPill: true
+            property bool systemPill: true
+            property bool networkPill: true
+            property int barMargin: 14
+            property real barOpacity: 0.45
+            property bool pillRipple: true
         }
     }
 }

@@ -1,6 +1,35 @@
-# Settings popup & settings.json
+# Settings
 
-The `✦` pill on the left of the bar opens `SettingsPopup.qml`. It holds:
+There are two ways into settings, and they end up in the same place:
+
+- **The popup** — the `✦` pill on the left of the bar opens
+  `SettingsPopup.qml`, a short list of the handful of things worth a single
+  click (below). Its **All settings** row opens the window.
+- **The window** — `Super+I`, or `qs ipc -c rd-shell call settings toggle`,
+  opens `SettingsWindow.qml`: a real floating window (not a layer-shell
+  panel like everything else in this shell) with a nav rail on the left —
+  Appearance, Bar, Desktop, Accessibility, Keybinds, About — and that page's
+  cards on the right. It's also in the launcher (`Super+Space`, type
+  "settings"), and Hyprland floats and centers it at 960×640 via a
+  `settings-window` rule in `hyprland.lua` matched on its window class
+  (`org.quickshell`, Quickshell's one and only real xdg-toplevel — everything
+  else is layer-shell and never shows up in `hyprctl clients`) and title
+  (`rd-shell settings`).
+
+  `qs ipc -c rd-shell call settings open <page>` jumps straight to a page
+  (`look`, `bar`, `desktop`, `access`, `keys`, `about`); the last page open
+  is remembered (`settingsPage` in `settings.json`, below). Closing the
+  window — `Escape`, the titlebar, `Super+Q`, whatever the compositor uses —
+  is a real window close, caught via `FloatingWindow`'s own `closed` signal,
+  so `qs ipc -c rd-shell call settings toggle` right after always reopens it
+  rather than needing a second toggle to "catch up."
+
+  Inside the window: `Escape` closes it, `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle
+  pages, `Ctrl+1`…`Ctrl+6` jump straight to a rail entry by position.
+
+## The popup
+
+`SettingsPopup.qml` holds:
 
 - **Desktop widgets** — on/off switch for the [desktop clock and Spotify
   card](desktop-widgets.md).
@@ -21,15 +50,39 @@ The `✦` pill on the left of the bar opens `SettingsPopup.qml`. It holds:
   bat on their own hued syntax scheme instead of following the wallpaper into
   grey; everything else stays monochrome either way.
 
-Everything the popup can set is backed by a single file,
+## Accessibility page
+
+The window's Accessibility page carries the popup's own UI scale/high
+contrast/focus ring (above) plus one more card, **Animation** — Hyprland's
+whole-desktop motion, not just this shell's own:
+
+- **Motion preset** — a four-way choice (Snappy, Smooth, Bouncy, Minimal)
+  applied live via `hyprctl eval`, no reload needed. **Minimal** is this
+  page's actual reduced-motion option: fades only, no sliding or popping.
+  **Smooth** is the default and reproduces this rice's original, hand-tuned
+  curves and speeds exactly. See [Hyprland →
+  animation-presets.lua](../dotfiles/hyprland.md#animation-presets) for how
+  the choice survives a reload.
+- **Animated switcher** button — opens the same `Ctrl+Alt+P` coverflow
+  (below) without leaving the keyboard for the mouse.
+
+Like `barStyle`, the chosen preset (`animPreset` in `settings.json`,
+`"snappy"` / `"smooth"` / `"bouncy"` / `"minimal"`) isn't in the table below —
+see this section instead.
+
+Everything the popup and the window can set is backed by a single file,
 `settings.json`, next to `shell.qml` in `~/.config/quickshell/rd-shell/` —
 written by `Services/Settings.qml`, never committed to the repo. It doesn't
-need to exist; every property has its own default:
+need to exist; every property has its own default. The window's pages add
+their own keys to the same file (a bar style, a bluetooth-pill toggle, and
+so on) — see each page's own doc rather than this list, which only tracks
+what predates the window plus the one key the window itself owns:
 
 ```json
 {
   "dynamicColour": true,
   "sysTab": "cpu",
+  "settingsPage": "look",
   "desktopWidgets": true,
   "uiScale": 1.0,
   "highContrast": false,
@@ -43,6 +96,7 @@ need to exist; every property has its own default:
 |---|---|---|
 | `dynamicColour` | `true` | Whether the bar, semantic pills and Hyprland's window borders follow the wallpaper (matugen) or stay on the static caelus palette. Not exposed in the settings popup — edit the file by hand. See [Theming](../theming/README.md). |
 | `sysTab` | `"cpu"` | Which tab the system monitor popup remembers across opens. |
+| `settingsPage` | `"look"` | Which rail page the settings window remembers across opens/closes. |
 | `desktopWidgets` | `true` | The toggle described above. |
 | `uiScale` | `1.0` | The UI scale slider described above. |
 | `highContrast` | `false` | The high-contrast toggle described above. |

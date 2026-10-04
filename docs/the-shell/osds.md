@@ -17,3 +17,16 @@ by the matching key/bind:
 
 `BarOsdWatch.qml` positions these consistently against whatever monitor
 triggered them.
+
+## Level indicator
+
+Brightness and volume draw their level on a straight track, not a ring — it
+reads like a status line, not a dial, which matches the rest of the card.
+`WavyArc.qml` draws that track as Material 3 Expressive's "wavy linear"
+progress indicator: the filled portion is a sine-offset stroke whose
+amplitude eases to flat at both its own ends, the unfilled remainder is a
+plain straight stroke, split from the fill by the small M3 gap; its phase
+drifts slowly on a `Timer` that only runs while the card is actually on
+screen with the wavy style on. "Wavy OSD progress" in Settings → Appearance switches it off in
+favour of the plain filled bar it replaced, for anyone who finds the motion
+distracting.

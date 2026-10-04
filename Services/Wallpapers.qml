@@ -51,6 +51,54 @@ Singleton {
     readonly property string current: wp._current
     property string _current: ""
 
+    // The swap animations Wallpaper.qml can play, in the shape
+    // SettingsChoiceRow reads (id/name/description). "random" is not a
+    // transition of its own but the default choice: a different one of the
+    // rest on every switch. Deliberately drawn by Wallpaper.qml itself
+    // rather than handed to swww's `--transition-type` -- "only my
+    // quickshell" is that file's standing constraint, see its header.
+    readonly property var transitions: [
+        { id: "random", name: "Random", description: "A different transition on every switch" },
+        { id: "grow", name: "Grow", description: "A circle opening from a corner or the centre" },
+        { id: "outer", name: "Outer", description: "A ring closing in on the centre" },
+        { id: "wipe", name: "Wipe", description: "A straight edge sweeping across at an angle" },
+        { id: "wave", name: "Wave", description: "A rippling edge sweeping across at an angle" },
+    ]
+
+    // Settings.wallpaperTransition, validated: anything this file no longer
+    // knows (a hand-edited settings.json, an id a later version renamed)
+    // reads as "random" instead of naming a transition nothing can draw.
+    readonly property string transitionChoice: wp.transitions.some(t => t.id === Settings.wallpaperTransition)
+        ? Settings.wallpaperTransition : "random"
+
+    function applyTransition(id) {
+        if (wp.transitions.some(t => t.id === id))
+            Settings.wallpaperTransition = id;
+    }
+
+    // What the swap to `current` plays, and a 0..1 number it varies by (the
+    // corner a grow opens from, the angle a wipe sweeps at). Picked here,
+    // once per change, rather than in Wallpaper.qml, which is instantiated
+    // per screen -- each one rolling its own would play two different
+    // transitions on two monitors for the same switch. This handler is
+    // connected when the singleton is built, before any Wallpaper's own
+    // Connections on `current`, so the pick is already in place by the
+    // time a swap reads it.
+    property string transition: "grow"
+    property real transitionSeed: 0
+
+    on_CurrentChanged: {
+        let kind = wp.transitionChoice;
+        if (kind === "random") {
+            // Never the same one twice running: "variety" that repeats the
+            // last switch half the time does not read as variety.
+            const pool = wp.transitions.filter(t => t.id !== "random" && t.id !== wp.transition);
+            kind = pool[Math.floor(Math.random() * pool.length)].id;
+        }
+        wp.transition = kind;
+        wp.transitionSeed = Math.random();
+    }
+
     property bool panelOpen: false
 
     property var _entries: []

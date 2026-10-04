@@ -69,9 +69,30 @@ PanelWindow {
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            Rectangle {
-                id: track
+            WavyArc {
+                id: wavyTrack
 
+                visible: Settings.osdWavy
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                value: root.fraction
+                trackColor: Colors.brightnessTrack
+                fillColor: Colors.accent
+                // Only while the card is actually up -- see WavyArc.qml's
+                // own comment on why this is `shown`, not `visible`.
+                running: osd.shown
+            }
+
+            // Today's plain filled bar -- kept working behind "Wavy OSD
+            // progress" (SettingsLookPage.qml) rather than deleted, so
+            // turning the toggle off is a real fallback, not a half-removed
+            // path. `visible: false` on whichever half loses pulls it out of
+            // the RowLayout entirely (Qt Quick Layouts skip invisible
+            // children), so this is a clean swap with no Loader needed.
+            Rectangle {
+                id: flatTrack
+
+                visible: !Settings.osdWavy
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
                 implicitHeight: 5
@@ -79,7 +100,7 @@ PanelWindow {
                 color: Colors.brightnessTrack
 
                 Rectangle {
-                    width: Math.round(track.width * root.fraction)
+                    width: Math.round(flatTrack.width * root.fraction)
                     height: parent.height
                     radius: parent.radius
                     color: Colors.accent

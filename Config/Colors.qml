@@ -372,6 +372,17 @@ Singleton {
     // calendar cards all head and highlight in the main accent.
     readonly property color popupAccent: accent
 
+    // Text or a glyph drawn ON an accent fill -- the calendar's today disc,
+    // the settings window's active nav row, a switch knob that is on, a
+    // selected segment. Black only in the static theme, where the accent is
+    // always dark enough for it (§7.2 light mode). matugen's dark scheme puts
+    // a light tone on `accent`, so black text reads there -- but its light
+    // scheme puts a darker, more saturated tone on it instead, where black
+    // text loses most of its contrast. on_primary is M3's own answer to
+    // exactly this inversion, read straight through Wal.onPrimary rather than
+    // re-derived here.
+    readonly property color onAccent: root.dynamic ? Wal.onPrimary : bg
+
     // ── media popup ──────────────────────────────────────────
     // Shares the pill's warm taupe, so the card reads as that icon opened up
     // rather than as a second widget about sound.
@@ -415,14 +426,8 @@ Singleton {
     readonly property color calBody: fgDim
     readonly property color calMeta: fgMuted
     readonly property color calToday: popupAccent
-    // Black only in the static theme, where the accent disc is always dark
-    // enough for it (§7.2 light mode). matugen's dark scheme puts a light
-    // tone on `accent`, so black text reads there -- but its light scheme
-    // puts a darker, more saturated tone on it instead, where black text
-    // loses most of its contrast. on_primary is M3's own answer to exactly
-    // this inversion, read straight through Wal.onPrimary rather than
-    // re-derived here.
-    readonly property color calTodayFg: root.dynamic ? Wal.onPrimary : bg
+    // The day number on the accent disc: plain onAccent, see popupAccent.
+    readonly property color calTodayFg: onAccent
     readonly property color calOutside: surfaceHover
 
     // Reminders share the card with the grid, so they wear the calendar's own

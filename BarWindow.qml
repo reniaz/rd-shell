@@ -235,7 +235,76 @@ Scope {
                 return { radius: 0, islands, blobIslands };
             }
 
+            if (id === "corners") {
+                // Left island unchanged. The right island is centre (the
+                // clock group) docked against the right group's own left
+                // edge and merged with it -- BarCenter.qml's `dockRight`
+                // anchors the two flush in this style (see the comment
+                // there), so `raw[1]`/`raw[2]` already sit edge to edge
+                // here and this only needs their bounding-box union, not a
+                // gap-aware merge. The third slot is not a pill group at
+                // all: it is the notch tab, centred on the bar's own
+                // width and sized off Dashboard.tabWidth, flush with the
+                // real top screen edge via the same `_offEdge` push `full`
+                // uses above -- see that branch's comment for why a
+                // rect's top edge has to land outside the visible window
+                // rather than merely at its y origin for a flush edge to
+                // read as one. Its *visible* height (from the real y 0
+                // down to the rect's own bottom) is deliberately shorter
+                // than the corner islands', rather than the full
+                // Caelus.barHeight: a tab, unlike an island, holds no
+                // pills to clear, only a small glyph.
+                const cL = raw[1], cR = raw[2];
+                const rightX = Math.min(cL.x, cR.x);
+                const rightEdge = Math.max(cL.x + cL.w, cR.x + cR.w);
+                const right = {
+                    x: rightX,
+                    y: Math.min(cL.y, cR.y),
+                    w: rightEdge - rightX,
+                    h: Math.max(cL.h, cR.h)
+                };
+
+                const off = bar._offEdge;
+                const tabW = Dashboard.tabWidth;
+                // While the dashboard is open the tab grows the last
+                // `barInset` down to the islands' own bottom edge -- the
+                // y (Blob.joinY) every popup card starts at -- so the card
+                // meets it edge to edge and Blob's smooth-min draws the
+                // concave flare there, below the bar's y-range, the same
+                // way it fuses the calendar onto the clock island. Left
+                // short, the card would float a gap below it unjoined.
+                const tabShortH = Math.max(1, raw[0].h - Caelus.barInset);
+                const tabFullH = raw[0].y + raw[0].h;
+                const tabVisibleH = tabShortH + (tabFullH - tabShortH) * bar._notchDrop;
+                const tab = {
+                    x: (bar.width - tabW) / 2,
+                    y: -off,
+                    w: tabW,
+                    h: tabVisibleH + off
+                };
+
+                const islands = [raw[0], right, tab];
+                // Not widened into each other the way `full`'s
+                // `blobIslands` are: these three stay genuinely separate
+                // plates with real gaps between them, same as `islands`
+                // style, so no seam-avoidance margin is needed here.
+                return { radius: Caelus.radiusIsland, islands, blobIslands: islands };
+            }
+
             return { radius: Caelus.radiusIsland, islands: raw, blobIslands: raw };
+        }
+
+        // 0 with the dashboard closed, 1 with it open -- eased on the
+        // same Motion.spatial pairing the card's own reveal uses, so the
+        // notch tab's drop to the card's join line lands with the card
+        // instead of snapping a frame ahead of it.
+        property real _notchDrop: Dashboard.open && BarStyles.current === "corners" ? 1 : 0
+        Behavior on _notchDrop {
+            NumberAnimation {
+                duration: Motion.spatial
+                easing.type: Easing.Bezier
+                easing.bezierCurve: Motion.spatialCurve
+            }
         }
 
         // `_activeStyle`'s own shapes (wherever the last completed
@@ -436,10 +505,103 @@ Scope {
 
             BarCenter {
                 id: centerGroup
+                // Only in "corners": BarCenter.qml's own `dockRight` swaps
+                // its centreIn for an anchor against this item's left edge
+                // when set (see the comment there), so the clock group
+                // reads as part of the same right-hand island as
+                // `rightGroup` rather than floating alone in the middle.
+                // Null the rest of the time, which is the property's own
+                // default and what keeps every other style's centring
+                // untouched.
+                dockRight: BarStyles.current === "corners" ? rightGroup : null
             }
 
             BarRight {
                 id: rightGroup
+            }
+
+            // The notch tab: idea corner-islands-notch-dashboard's third
+            // island, and the only thing in `strip` that is not a pill
+            // group. Positioned straight off `_styleShapes`'s own "corners"
+            // geometry rather than growing a second copy of that math --
+            // `_rect` tracks the live morph the same way `IslandSurface`
+            // does, so the clickable area and the glyph always sit exactly
+            // where the Blob plate they are drawn over actually is.
+            // `y`/`height` only take the rect's *visible* span (from the
+            // real top edge down to its bottom) rather than its off-screen
+            // top -- the plate itself is pushed past y 0 by `_offEdge` so
+            // its own top edge never draws a border line (see the
+            // `_styleShapes` comment), but a MouseArea has no such edge to
+            // hide and only needs to cover the pixels someone can actually
+            // see and click.
+            Item {
+                id: notchTab
+
+                // Only drawn/clickable while this style is actually
+                // settled on "corners" -- not merely morphing through it
+                // from a neighbour, the same gate `bar._activeStyle`
+                // exists for elsewhere in this file. Instant rather than
+                // faded: every other conditionally-shown pill in this bar
+                // (the media pill's `visible: Media.available`, say)
+                // appears and disappears the same way, and the plate
+                // underneath it keeps morphing regardless since `Blob`
+                // reads `bar._shape` directly, not this item's visibility.
+                visible: BarStyles.current === "corners"
+
+                readonly property var _rect: bar._shape.islands[2]
+                readonly property bool hovered: tabArea.containsMouse
+                readonly property bool pressed: tabArea.pressed
+
+                x: notchTab._rect.x
+                y: 0
+                width: notchTab._rect.w
+                height: Math.max(0, notchTab._rect.y + notchTab._rect.h)
+
+                Rectangle {
+                    id: tabHoverWash
+
+                    anchors.fill: parent
+                    anchors.topMargin: Caelus.spaceTight
+                    anchors.bottomMargin: Caelus.spaceTight
+                    radius: Caelus.radiusPill
+                    color: Colors.fg
+                    // Same rest/hover/press shape as Pill.qml's own
+                    // `hoverBg` -- one Rectangle, driven by opacity alone,
+                    // so this reads as the same kind of control as every
+                    // pill beside it rather than a bespoke button.
+                    opacity: notchTab.pressed ? Caelus.opacityPress
+                        : notchTab.hovered ? Caelus.opacityHover : 0
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: Motion.fast; easing.type: Motion.standard }
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "expand_more"
+                    font.family: Caelus.symbolFamily
+                    font.pixelSize: Caelus.sizeBody
+                    color: Colors.fgMuted
+                    // Points at whichever way the panel is about to go --
+                    // down to open, back up to close -- the same chevron-
+                    // flip idiom KeybindOverview/CalendarPopup already use
+                    // for their own expanders.
+                    rotation: Dashboard.open ? 180 : 0
+
+                    Behavior on rotation {
+                        NumberAnimation { duration: Motion.fast; easing.type: Motion.standard }
+                    }
+                }
+
+                MouseArea {
+                    id: tabArea
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Dashboard.toggle()
+                }
             }
         }
 

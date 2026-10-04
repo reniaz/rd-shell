@@ -84,8 +84,13 @@ Singleton {
     // The workspace indicator picks up a faint accent edge on the beat while
     // something is playing, and is completely inert when nothing is. Off by
     // default: it is a decoration on the one element whose real job is to say
-    // which workspace you are on, and that job comes first.
-    readonly property bool workspaceBeatGlow: false
+    // which workspace you are on, and that job comes first. Promoted to a
+    // Settings toggle (settings window, Bar page) the same way dynamicColour
+    // is, above -- typeof-guarded for the same reason (this file has to keep
+    // compiling and starting the bar correctly before Services/Settings.qml
+    // has landed in the tree), and Settings.qml's own JsonAdapter default is
+    // this same `false`, so the two never disagree.
+    readonly property bool workspaceBeatGlow: typeof Settings !== "undefined" ? Settings.workspaceBeatGlow : false
 
     // Four named local-time bands rather than a sunrise calculation -- solar
     // position is a dependency this shell does not need just to look
@@ -185,8 +190,20 @@ Singleton {
     // islands used to sit at 0.28 against popup bodies at 0.6; the popups'
     // number is the one that stayed, because a card full of text is what has to
     // stay legible over whatever the wallpaper is doing, where a thin strip of
-    // icons does not.
-    readonly property real opacitySurface: 0.6
+    // icons does not. Since lowered from 0.6: at 0.6 the full-width strip read
+    // as a solid band rather than glass. Popup text holds up at 0.45 because
+    // the cards are blurred behind as well. Keep it well clear of the 0.2
+    // `ignore_alpha` in hyprland.lua's layer rules, or the blur switches off.
+    //
+    // Settings-backed (Bar page's "Surface opacity" slider), range
+    // 0.30-0.70, same typeof-guarded shape as uiScale above. Clamped here
+    // too, not only by the slider -- settings.json is hand-editable -- and
+    // the clamp's floor (0.30) is deliberately well clear of the 0.2
+    // `ignore_alpha` threshold named just above: letting this slide down to
+    // or below 0.2 wouldn't error anywhere, it would just silently turn the
+    // blur off.
+    readonly property real opacitySurface: Math.max(0.30, Math.min(0.70,
+        typeof Settings !== "undefined" ? Settings.barOpacity : 0.45))
 
     // ── spacing ──────────────────────────────────────────────
     // One ladder, used for both gaps between things and padding inside them.
@@ -240,7 +257,16 @@ Singleton {
     // `barIslandPad` is how far an island reaches past the pills it holds.
     readonly property int barHeight: 44
     readonly property int barInset: 6
-    readonly property int barMargin: 14
+    // Settings-backed (Bar page's "Edge margin" slider, 0-24px), read the
+    // same way uiScale is above -- typeof-guarded so this file keeps
+    // compiling and starting the bar before Settings.qml exists, and
+    // clamped here too, not only by the slider: settings.json is a file
+    // people can hand-edit, and this is the one bar-geometry token a slider
+    // was ever given in the first place (see uiScale's own comment on why
+    // barHeight/barInset/barSpacing/barIslandPad never get one -- this is
+    // purely the gap at the screen edge, not the compositor-reserved strip).
+    readonly property int barMargin: Math.max(0, Math.min(24,
+        typeof Settings !== "undefined" ? Settings.barMargin : 14))
     readonly property int barSpacing: 8
     readonly property int barIslandPad: 6
 }

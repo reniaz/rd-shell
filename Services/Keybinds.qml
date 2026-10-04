@@ -31,7 +31,17 @@ Singleton {
         root.open = !root.open;
     }
 
-    onOpenChanged: if (root.open) load.running = true
+    // Public (re)load, usable without opening the standalone SUPER+K
+    // overview -- SettingsKeysPage.qml calls this on its own, since setting
+    // `root.open` from there would pop that overlay open too (it is a
+    // layer-shell surface that takes the keyboard exclusively). The overview
+    // itself still just flips `open`, which this backs the same way it
+    // always has.
+    function reload() {
+        load.running = true;
+    }
+
+    onOpenChanged: if (root.open) root.reload()
 
     Process {
         id: load
@@ -457,14 +467,17 @@ Singleton {
         }
     }
 
-    readonly property var results: root._search(root.query)
+    readonly property var results: root.search(root.query)
 
     // Every word of the query has to appear somewhere in the row, in any
     // order, so "shift s" and "s shift" both find SUPER + SHIFT + S, and a
     // typed "+" is just noise. Rows whose action starts with the query come
     // first; everything else keeps hyprland.lua's own order, which already
     // groups related binds together and is worth more than alphabetical.
-    function _search(text) {
+    // Public: SettingsKeysPage.qml calls this with its own local query
+    // string rather than writing `root.query` (that drives the standalone
+    // overview's own search field, not the settings page's).
+    function search(text) {
         const needle = text.trim().toLowerCase();
         const words = needle.replace(/\+/g, " ").split(/\s+/).filter(w => w.length > 0);
         if (words.length === 0) return root.binds;

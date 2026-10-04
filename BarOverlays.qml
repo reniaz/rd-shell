@@ -8,6 +8,13 @@ Item {
     required property var modelData
     required property string overlayScreen
 
+    // This screen's name, null-safe. Every gate below reads it rather than
+    // `modelData.name` directly: when a monitor goes away, Variants nulls
+    // `modelData` on the dying delegate a moment before tearing it down,
+    // and any binding re-evaluated in that window would otherwise throw
+    // "Cannot read property 'name' of null" -- "" simply matches no screen.
+    readonly property string screenName: root.modelData?.name ?? ""
+
     // Forwarded from BarWindow.qml -- the four cross-group anchors it already
     // aggregates from a group's own x plus that group's pill-local offset.
     required property real systemAnchorX
@@ -42,7 +49,8 @@ Item {
         sysLoader, mediaLoader,
         calendarLoader,
         settingsLoader, notificationLoader, localLoader, diskLoader,
-        volumeLoader, micLoader, networkLoader, claudeLoader
+        volumeLoader, micLoader, networkLoader, claudeLoader,
+        dashboardLoader
     ]
 
     // Exported alongside `cards` below, both read by BarWindow.qml's `blob`.
@@ -116,7 +124,7 @@ Item {
     PopupLoader {
         id: settingsLoader
 
-        open: Power.menuOpen && root.modelData.name === root.overlayScreen
+        open: Power.menuOpen && root.screenName === root.overlayScreen
 
         SettingsPopup {
             anchorX: root.rightGroup.x + root.rightGroup.menuAnchorX
@@ -124,10 +132,34 @@ Item {
         }
     }
 
+    // Idea corner-islands-notch-dashboard. Dashboard.open is one global flag
+    // -- the notch tab exists on every screen's bar under the "corners"
+    // style, same as the "✦" pill the power menu above opens from -- so
+    // this follows that menu's exact gate rather than a pill-local one:
+    // `root.screenName === root.overlayScreen` keeps a second monitor
+    // from opening its own copy of the same panel. The style check is what
+    // actually matters for existence: the panel has no reason to exist
+    // outside "corners" at all, and Dashboard.qml's own Connections on
+    // BarStyles.current additionally resets the flag on the way out, so a
+    // later switch back to "corners" starts closed rather than replaying
+    // whatever was left open. `onDismissed` is click-outside only -- Escape
+    // is handled inside NotchDashboard.qml itself, independently of this
+    // signal; see the Shortcut there for why the two needed splitting.
+    PopupLoader {
+        id: dashboardLoader
+
+        open: Dashboard.open && BarStyles.current === "corners" && root.screenName === root.overlayScreen
+
+        NotchDashboard {
+            anchorX: root.width / 2
+            onDismissed: if (!Dashboard.pinned) Dashboard.open = false
+        }
+    }
+
     // The same one-screen rule as the power menu, and for the same reason: it
     // takes the keyboard exclusively, so two of them would fight over it.
     PopupLoader {
-        open: Apps.open && root.modelData.name === root.overlayScreen
+        open: Apps.open && root.screenName === root.overlayScreen
 
         Launcher {
             screen: root.modelData
@@ -138,7 +170,7 @@ Item {
     // Same one-screen rule and for the same reason as the launcher: the
     // keybind overview takes the keyboard exclusively too.
     PopupLoader {
-        open: Keybinds.open && root.modelData.name === root.overlayScreen
+        open: Keybinds.open && root.screenName === root.overlayScreen
 
         KeybindOverview {
             screen: root.modelData
@@ -152,7 +184,7 @@ Item {
     // the service rather than a dismissed signal, because applying a wallpaper
     // has to shut it too and only Wallpapers knows when that happened.
     PopupLoader {
-        open: Wallpapers.panelOpen && root.modelData.name === root.overlayScreen
+        open: Wallpapers.panelOpen && root.screenName === root.overlayScreen
 
         WallpaperSwitcher {
             screen: root.modelData
@@ -162,9 +194,21 @@ Item {
     // The wallpaper switcher's rules exactly, one screen and exclusive keys, and
     // closed through BarStyles for the same reason: applying a style shuts it.
     PopupLoader {
-        open: BarStyles.panelOpen && root.modelData.name === root.overlayScreen
+        open: BarStyles.panelOpen && root.screenName === root.overlayScreen
 
         BarStyleSwitcher {
+            screen: root.modelData
+        }
+    }
+
+    // Ctrl+Alt+P's animation preset switcher. Same one-screen, exclusive-keys
+    // rule as the bar style switcher just above, and for the same reason;
+    // closed through AnimPresets rather than a dismissed signal since
+    // applying a preset has to shut it too.
+    PopupLoader {
+        open: AnimPresets.panelOpen && root.screenName === root.overlayScreen
+
+        AnimPresetSwitcher {
             screen: root.modelData
         }
     }
@@ -175,7 +219,7 @@ Item {
     PopupLoader {
         id: notificationLoader
 
-        open: Notifications.panelOpen && root.modelData.name === root.overlayScreen
+        open: Notifications.panelOpen && root.screenName === root.overlayScreen
 
         NotificationPanel {
             anchorX: root.rightGroup.x + root.rightGroup.bellAnchorX
@@ -189,7 +233,7 @@ Item {
     PopupLoader {
         id: sysLoader
 
-        open: SysMon.panelOpen && root.modelData.name === root.overlayScreen
+        open: SysMon.panelOpen && root.screenName === root.overlayScreen
 
         SysPopup {
             anchorX: root.systemAnchorX
@@ -308,7 +352,7 @@ Item {
     }
 
     PopupLoader {
-        open: KeyboardLayout.osdVisible && root.modelData.name === root.overlayScreen
+        open: KeyboardLayout.osdVisible && root.screenName === root.overlayScreen
 
         KeyboardLayoutOsd { screen: root.modelData }
     }
@@ -317,7 +361,7 @@ Item {
     // Caps/Num Lock is a per-keyboard fact, not a per-monitor one, so
     // without this every screen would flash its own copy of the same card.
     PopupLoader {
-        open: LockKeys.osdVisible && root.modelData.name === root.overlayScreen
+        open: LockKeys.osdVisible && root.screenName === root.overlayScreen
 
         LockKeysOsd { screen: root.modelData }
     }
@@ -325,7 +369,7 @@ Item {
     // osdWatch is BarOsdWatch.qml's stand-in for the osdVisible flag Audio.qml
     // does not raise; see the comment there.
     PopupLoader {
-        open: root.osdWatch.pulse && root.modelData.name === root.overlayScreen
+        open: root.osdWatch.pulse && root.screenName === root.overlayScreen
 
         AudioOsd {
             screen: root.modelData
@@ -337,7 +381,7 @@ Item {
     // device osdVisible never rises, but the && costs nothing to be sure this
     // window is never even asked for on one.
     PopupLoader {
-        open: Brightness.available && Brightness.osdVisible && root.modelData.name === root.overlayScreen
+        open: Brightness.available && Brightness.osdVisible && root.screenName === root.overlayScreen
 
         BrightnessOsd { screen: root.modelData }
     }
@@ -348,7 +392,7 @@ Item {
     BarContrastWatch {
         id: contrastWatch
 
-        screenName: root.modelData.name
+        screenName: root.screenName
     }
 
     PopupLoader {
@@ -365,7 +409,7 @@ Item {
     // this goes from several toasts to none in a single change. The loader holds
     // the window through the slide that takes them back off the right edge.
     PopupLoader {
-        open: Notifications.popups.length > 0 && root.modelData.name === root.overlayScreen
+        open: Notifications.popups.length > 0 && root.screenName === root.overlayScreen
 
         NotificationPopups { screen: root.modelData }
     }
@@ -381,7 +425,7 @@ Item {
     PopupLoader {
         id: claudeLoader
 
-        open: ClaudeSession.panelOpen && root.modelData.name === root.overlayScreen
+        open: ClaudeSession.panelOpen && root.screenName === root.overlayScreen
 
         ClaudePanel {
             // Same reasoning as the disk popup above: rightGroup sits directly

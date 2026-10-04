@@ -94,7 +94,10 @@ leaving the dialog stuck on "Saving…" forever.
 |---|---|
 | `Ctrl+Alt+F` | Wallpaper switcher |
 | `Ctrl+Alt+B` | Bar style switcher |
+| `Ctrl+Alt+P` | Animation preset switcher |
+| `Ctrl+Alt+U` | Utilities tray (read text / pick colour / scan QR) |
 | `Ctrl+Shift+Escape` | System monitor |
+| `Super+I` | Settings |
 | `Super+N` | Notification panel |
 | `Super+M` | Power menu |
 | `Super+L` | Lock the session |

@@ -1,16 +1,63 @@
 # Hyprland
 
 `hypr/` is this machine's real `~/.config/hypr`, mirrored 1:1, for the
-Lua-configured fork of Hyprland this rice runs on. `install.sh` links four
+Lua-configured fork of Hyprland this rice runs on. `install.sh` links five
 files from it — not the whole directory, which also accumulates HyprMod state
 and generated lock colours that aren't this repo's to own:
 
 | File | Purpose |
 |---|---|
-| `hyprland.lua` | Main config — monitors, workspaces, binds (see [Keybinds](../keybinds.md)), window rules, autostart, the caelus border colours. |
+| `hyprland.lua` | Main config — monitors, workspaces, binds (see [Keybinds](../keybinds.md)), window rules, autostart, the caelus border colours and the soft inner glow along each window's edge (`decoration.glow`, accent on the focused window, faint grey elsewhere). |
 | `hyprland-gui.lua` | HyprMod-generated, loaded *after* `hyprland.lua` — overrides rounding, gaps and cursor theme/size from whatever HyprMod's own GUI last wrote. |
+| `animation-presets.lua` | Four named sets of curves and `hl.animation()` calls (Snappy/Smooth/Bouncy/Minimal) — see below. |
 | `hypridle.conf` | Locks the session after 5 minutes, blanks displays after 10. Inert unless `hypridle.service` is enabled (`install.sh` offers to). |
 | `hyprlock.conf` | Lock-screen layout; sources the seven colour variables `scripts/wallpaper-apply.sh` writes to `hyprlock-colors.conf` on every wallpaper switch. |
+
+## animation-presets.lua
+
+What used to be one inline block of `hl.curve()`/`hl.animation()` calls in
+`hyprland.lua` is now four named presets in `animation-presets.lua`, picked
+in the shell's own `Ctrl+Alt+P` switcher or its Accessibility-page "Animation"
+card (see [Settings](../the-shell/settings.md#accessibility-page)):
+
+- **Snappy** — the same curves as Smooth, speeds roughly 1.6–1.8× higher.
+- **Smooth** — the default, and a byte-for-byte match for this rice's
+  original hand-tuned curves and speeds.
+- **Bouncy** — an overshoot bezier on windows/layers/workspaces (`popin 80%`
+  on windows-in).
+- **Minimal** — the reduced-motion option: every slide/pop/zoom disabled,
+  fades only.
+
+`hyprland.lua` reads the active choice itself, at config-load time, straight
+out of `~/.config/quickshell/rd-shell/settings.json` (`io.open` + a Lua
+pattern match, no JSON library needed for one key) and calls
+`require("animation-presets").apply(name)` — falling back to `"smooth"` if
+the file or key is missing. This has to happen in `hyprland.lua` rather than
+the shell re-asserting it on its own startup: `hyprctl reload` gives
+Hyprland's Lua a **fresh interpreter state** (confirmed empirically — a
+global set via a live `hyprctl eval` does not survive a reload), so anything
+set only by a one-off shell-side `hyprctl eval` at shell startup would be
+silently undone by the next plain `hyprctl reload` (a monitor hotplug, a
+`keybind-overrides.lua` save, …). Reading the persisted choice back in
+`hyprland.lua` itself means every reload re-applies the right preset,
+automatically, with no shell involvement.
+
+Switching presets live (no reload) is the same one-liner,
+`hyprctl eval 'require("animation-presets").apply("<name>")'`, run from
+`Services/AnimPresets.qml` via `Quickshell.execDetached` — never
+`hyprctl keyword`, which can't call into Lua. `require()`'s normal caching
+means this is cheap to call repeatedly within one Hyprland session; it's only
+a `hyprctl reload` that resets it, which is exactly the case the
+`hyprland.lua`-side read above exists to handle.
+
+One caveat, inherent to Hyprland and not fixable short of a full restart:
+custom bezier curves registered via `hl.curve()` (Bouncy's `overshoot`) live
+in a separate, additive registry that `hyprctl reload` does **not** clear —
+unlike every `hl.animation()` leaf setting (speed/curve/enabled/style), which
+reloads back to exactly what the active preset specifies. Trying a curve that
+defines a new bezier leaves that one definition registered for the rest of
+the session; it's inert once you're off that preset, just not removable
+without restarting Hyprland outright.
 
 ## Autostart
 

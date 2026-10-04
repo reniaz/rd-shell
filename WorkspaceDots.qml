@@ -25,6 +25,30 @@ Item {
     // until it did.
     property bool beatReactive: Caelus.workspaceBeatGlow
 
+    // The "glyph" skin (idea 33): each occupied slot's workspace number
+    // instead of the app-category icon below, read straight off
+    // Services/BarStyles.qml the same way `beatReactive` reads Caelus above.
+    // Deliberate: "dots" is BarStyles.workspaceSkins[0].id, so a fresh
+    // machine with no settings.json yet -- or an id typo'd by hand --
+    // renders exactly as this file always has, which is the opt-in
+    // guarantee the round's shared contract asked for.
+    readonly property string skin: BarStyles.workspaceSkin
+
+    // Deliberate: a plain digit in the bar's own `Caelus.fontFamily`, not a
+    // CJK numeral in a second font. A first pass drew 一二三 in the CJK
+    // serif face fc-list found installed, and it read as visibly *worse*
+    // than a plain digit once actually on screen next to the rest of the
+    // row -- a second font family means a second set of metrics (different
+    // em-box, different optical centre, uneven advance widths between
+    // glyphs), and none of that lines up with the digits everywhere else
+    // in this bar, or with the ring's own centring math below. Trimmed
+    // straight to what the idea's own alternative already allowed for
+    // ("a small serif numeral or kanji glyph"), and the plain digit is the
+    // one that shares its font and metrics with everything around it.
+    function numeralFor(id) {
+        return String(id);
+    }
+
     // A border stroke's alpha is the cheapest thing on `indicator` to
     // modulate: unlike width/height it never touches implicitWidth or
     // implicitHeight, so it cannot compete with the x/width tracking below
@@ -286,6 +310,24 @@ Item {
                     // the outgoing slot's dot back at full strength while the
                     // pill was still sitting over it and had only begun to
                     // slide, which read as a flash just before the movement.
+                    // Untouched by the "glyph" skin, deliberately: a first
+                    // pass kept this ring filled behind an occupied slot's
+                    // numeral too, reasoning the idea's own "ring" wording
+                    // literally. That put `numeralText` below right on top
+                    // of a ring painted the very same `Colors.dotOccupied`
+                    // it is coloured with -- text and background identical,
+                    // so the digit was invisible for every occupied,
+                    // non-active slot, the single most common state this
+                    // skin has to render. `glyphText` below already proves
+                    // the shape that actually works: this ring stays
+                    // hidden whenever there is an icon (or now a numeral)
+                    // to show instead, and that icon/numeral paints
+                    // straight against the dark bar background, which is
+                    // what real contrast against `Colors.dotOccupied`
+                    // needs. Reverting this line to the exact original
+                    // expression is what keeps the default skin
+                    // pixel-identical, and it is also the fix for the
+                    // glyph skin's own contrast bug -- one line doing both.
                     opacity: !slot.showGlyph && !slot.badge && !slot.active ? 1 : 0
                     visible: body.opacity > 0
 
@@ -367,7 +409,107 @@ Item {
                     // and centred in the same place -- the two drew over each
                     // other every time you left fullscreen.
                     opacity: slot.badge ? 0 : 1
-                    visible: slot.showGlyph && glyphText.opacity > 0
+                    // `&& root.skin !== "glyph"` is the only addition here:
+                    // that skin draws `numeralText` below instead, and
+                    // showing both at once would stack a category icon and
+                    // a numeral in the same spot. `true` in the default
+                    // "dots" skin, so nothing about this line's behaviour
+                    // changes there.
+                    visible: slot.showGlyph && glyphText.opacity > 0 && root.skin !== "glyph"
+
+                    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+                }
+
+                // The "glyph" skin's own numeral (idea 33: workspace-glyph-
+                // skin). A sibling of `body`, for the exact reason
+                // `glyphText` above already is one: `body` stops painting
+                // itself while this slot is active or badged, and an
+                // invisible parent takes its children down with it, so this
+                // would never appear over the travelling indicator pill if
+                // it were nested inside `body` instead.
+                //
+                // Only for an occupied slot, the same gate `glyphText`
+                // already uses (`slot.showGlyph` is exactly `slot.occupied`):
+                // the idea itself only ever asks for a numeral on "each
+                // occupied workspace", and a first pass that also drew one
+                // on the 8px empty dot was the fastest way to make this
+                // skin look cramped -- that ring has no room to centre a
+                // digit in.
+                //
+                // Deliberate rework, first pass vs. this one: a CJK numeral
+                // in a separately-sourced serif face read worse once on
+                // screen than a plain digit does -- a second font family
+                // brought a second set of metrics (its own em-box, its own
+                // optical centre, uneven advance widths glyph to glyph),
+                // none of which lined up with the digits everywhere else in
+                // this bar or with the centring below. `font.family:
+                // Caelus.fontFamily`, `font.features` and `anchors.fill`
+                // below are what replaced it.
+                Text {
+                    id: numeralText
+
+                    // `anchors.fill`, not `centerIn`: `centerIn` only
+                    // centres this Text's own implicit (font-metric)
+                    // bounding box, and a digit's ink sits above its
+                    // baseline by an amount that differs per glyph -- that
+                    // was what put every numeral visibly high and
+                    // off-centre in the first pass. Filling the ring and
+                    // centring *within* it via the alignment properties
+                    // below is what actually centres the ink on the ring's
+                    // true centre instead.
+                    anchors.fill: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    text: root.numeralFor(slot.modelData?.id ?? 0)
+                    // The bar's own type family, not a second one: every
+                    // other digit in this shell (SysReadout, the badge
+                    // count below) is caelusevka, and a digit here should
+                    // look like it belongs to the same typeface as the
+                    // number sitting three pixels to its right.
+                    font.family: Caelus.fontFamily
+                    // DemiBold, not the row's usual regular weight -- a
+                    // regular-weight digit thinned out against
+                    // Colors.dotOccupied's mid-contrast tone at this size.
+                    // caelusevka only ships Regular and Bold as static
+                    // faces (`fc-list`), so this resolves to the nearest of
+                    // the two -- Bold -- rather than a true in-between
+                    // weight, which is still the heavier, more legible
+                    // choice this was after.
+                    font.weight: Font.DemiBold
+                    // Tabular figures: every digit advances the same width,
+                    // so the glyph never drifts left or right of the ring's
+                    // centre switching between e.g. "1" and "8" -- the
+                    // other half of what made the first pass look uneven
+                    // workspace to workspace. Falls back to caelusevka's
+                    // ordinary proportional widths if the shaping engine
+                    // doesn't recognise the feature; nothing renders wrong
+                    // either way, only slightly less even.
+                    font.features: ({ "tnum": 1 })
+                    // Bound to the slot's own animated height rather than a
+                    // literal pixel size, so the numeral grows and shrinks
+                    // in exactly the same curve as the box around it --
+                    // `slot.height` already rides `slot`'s own `Behavior on
+                    // implicitHeight` above, so nothing here needs a second
+                    // Behavior of its own to stay in sync with that one.
+                    // 0.6 leaves a visible margin inside that box rather
+                    // than the glyph touching its edge.
+                    font.pixelSize: Math.round(slot.height * 0.6)
+                    // Same accent-vs-dot split `glyphText` uses: the active
+                    // slot sits over the accent indicator and needs its own
+                    // on-accent colour; every other occupied slot paints
+                    // straight against the dark bar background, the same
+                    // as `glyphText`'s own icon does -- `body` stays hidden
+                    // behind either one (see its own comment above for why
+                    // that has to be true rather than merely convenient).
+                    // `Colors.dotOccupied` already reads a step brighter
+                    // than `Colors.dotEmpty`, the only other colour this
+                    // row ever puts a dot in, so "occupied reads brighter
+                    // than empty" falls out of reusing that token rather
+                    // than needing a third one of its own.
+                    color: slot.active ? Caelus.textOnAccent : Colors.dotOccupied
+                    visible: root.skin === "glyph" && slot.occupied && !slot.badge
+                    opacity: slot.badge ? 0 : 1
 
                     Behavior on opacity { NumberAnimation { duration: Motion.fast } }
                     Behavior on color { ColorAnimation { duration: Motion.fast } }

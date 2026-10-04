@@ -107,7 +107,27 @@ RowLayout {
     // not wrapped in a Pill: it collapses to zero width by itself when
     // nothing is playing (Services/Cava.qml), so an empty pill shell is
     // not left standing beside a silent media pill.
-    CavaBars {}
+    //
+    // Settings.cavaPill gates it off entirely (default true, today's
+    // unconditional behaviour). Wrapped in a plain Item rather than setting
+    // `visible` on CavaBars directly: CavaBars.qml owns its own `visible`
+    // binding (tied to its collapsed/live width, see that file) and is not
+    // a file this round touches -- overriding that property from here would
+    // silently replace its self-collapse logic instead of adding to it. The
+    // wrapper mirrors CavaBars' own implicitWidth/Height so RowLayout still
+    // sizes and spaces it identically whenever it's visible, and going
+    // invisible here closes the gap the same way bluetoothPill/mediaPill
+    // already do when they hide (RowLayout reserves no spacing for an
+    // invisible child).
+    Item {
+        id: cavaSlot
+
+        implicitWidth: cavaBars.implicitWidth
+        implicitHeight: cavaBars.implicitHeight
+        visible: Settings.cavaPill && cavaBars.visible
+
+        CavaBars { id: cavaBars }
+    }
 
     // One pill, three readings: what the processor, the graphics card and
     // memory are each doing, and what it is costing them. Each keeps its
@@ -122,7 +142,10 @@ RowLayout {
         pressed: systemArea.pressed
 
         content: SysReadout {}
-        visible: SysMon.available
+        // Settings.systemPill is a person's own override on top of the
+        // self-gate SysMon.available already was -- default true, exactly
+        // today's behaviour, same shape as bluetoothPill's adapter default.
+        visible: SysMon.available && Settings.systemPill
 
         MouseArea {
             id: systemArea
@@ -131,6 +154,33 @@ RowLayout {
             cursorShape: Qt.PointingHandCursor
 
             onClicked: SysMon.togglePanel()
+        }
+    }
+
+    // The dashboard's own pin, kept here rather than inside the notch tab
+    // (BarWindow.qml) because that tab already carries the open/close
+    // glyph and this is a second, independent action -- whether the panel
+    // stays up past the next click-outside. Only reachable while there is
+    // a dashboard to pin at all: "corners" is the one style the panel
+    // exists under (Services/Dashboard.qml's own file comment), and while
+    // it is actually open, the same way a popup's own pin control would
+    // only show up on its card. Last in the left group since BarLeft has
+    // no slot of its own this naturally belongs in.
+    Pill {
+        id: dashboardPinPill
+
+        visible: BarStyles.current === "corners" && Dashboard.open
+        pressed: dashboardPinArea.pressed
+        icon: Dashboard.pinned ? "keep" : "keep_off"
+        iconColor: Dashboard.pinned ? Colors.accentBright : Colors.fgMuted
+
+        MouseArea {
+            id: dashboardPinArea
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            cursorShape: Qt.PointingHandCursor
+
+            onClicked: Dashboard.togglePinned()
         }
     }
 }
