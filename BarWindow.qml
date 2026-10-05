@@ -584,9 +584,9 @@ Scope {
                     font.pixelSize: Caelus.sizeBody
                     color: Colors.fgMuted
                     // Points at whichever way the panel is about to go --
-                    // down to open, back up to close -- the same chevron-
-                    // flip idiom KeybindOverview/CalendarPopup already use
-                    // for their own expanders.
+                    // down to open, back up to close -- a plain chevron
+                    // flip, the expander idiom the retired CalendarPopup
+                    // used.
                     rotation: Dashboard.open ? 180 : 0
 
                     Behavior on rotation {

@@ -28,8 +28,12 @@ One bar per monitor (`BarWindow.qml`), split into three groups.
 
 ## Centre (`BarCenter.qml`)
 
-- **Clock**, with reminders set from its calendar (`CalendarPopup.qml`) —
-  timers and alarms ring as notifications with sound, DND included. Format
+- **Clock** — left-click folds in what's next (the soonest reminder's
+  countdown, and its own text too once it's due within the hour);
+  right-click opens the dashboard (`Services/Dashboard.qml`,
+  `NotchDashboard.qml`) in every bar style, calendar and reminders included
+  — not only from the notch tab "corners" grows for the same panel. Timers
+  and alarms ring as notifications with sound, DND included. Format
   (24h/12h, `clockFormat`) and whether it shows seconds (`clockSeconds`,
   default off) are settings-app toggles (Bar page) — both live in
   `Services/Time.qml`, the one clock singleton the bar pill, the desktop
@@ -98,10 +102,13 @@ bar's shape:
 - **Full bar** — one solid strip across the top edge.
 - **Corner dashboard** — the clock joins the right-hand group into one merged
   island, leaving a left island, a wide right island, and a small notch tab
-  flush with the top centre. Clicking the tab toggles a dashboard panel
-  (`Services/Dashboard.qml`, `NotchDashboard.qml`); a pin icon appears at the
+  flush with the top centre. Clicking the tab toggles the dashboard panel
+  (`Services/Dashboard.qml`, `NotchDashboard.qml`), the same panel a
+  right-click on the clock opens in every style; a pin icon appears at the
   end of the left group while it's open, to keep it from closing on the next
-  click outside.
+  click outside — pinning holds across a style switch too, not just across
+  outside clicks, so the panel doesn't vanish mid-session just for leaving
+  "corners".
 
 The switch animates, and the choice is remembered (`barStyle` in
 `settings.json`, `islands`, `full` or `corners`). To open it from a script:

@@ -53,8 +53,8 @@ Item {
         // glyph while there is none/it fails to load) for DesktopMedia's
         // album art -- nothing here is call-specific about the masking, so
         // this reuses it rather than redrawing it. Sized a touch under
-        // `rowHeight`, the same margin CalendarPopup's own round buttons
-        // sit in from a taller row.
+        // `rowHeight`, the same margin the retired CalendarPopup's round
+        // buttons sat in from a taller row.
         MediaArt {
             Layout.preferredWidth: 24
             Layout.preferredHeight: 24

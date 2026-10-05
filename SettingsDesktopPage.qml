@@ -36,4 +36,30 @@ SettingsPage {
             onToggled: Settings.clipboardRipple = !Settings.clipboardRipple
         }
     }
+
+    // Round 5 (calendar-reminders-rework): the dashboard's calendar grid
+    // (CalendarGrid.qml) reads both of these straight off Settings.* -- see
+    // that file's own comments for what each changes about the grid.
+    SettingsCard {
+        title: "Calendar"
+
+        SettingsChoiceRow {
+            icon: "event"
+            label: "Week starts on"
+            model: [
+                { id: "monday", name: "Monday" },
+                { id: "sunday", name: "Sunday" }
+            ]
+            current: Settings.weekStart
+            onChosen: id => Settings.weekStart = id
+        }
+
+        SettingsToggleRow {
+            icon: "numbers"
+            label: "Week numbers"
+            caption: "An ISO week number beside each row of the dashboard's calendar grid"
+            checked: Settings.weekNumbers
+            onToggled: Settings.weekNumbers = !Settings.weekNumbers
+        }
+    }
 }

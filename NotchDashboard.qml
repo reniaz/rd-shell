@@ -127,7 +127,10 @@ BarPopup {
                     Layout.fillWidth: true
                 }
 
-                DashCalendarGrid {
+                // Round 5: the grid plus a picked day's agenda (or
+                // "Upcoming" with nothing picked) -- see DashCalendarPane.qml.
+                // DashCalendarGrid.qml is retired alongside this swap.
+                DashCalendarPane {
                     Layout.fillWidth: true
                 }
 

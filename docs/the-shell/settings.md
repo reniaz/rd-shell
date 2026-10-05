@@ -70,6 +70,22 @@ Like `barStyle`, the chosen preset (`animPreset` in `settings.json`,
 `"snappy"` / `"smooth"` / `"bouncy"` / `"minimal"`) isn't in the table below —
 see this section instead.
 
+## Desktop page
+
+Round 5 (calendar-reminders-rework) adds a Calendar card to the window's
+Desktop page, next to the desktop-widgets/clipboard-ripple toggles — both
+read straight by `CalendarGrid.qml`, the grid the dashboard's calendar pane
+builds on (`DashCalendarPane.qml`, see [Popups → Dashboard](popups.md)):
+
+- **Week starts on** — `"monday"` (default, matching the grid's original
+  hand-written Monday-first layout) or `"sunday"`.
+- **Week numbers** — off by default; on, an ISO-8601 week number is printed
+  beside each row of the grid, numbered the same way regardless of which day
+  the row itself starts on.
+
+Like `animPreset` above, `weekStart`/`weekNumbers` aren't in the table below
+— they're a page of their own now, not a predates-the-window key.
+
 Everything the popup and the window can set is backed by a single file,
 `settings.json`, next to `shell.qml` in `~/.config/quickshell/rd-shell/` —
 written by `Services/Settings.qml`, never committed to the repo. It doesn't

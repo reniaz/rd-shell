@@ -49,8 +49,9 @@ FocusScope {
     // screen but nothing here clamps `card.height` against `cardClip`'s own
     // height the way the five popups with a `root.height` guard in their own
     // file do (see SettingsPopup.qml, NotificationPanel.qml,
-    // ClaudePanel.qml, SysPopup.qml) -- AudioPopup, CalendarPopup, DiskPopup,
-    // MediaPopup and NetworkPopup carry no such guard at all, so a consumer
+    // ClaudePanel.qml, SysPopup.qml) -- AudioPopup, DiskPopup, MediaPopup,
+    // NetworkPopup and NotchDashboard (round 5, replacing the retired
+    // CalendarPopup.qml in this list) carry no such guard at all, so a consumer
     // of this rect should see what is actually painted rather than what
     // `card`'s own properties claim, on the rare screen short enough for the
     // difference to matter. Empty while the card has nothing to show --

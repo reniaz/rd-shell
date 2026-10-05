@@ -12,9 +12,10 @@ moment anything sends a notification.
   and shows a red slash while DND is on, the same `MuteGlyph.qml` motion the
   mic/volume pills use for mute.
 - **DND** — silences popups, but still lets through hotkey feedback (e.g.
-  mic toggle) and an allow-list of apps. Reminders (from `CalendarPopup.qml`)
-  still ring with sound even under DND. So does the Discord call banner
-  below — checked before DND is even consulted.
+  mic toggle) and an allow-list of apps. Reminders (`Services/Reminders.qml`,
+  set from the dashboard's calendar pane — see [Bar](bar.md), right-click the
+  clock) still ring with sound even under DND. So does the Discord call
+  banner below — checked before DND is even consulted.
 
 `Services/Notifications.qml` is the backing singleton. If no notifications
 ever appear, see [Troubleshooting](../troubleshooting.md) — usually a

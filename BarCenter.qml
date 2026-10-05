@@ -6,14 +6,21 @@ import qs.Services
 RowLayout {
     id: root
 
-    // Exposed for BarOverlays.qml: the clock pill's offset for the calendar
-    // popup to anchor on, and its own open flag so the popup can close it.
-    // Still `clockPill`'s own centre, not `cell`'s -- the pill keeps its
-    // resting position and size even while `cell` has grown around it for
-    // idea 38's banner (see `cell` below), and the calendar can only ever be
-    // opened while that pill's own MouseArea is enabled anyway.
+    // Exposed for BarOverlays.qml: the clock pill's offset for the
+    // dashboard to anchor on in "islands"/"full" (`root.clockAnchorX`,
+    // read via BarWindow.qml's own forwarding property of the same name --
+    // "corners" anchors the dashboard on the notch tab instead and never
+    // reads this). Still `clockPill`'s own centre, not `cell`'s -- the pill
+    // keeps its resting position and size even while `cell` has grown
+    // around it for idea 38's banner (see `cell` below).
+    //
+    // Round 5: this group no longer has an open flag of its own for
+    // BarOverlays.qml to read -- the right-click below drives
+    // `Dashboard.open` directly now, the same global flag the notch tab
+    // already toggles, so there is nothing pill-local left to expose here.
+    // `calendarOpen`/`CalendarPopup.qml` (this alias's own reason for
+    // existing) are gone.
     readonly property real clockAnchorX: clockPill.x + clockPill.width / 2
-    property alias calendarOpen: clockPill.calendarOpen
 
     // Set only by BarWindow.qml, only in the "corners" style: the item to
     // dock this group's right edge against instead of centring in the
@@ -106,19 +113,35 @@ RowLayout {
             pressed: clockArea.pressed
 
             property bool showReminder: false
-            property bool calendarOpen: false
 
             icon: "schedule"
             // What is next to go off, in the place the date used to sit -- a
-            // timer is set to be glanced at, and the date is a right-click away
-            // in the month itself.
+            // timer is set to be glanced at, and the dashboard is a
+            // right-click away for the month itself.
+            //
+            // Round 5: once something is due inside the hour, its own text
+            // rides along with the countdown rather than the countdown
+            // standing alone -- "no timer" told you nothing was coming, but
+            // a bare "4m" told you something was about to fire without
+            // saying what. Further out than an hour the countdown alone is
+            // still all this fold shows, exactly as it always has: a
+            // reminder days away naming itself here would make the fold
+            // read as a running agenda rather than the one-line "is
+            // something about to happen" glance it is. `Reminders.next.text`
+            // is read straight off the v2 record (Services/Reminders.qml);
+            // `Pill.qml`'s own `elide`/`maxLabelWidth` already cap a long
+            // one rather than growing the island without bound.
             label: clockPill.showReminder
-                ? `${Time.time} | ${Reminders.next ? Format.countdown(Reminders.next.at, Reminders.now) : "no timer"}`
+                ? (Reminders.next
+                    ? (Reminders.next.at - Reminders.now <= 3600000
+                        ? `${Time.time} | ${Reminders.next.text} ${Format.countdown(Reminders.next.at, Reminders.now)}`
+                        : `${Time.time} | ${Format.countdown(Reminders.next.at, Reminders.now)}`)
+                    : `${Time.time} | no timer`)
                 : Time.time
 
             // Cross-fades out under the call content rather than being torn
             // down -- the banner replaces it in place, and neither the
-            // reminder toggle nor the calendar means anything while a call
+            // reminder toggle nor the dashboard means anything while a call
             // is ringing. `interactive: false` also mutes the pill's own
             // hover wash, so it doesn't sit there half-visible under the
             // banner suggesting it can still be clicked.
@@ -161,10 +184,16 @@ RowLayout {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
 
-                // Left folds in what is next; right hangs the whole month under
-                // it, which is where reminders are set.
+                // Left folds in what is next; right opens the dashboard,
+                // calendar and all, in every bar style now -- not just the
+                // notch tab "corners" grew for it. Round 5 deliberate
+                // choice: `Dashboard.toggle()` is the one flag every style
+                // already gates its own dashboard popup on (see
+                // BarOverlays.qml's `dashboardLoader`), so a right-click
+                // here needs no style check of its own, the same way the
+                // notch tab needs none either.
                 onClicked: mouse => mouse.button === Qt.RightButton
-                    ? clockPill.calendarOpen = !clockPill.calendarOpen
+                    ? Dashboard.toggle()
                     : clockPill.showReminder = !clockPill.showReminder
             }
         }

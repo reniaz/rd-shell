@@ -45,23 +45,21 @@ Singleton {
     // guesses that could drift apart.
     readonly property real tabWidth: 64
 
-    // The "corners" style is the only one this dashboard exists under (see
-    // the file comment on BarOverlays.qml's PopupLoader for the full open
-    // gate). Switching away to "islands" or "full" already hides the panel
-    // through that gate's own `BarStyles.current === "corners"` term, but
-    // the service flag itself would otherwise stay true underneath --
-    // and switching back to "corners" later would then reopen the panel
-    // nobody asked to reopen. Resetting it here, the moment the style
-    // changes, is what keeps a later switch back to "corners" starting
-    // closed instead of replaying whatever was left open the last time.
-    Connections {
-        target: BarStyles
-
-        function onCurrentChanged() {
-            if (BarStyles.current !== "corners")
-                root.open = false;
-        }
-    }
+    // Round 5: the dashboard now opens from a clock right-click in every
+    // bar style (BarCenter.qml), not just from the notch tab "corners"
+    // alone grows -- so a style switch is no longer the panel leaving its
+    // one and only home. The Connections that used to force `open = false`
+    // the moment `BarStyles.current` left "corners" is deliberately gone:
+    // "pinned" already means "stays open through whatever else happens"
+    // everywhere else this flag is read (`togglePinned` above,
+    // `onDismissed` in BarOverlays.qml), and a mid-session style switch
+    // silently closing it anyway -- pinned or not -- was the one place
+    // that promise didn't hold. A panel open when "corners" is switched
+    // away from now simply keeps following the clock to wherever
+    // `BarOverlays.qml`'s `anchorX` puts it in the new style instead.
+    //
+    // Nothing above replaces this with a style-keyed reset: there is no
+    // style this panel is no longer valid under any more for one to guard.
 
     // `qs ipc -c rd-shell call dashboard toggle` / `togglePinned` -- same
     // shape as every other IpcHandler-bearing singleton here (see

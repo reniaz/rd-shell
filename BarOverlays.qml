@@ -47,7 +47,6 @@ Item {
     // the sum a real property path the engine can watch.
     readonly property var anchoredLoaders: [
         sysLoader, mediaLoader,
-        calendarLoader,
         settingsLoader, notificationLoader, localLoader, diskLoader,
         volumeLoader, micLoader, networkLoader, claudeLoader,
         dashboardLoader
@@ -132,26 +131,33 @@ Item {
         }
     }
 
-    // Idea corner-islands-notch-dashboard. Dashboard.open is one global flag
-    // -- the notch tab exists on every screen's bar under the "corners"
-    // style, same as the "✦" pill the power menu above opens from -- so
-    // this follows that menu's exact gate rather than a pill-local one:
-    // `root.screenName === root.overlayScreen` keeps a second monitor
-    // from opening its own copy of the same panel. The style check is what
-    // actually matters for existence: the panel has no reason to exist
-    // outside "corners" at all, and Dashboard.qml's own Connections on
-    // BarStyles.current additionally resets the flag on the way out, so a
-    // later switch back to "corners" starts closed rather than replaying
-    // whatever was left open. `onDismissed` is click-outside only -- Escape
-    // is handled inside NotchDashboard.qml itself, independently of this
-    // signal; see the Shortcut there for why the two needed splitting.
+    // Idea corner-islands-notch-dashboard, Round 5: the dashboard behind the
+    // notch tab now opens from every bar style, not just "corners" -- a
+    // right-click on the clock (BarCenter.qml) reaches it everywhere the
+    // notch tab itself only exists in one of the three. Dashboard.open is
+    // one global flag, same as the "✦" pill the power menu above opens
+    // from, so this still follows that menu's exact one-screen gate:
+    // `root.screenName === root.overlayScreen` keeps a second monitor from
+    // opening its own copy of the same panel. The style check that used to
+    // gate *existence* is gone -- see Dashboard.qml's own Connections on
+    // BarStyles.current (removed this round) for why it no longer needs to
+    // close on leaving "corners" either.
+    //
+    // `anchorX` follows the clock pill in "islands"/"full" (`root.
+    // clockAnchorX` already tracks `BarCenter.qml`'s `dockRight` merge for
+    // "corners" on its own, see BarWindow.qml) -- but "corners" keeps
+    // centring on the notch tab
+    // instead: the tab is a real plate the card visibly grows out of in
+    // that style (its own third island in `_styleShapes`), and following
+    // the clock there would centre the card off the merged right island's
+    // own pill instead of the tab it is actually fused to.
     PopupLoader {
         id: dashboardLoader
 
-        open: Dashboard.open && BarStyles.current === "corners" && root.screenName === root.overlayScreen
+        open: Dashboard.open && root.screenName === root.overlayScreen
 
         NotchDashboard {
-            anchorX: root.width / 2
+            anchorX: BarStyles.current === "corners" ? root.width / 2 : root.clockAnchorX
             onDismissed: if (!Dashboard.pinned) Dashboard.open = false
         }
     }
@@ -276,20 +282,6 @@ Item {
         }
     }
 
-    // Both of these are opened by a right-click on a specific bar, so they follow
-    // the disk popup rather than the keybind-driven overlays: no overlayScreen
-    // gate, and the open state lives on the pill that was clicked.
-    PopupLoader {
-        id: calendarLoader
-
-        open: root.centerGroup.calendarOpen
-
-        CalendarPopup {
-            anchorX: root.clockAnchorX
-            onDismissed: root.centerGroup.calendarOpen = false
-        }
-    }
-
     // Closed with the pill it hangs from: the last player quitting takes the
     // pill off the bar, and a card left pointing at a gap is not dismissable by
     // clicking the icon that opened it. A player merely reloading no longer
@@ -338,8 +330,7 @@ Item {
 
     // What the link is actually carrying, which is the one thing the pill's own
     // name and icon cannot say. Opened by a click on a specific bar, so it is
-    // ungated like the disk and calendar cards rather than following the focused
-    // monitor.
+    // ungated like the disk card rather than following the focused monitor.
     PopupLoader {
         id: networkLoader
 

@@ -195,6 +195,15 @@ Singleton {
     // it always had before the ripple existed.
     property alias pillRipple: adapter.pillRipple
 
+    // Round 5 (calendar-reminders-rework), Desktop page. CalendarGrid.qml's
+    // own two display choices -- which day starts the week ("monday",
+    // default, matching the grid's original hand-written Monday-first lead
+    // calculation exactly, or "sunday") and whether to print an ISO week
+    // number beside each row (off by default: nothing drew one before this
+    // existed). Same alias-onto-the-adapter pattern as every property above.
+    property alias weekStart: adapter.weekStart
+    property alias weekNumbers: adapter.weekNumbers
+
     // The shell's own config symlink -- ~/.config/quickshell/rd-shell points
     // at this repo -- so settings.json lands beside every other file here
     // rather than in some second, hidden location a person would have to be
@@ -307,6 +316,8 @@ Singleton {
             property int barMargin: 14
             property real barOpacity: 0.45
             property bool pillRipple: true
+            property string weekStart: "monday"
+            property bool weekNumbers: false
         }
     }
 }
